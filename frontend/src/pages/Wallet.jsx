@@ -1,4 +1,4 @@
-import { Wallet as WalletIcon, TrendingUp, ArrowUpRight, ArrowDownRight, Clock, ShieldCheck, Zap } from 'lucide-react';
+import { Wallet as WalletIcon, TrendingUp, ArrowUpRight, ArrowDownRight, Clock, ShieldCheck, Zap, Users } from 'lucide-react';
 
 export default function Wallet() {
   return (
@@ -18,54 +18,69 @@ export default function Wallet() {
          </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-         <div className="bg-gradient-to-br from-neutral-900 to-neutral-950 p-8 rounded-2xl border border-neutral-800 relative overflow-hidden group hover:border-beacon-500/30 transition-all shadow-2xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+         <div className="bg-gradient-to-br from-neutral-900 to-neutral-950 p-6 rounded-2xl border border-neutral-800 relative overflow-hidden group hover:border-beacon-500/30 transition-all shadow-2xl">
             <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
-               <WalletIcon className="w-32 h-32 text-beacon-500" />
+               <WalletIcon className="w-24 h-24 text-beacon-500" />
             </div>
             <div className="relative z-10">
                <div className="flex items-center gap-2 mb-2">
                   <div className="p-2 bg-beacon-500/10 rounded-lg">
                      <WalletIcon className="w-5 h-5 text-beacon-500" />
                   </div>
-                  <p className="text-neutral-400 text-sm font-bold uppercase tracking-wider">Total Balance</p>
+                  <p className="text-neutral-400 text-xs font-bold uppercase tracking-wider">Total Balance</p>
                </div>
-               <h2 className="text-5xl font-bold text-white font-mono tracking-tight mt-4">2,450.00 <span className="text-2xl text-beacon-500">CR</span></h2>
-               <div className="mt-6 flex items-center gap-2 text-green-400 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full w-fit">
-                  <TrendingUp className="w-4 h-4" />
-                  <span>+12.5% this week</span>
+               <h2 className="text-3xl font-bold text-white font-mono tracking-tight mt-4">2,450.00 <span className="text-lg text-beacon-500">CR</span></h2>
+               <div className="mt-4 flex items-center gap-2 text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded-full w-fit">
+                  <TrendingUp className="w-3 h-3" />
+                  <span>+12.5%</span>
                </div>
             </div>
          </div>
 
-         <div className="bg-neutral-900 p-8 rounded-2xl border border-neutral-800 hover:border-neutral-700 transition-all shadow-xl">
-            <div className="flex items-start justify-between mb-6">
-               <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500">
-                  <ArrowUpRight className="w-8 h-8" />
-               </div>
-               <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest bg-neutral-800 px-2 py-1 rounded">Last 30 Days</span>
+         <div className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 hover:border-neutral-700 transition-all shadow-xl relative overflow-hidden group">
+             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+               <Users className="w-24 h-24 text-purple-500" />
             </div>
-            <p className="text-neutral-400 text-sm font-bold uppercase tracking-wider mb-2">Bandwidth Contributed</p>
-            <h2 className="text-3xl font-bold text-white font-mono">1.2 TB</h2>
-            <div className="w-full bg-neutral-800 h-2 rounded-full mt-6 overflow-hidden">
+            <div className="flex items-start justify-between mb-4">
+               <div className="p-3 bg-purple-500/10 rounded-xl text-purple-500">
+                  <Users className="w-6 h-6" />
+               </div>
+               <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest bg-neutral-800 px-2 py-1 rounded">All Time</span>
+            </div>
+            <p className="text-neutral-400 text-xs font-bold uppercase tracking-wider mb-2">Squad Earnings</p>
+            <h2 className="text-2xl font-bold text-white font-mono">850.50 <span className="text-sm text-neutral-500">CR</span></h2>
+            <div className="mt-4 flex items-center gap-2 text-purple-400 text-xs font-bold bg-purple-500/10 px-2 py-1 rounded-full w-fit">
+               <span>From 12 Co-Streams</span>
+            </div>
+         </div>
+
+         <div className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 hover:border-neutral-700 transition-all shadow-xl">
+            <div className="flex items-start justify-between mb-4">
+               <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500">
+                  <ArrowUpRight className="w-6 h-6" />
+               </div>
+               <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest bg-neutral-800 px-2 py-1 rounded">30 Days</span>
+            </div>
+            <p className="text-neutral-400 text-xs font-bold uppercase tracking-wider mb-2">Bandwidth</p>
+            <h2 className="text-2xl font-bold text-white font-mono">1.2 TB</h2>
+            <div className="w-full bg-neutral-800 h-1.5 rounded-full mt-4 overflow-hidden">
                <div className="bg-blue-500 h-full w-[75%] rounded-full"></div>
             </div>
-            <p className="text-xs text-neutral-500 mt-3 font-medium">Top 5% of nodes</p>
          </div>
 
-         <div className="bg-neutral-900 p-8 rounded-2xl border border-neutral-800 hover:border-neutral-700 transition-all shadow-xl">
-            <div className="flex items-start justify-between mb-6">
+         <div className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 hover:border-neutral-700 transition-all shadow-xl">
+            <div className="flex items-start justify-between mb-4">
                <div className="p-3 bg-green-500/10 rounded-xl text-green-500">
-                  <ShieldCheck className="w-8 h-8" />
+                  <ShieldCheck className="w-6 h-6" />
                </div>
-               <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest bg-neutral-800 px-2 py-1 rounded">Node Score</span>
+               <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest bg-neutral-800 px-2 py-1 rounded">Score</span>
             </div>
-            <p className="text-neutral-400 text-sm font-bold uppercase tracking-wider mb-2">Reliability Rating</p>
-            <h2 className="text-3xl font-bold text-white font-mono">98.5%</h2>
-            <div className="w-full bg-neutral-800 h-2 rounded-full mt-6 overflow-hidden">
+            <p className="text-neutral-400 text-xs font-bold uppercase tracking-wider mb-2">Reliability</p>
+            <h2 className="text-2xl font-bold text-white font-mono">98.5%</h2>
+            <div className="w-full bg-neutral-800 h-1.5 rounded-full mt-4 overflow-hidden">
                <div className="bg-green-500 h-full w-[98%] rounded-full"></div>
             </div>
-            <p className="text-xs text-neutral-500 mt-3 font-medium">Excellent uptime</p>
          </div>
       </div>
 
@@ -78,23 +93,33 @@ export default function Wallet() {
             <button className="text-sm font-bold text-beacon-500 hover:text-beacon-400 transition-colors uppercase tracking-wider">View All</button>
          </div>
          <div className="divide-y divide-neutral-800/50">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-               <div key={i} className="px-8 py-5 flex items-center justify-between hover:bg-neutral-800/20 transition-colors group cursor-pointer">
-                  <div className="flex items-center gap-5">
-                     <div className={`p-3 rounded-xl ${i % 2 === 0 ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'} group-hover:scale-110 transition-transform`}>
-                        {i % 2 === 0 ? <Zap className="w-5 h-5 fill-current" /> : <ArrowUpRight className="w-5 h-5" />}
+            {[1, 2, 3, 4, 5, 6].map((i) => {
+               const isSquad = i === 3 || i === 5;
+               const isAd = i % 2 === 0 && !isSquad;
+               const type = isSquad ? 'Squad Stream Payout' : (isAd ? 'Ad Revenue Share' : 'Bandwidth Relay Reward');
+               const colorClass = isSquad ? 'text-purple-500 bg-purple-500/10' : (isAd ? 'text-green-500 bg-green-500/10' : 'text-blue-500 bg-blue-500/10');
+               const Icon = isSquad ? Users : (isAd ? Zap : ArrowUpRight);
+
+               return (
+                  <div key={i} className="px-8 py-5 flex items-center justify-between hover:bg-neutral-800/20 transition-colors group cursor-pointer">
+                     <div className="flex items-center gap-5">
+                        <div className={`p-3 rounded-xl ${colorClass} group-hover:scale-110 transition-transform`}>
+                           <Icon className="w-5 h-5 fill-current" />
+                        </div>
+                        <div>
+                           <p className="font-bold text-white text-sm mb-0.5">{type}</p>
+                           <p className="text-xs text-neutral-500 font-medium">
+                             {isSquad ? 'Split with @GuestUser • 2 hours ago' : '2 minutes ago • Node #8372'}
+                           </p>
+                        </div>
                      </div>
-                     <div>
-                        <p className="font-bold text-white text-sm mb-0.5">{i % 2 === 0 ? 'Ad Revenue Share' : 'Bandwidth Relay Reward'}</p>
-                        <p className="text-xs text-neutral-500 font-medium">2 minutes ago • Node #8372</p>
+                     <div className="text-right">
+                        <p className="font-mono font-bold text-white text-lg">+{((i * 13.5) % 50).toFixed(2)} CR</p>
+                        <p className="text-xs text-green-500 font-medium">Completed</p>
                      </div>
                   </div>
-                  <div className="text-right">
-                     <p className="font-mono font-bold text-white text-lg">+{Math.floor(Math.random() * 50)}.00 CR</p>
-                     <p className="text-xs text-green-500 font-medium">Completed</p>
-                  </div>
-               </div>
-            ))}
+               );
+            })}
          </div>
       </div>
     </div>

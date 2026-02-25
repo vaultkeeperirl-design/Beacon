@@ -7,7 +7,7 @@ export default function Navbar() {
       <div className="flex items-center gap-4">
         <Link to="/" className="flex items-center gap-2">
           <img src="/icon.png" alt="Beacon" className="w-10 h-10 object-contain" />
-          <span className="text-xl font-bold tracking-tight text-white">Beacon</span>
+          <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">Beacon</span>
         </Link>
         <div className="hidden md:flex ml-6 space-x-1">
            <Link to="/" className="text-neutral-300 hover:text-beacon-400 font-medium px-3 py-2 rounded-md transition-colors text-sm">Browse</Link>

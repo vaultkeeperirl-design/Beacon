@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const P2PContext = createContext();
@@ -15,8 +16,10 @@ export function P2PProvider({ children }) {
 
   useEffect(() => {
     if (!isSharing) {
-      setStats(prev => ({ ...prev, uploadSpeed: 0, peersConnected: 0 }));
-      return;
+      const timer = setTimeout(() => {
+        setStats(prev => ({ ...prev, uploadSpeed: 0, peersConnected: 0 }));
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     const interval = setInterval(() => {
