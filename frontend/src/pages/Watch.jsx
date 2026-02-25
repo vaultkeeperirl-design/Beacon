@@ -1,14 +1,16 @@
 import VideoPlayer from '../components/VideoPlayer';
 import Chat from '../components/Chat';
-import { Share2, ThumbsUp, MoreHorizontal, UserPlus } from 'lucide-react';
+import { Share2, ThumbsUp, MoreHorizontal, UserPlus, UserCheck } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
+import { useFollowing } from '../context/FollowingContext';
 
 export default function Watch() {
   const { id } = useParams();
   // Using useP2PSettings to avoid re-rendering the whole page every second when stats update
   const { setCurrentStreamId } = useP2PSettings();
+  const { follow, unfollow, isFollowing } = useFollowing();
 
   useEffect(() => {
     if (id) {
@@ -18,6 +20,24 @@ export default function Watch() {
        setCurrentStreamId(null);
     };
   }, [id, setCurrentStreamId]);
+
+  const isFollowed = isFollowing(id);
+
+  const handleFollowToggle = () => {
+    if (isFollowed) {
+      unfollow(id);
+    } else {
+      follow({
+        id: id,
+        name: id,
+        // Mock data since we don't have a backend to fetch channel details
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
+        title: 'Building a P2P streaming app from scratch', // Mock title for now
+        isLive: true,
+        category: 'Software Development' // Mock category
+      });
+    }
+  };
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-64px)] overflow-hidden">
@@ -33,9 +53,9 @@ export default function Watch() {
                <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-400">
                  <div className="flex items-center gap-2">
                     <div className="w-10 h-10 rounded-full bg-neutral-800 overflow-hidden border border-neutral-700">
-                       <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=JulesDev`} alt="Avatar" className="w-full h-full object-cover" />
+                       <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`} alt="Avatar" className="w-full h-full object-cover" />
                     </div>
-                    <span className="text-white font-bold hover:text-beacon-400 cursor-pointer transition-colors">JulesDev</span>
+                    <span className="text-white font-bold hover:text-beacon-400 cursor-pointer transition-colors">{id}</span>
                  </div>
                  <span className="hidden md:inline">•</span>
                  <span className="bg-neutral-800 px-2 py-0.5 rounded text-beacon-400 font-medium border border-neutral-700">Software Development</span>
@@ -48,9 +68,16 @@ export default function Watch() {
              </div>
 
              <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
-                <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-beacon-600 hover:bg-beacon-500 text-white rounded-lg font-bold transition-all shadow-lg shadow-beacon-600/20 transform hover:-translate-y-0.5">
-                  <UserPlus className="w-4 h-4" />
-                  <span>Follow</span>
+                <button
+                  onClick={handleFollowToggle}
+                  className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 text-white rounded-lg font-bold transition-all shadow-lg transform hover:-translate-y-0.5 ${
+                    isFollowed
+                      ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 shadow-none'
+                      : 'bg-beacon-600 hover:bg-beacon-500 shadow-beacon-600/20'
+                  }`}
+                >
+                  {isFollowed ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                  <span>{isFollowed ? 'Following' : 'Follow'}</span>
                 </button>
                 <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700">
                   <ThumbsUp className="w-5 h-5" />

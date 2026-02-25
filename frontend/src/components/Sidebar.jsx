@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Home, Users, BarChart2, MessageSquare, Radio, Compass } from 'lucide-react';
 import P2PStats from './P2PStats';
+import { useFollowing } from '../context/FollowingContext';
 
 export default function Sidebar() {
+  const { followedChannels } = useFollowing();
   const menuItems = [
     { name: 'Home', icon: Home, path: '/' },
     { name: 'Browse', icon: Compass, path: '/' },
@@ -19,6 +21,30 @@ export default function Sidebar() {
             <span className="font-medium text-sm">{item.name}</span>
           </Link>
         ))}
+
+        {followedChannels.length > 0 && (
+          <div className="pt-6 border-t border-neutral-800 mt-4">
+            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-4 px-3">
+              Following
+            </h3>
+            <div className="space-y-3">
+              {followedChannels.map((channel) => (
+                <Link to={`/watch/${channel.id}`} key={channel.id} className="flex items-center gap-3 px-3 py-1 cursor-pointer hover:bg-neutral-800/50 rounded-lg group transition-colors">
+                  <div className="w-8 h-8 rounded-full bg-neutral-800 overflow-hidden relative border border-neutral-700 group-hover:border-beacon-500 transition-colors">
+                    <img src={channel.avatar} alt={channel.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-neutral-300 truncate group-hover:text-white transition-colors">{channel.name}</p>
+                    <p className="text-xs text-neutral-500 truncate">{channel.category || 'Offline'}</p>
+                  </div>
+                  {channel.isLive && (
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title="Live"></div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="pt-6 border-t border-neutral-800 mt-4">
           <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-4 px-3">
