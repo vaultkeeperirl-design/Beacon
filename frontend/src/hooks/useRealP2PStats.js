@@ -59,7 +59,9 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
          const earnedCredits = newUpload * 0.01;
 
          // Simulate fluctuating download speed when active
-         const newDownload = Math.max(5, Math.min(100, prev.downloadSpeed + (Math.random() - 0.5) * 10));
+         // We use a separate variable to avoid conflict with the let above, or just reassign
+         // Reassigning to simulate fluctuation based on previous value
+         newDownload = Math.max(5, Math.min(100, prev.downloadSpeed + (Math.random() - 0.5) * 10));
 
          return {
              ...prev,
