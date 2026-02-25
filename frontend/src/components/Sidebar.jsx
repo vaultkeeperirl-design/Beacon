@@ -47,7 +47,7 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="p-4 border-t border-neutral-800 bg-neutral-900">
+        <div className="mt-auto p-4 border-t border-neutral-800 bg-neutral-900">
            <P2PStats />
         </div>
       </div>
