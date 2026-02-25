@@ -20,11 +20,11 @@ export default function VideoPlayer({ streamUrl = "http://commondatastorage.goog
         playsInline
       />
 
-      {/* Stats Overlay (Condition handled inside component) */}
-      <VideoStatsOverlay />
+      {/* Stats Overlay */}
+      {settings.showStats && <VideoStatsOverlay />}
 
       {/* Settings Modal */}
-      <StreamSettings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      {isSettingsOpen && <StreamSettings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />}
 
       {/* Overlay UI */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6 z-10">
