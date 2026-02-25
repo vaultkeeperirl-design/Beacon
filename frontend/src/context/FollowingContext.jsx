@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 
 const FollowingContext = createContext();
 
@@ -21,27 +21,27 @@ export function FollowingProvider({ children }) {
     }
   }, [followedChannels]);
 
-  const follow = (channel) => {
+  const follow = useCallback((channel) => {
     setFollowedChannels((prev) => {
       if (prev.some(c => c.id === channel.id)) return prev;
       return [...prev, channel];
     });
-  };
+  }, []);
 
-  const unfollow = (channelId) => {
+  const unfollow = useCallback((channelId) => {
     setFollowedChannels((prev) => prev.filter(c => c.id !== channelId));
-  };
+  }, []);
 
-  const isFollowing = (channelId) => {
+  const isFollowing = useCallback((channelId) => {
     return followedChannels.some(c => c.id === channelId);
-  };
+  }, [followedChannels]);
 
   const value = useMemo(() => ({
     followedChannels,
     follow,
     unfollow,
     isFollowing,
-  }), [followedChannels]);
+  }), [followedChannels, follow, unfollow, isFollowing]);
 
   return (
     <FollowingContext.Provider value={value}>
@@ -50,6 +50,7 @@ export function FollowingProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useFollowing() {
   const context = useContext(FollowingContext);
   if (context === undefined) {
