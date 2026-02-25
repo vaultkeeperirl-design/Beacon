@@ -8,6 +8,13 @@ describe("Beacon Backend", () => {
   let clientSocket2;
   const port = 3002;
 
+  // Helper to wait for an event
+  const waitFor = (socket, event) => {
+    return new Promise((resolve) => {
+      socket.once(event, resolve);
+    });
+  };
+
   beforeAll((done) => {
     server.listen(port, () => {
       done();
@@ -21,10 +28,16 @@ describe("Beacon Backend", () => {
 
   beforeEach((done) => {
     clientSocket = new Client(`http://localhost:${port}`);
-    clientSocket.on("connect", () => {
-       clientSocket2 = new Client(`http://localhost:${port}`);
-       clientSocket2.on("connect", done);
-    });
+    clientSocket2 = new Client(`http://localhost:${port}`);
+
+    let connectedCount = 0;
+    const onConnect = () => {
+      connectedCount++;
+      if (connectedCount === 2) done();
+    };
+
+    clientSocket.on("connect", onConnect);
+    clientSocket2.on("connect", onConnect);
   });
 
   afterEach(() => {
@@ -32,94 +45,92 @@ describe("Beacon Backend", () => {
     if (clientSocket2.connected) clientSocket2.disconnect();
   });
 
-  test("should join a stream room and update user count", (done) => {
+  test("should join a stream room and update user count", async () => {
     const streamId = "stream-1";
 
+    const updatePromise1 = waitFor(clientSocket, "room-users-update");
     clientSocket.emit("join-stream", streamId);
+    await updatePromise1;
 
-    // Allow time for clientSocket to join so clientSocket2 sees count 2 upon joining
-    setTimeout(() => {
-        clientSocket2.emit("join-stream", streamId);
-    }, 50);
+    const updatePromise2 = waitFor(clientSocket2, "room-users-update");
+    clientSocket2.emit("join-stream", streamId);
+    const count = await updatePromise2;
 
-    clientSocket2.on("room-users-update", (count) => {
-        if (count === 2) {
-            done();
-        }
-    });
+    expect(count).toBe(2);
   });
 
-  test("should broadcast chat messages to the correct room", (done) => {
+  test("should broadcast chat messages to the correct room", async () => {
     const streamId = "stream-chat";
     const msg = { streamId, user: "User1", text: "Hello", color: "red" };
 
+    const updatePromise1 = waitFor(clientSocket, "room-users-update");
     clientSocket.emit("join-stream", streamId);
+    await updatePromise1;
+
+    const updatePromise2 = waitFor(clientSocket2, "room-users-update");
     clientSocket2.emit("join-stream", streamId);
+    await updatePromise2;
 
-    setTimeout(() => {
-        clientSocket2.on("chat-message", (message) => {
-            try {
-                expect(message.text).toBe("Hello");
-                expect(message.user).toBe("User1");
-                done();
-            } catch (e) {
-                done(e);
-            }
-        });
+    const chatPromise = waitFor(clientSocket2, "chat-message");
+    clientSocket.emit("chat-message", msg);
 
-        clientSocket.emit("chat-message", msg);
-    }, 200);
+    const message = await chatPromise;
+    expect(message.text).toBe("Hello");
+    expect(message.user).toBe("User1");
   });
 
-  test("should not receive chat messages from other rooms", (done) => {
+  test("should not receive chat messages from other rooms", async () => {
     const streamA = "stream-A";
     const streamB = "stream-B";
 
+    const updatePromise1 = waitFor(clientSocket, "room-users-update");
     clientSocket.emit("join-stream", streamA);
+    await updatePromise1;
+
+    const updatePromise2 = waitFor(clientSocket2, "room-users-update");
     clientSocket2.emit("join-stream", streamB);
+    await updatePromise2;
 
-    clientSocket2.on("chat-message", () => {
-        done(new Error("Received message from wrong room"));
-    });
+    // Ensure clientSocket2 does NOT receive messages from streamA
+    // We send to A, then to B. If we get A's message, it's fail.
+    // If we get B's message, we assume success (since A's message was sent first).
 
-    setTimeout(() => {
-        clientSocket.emit("chat-message", { streamId: streamA, user: "U1", text: "Hi A" });
-        setTimeout(done, 500);
-    }, 200);
+    const chatPromise = waitFor(clientSocket2, "chat-message");
+
+    clientSocket.emit("chat-message", { streamId: streamA, user: "U1", text: "Hi A" });
+    clientSocket2.emit("chat-message", { streamId: streamB, user: "U2", text: "Hi B" });
+
+    const message = await chatPromise;
+    expect(message.text).toBe("Hi B");
   });
 
-  test("should handle signaling (offer)", (done) => {
+  test("should handle signaling (offer)", async () => {
     const payload = { target: clientSocket2.id, sdp: "mock-sdp" };
 
-    clientSocket2.on("offer", (data) => {
-        try {
-            expect(data.sdp).toBe("mock-sdp");
-            expect(data.sender).toBe(clientSocket.id);
-            done();
-        } catch (e) {
-            done(e);
-        }
-    });
-
+    const offerPromise = waitFor(clientSocket2, "offer");
     clientSocket.emit("offer", payload);
+
+    const data = await offerPromise;
+    expect(data.sdp).toBe("mock-sdp");
+    expect(data.sender).toBe(clientSocket.id);
   });
 
-  test("should leave stream correctly", (done) => {
+  test("should leave stream correctly", async () => {
       const streamId = "stream-leave";
-      // Ensure clientSocket joins first
+
+      const updatePromise1 = waitFor(clientSocket, "room-users-update");
       clientSocket.emit("join-stream", streamId);
+      await updatePromise1;
 
-      setTimeout(() => {
-          clientSocket2.emit("join-stream", streamId);
-      }, 50);
+      const updatePromise2 = waitFor(clientSocket2, "room-users-update");
+      clientSocket2.emit("join-stream", streamId);
+      const countAfterJoin = await updatePromise2;
+      expect(countAfterJoin).toBe(2);
 
-      clientSocket2.on("room-users-update", (count) => {
-          if (count === 2) {
-              // Both present, now clientSocket leaves
-              clientSocket.emit("leave-stream");
-          } else if (count === 1) {
-              done();
-          }
-      });
+      const leaveUpdatePromise = waitFor(clientSocket2, "room-users-update");
+      clientSocket.emit("leave-stream");
+
+      const countAfterLeave = await leaveUpdatePromise;
+      expect(countAfterLeave).toBe(1);
   });
 });
