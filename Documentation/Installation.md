@@ -46,6 +46,14 @@ Before you begin, ensure you have the following installed:
 
     This will install React, Tailwind CSS, Vite, and other frontend dependencies.
 
+## Automatic Builds
+
+For a ready-to-use version of the Beacon Launcher, you do not need to build it yourself.
+
+**Executable files for Windows (.exe) and Linux (.AppImage) are automatically built and published to the GitHub Releases page.**
+
+Visit the **Releases** section of this repository to download the latest version.
+
 ---
 
 **Note**: If you encounter network timeouts during installation, retry the command or check your internet connection.
