@@ -10,6 +10,6 @@
 **Learning:** Refactoring fixed sidebar components (like Chat) to accept a `className` prop allows them to be embedded into complex grid layouts (like the Broadcast Studio) without duplicating logic.
 **Action:** Always design sidebar components with layout flexibility to support both fixed and inline modes.
 
-## 2025-05-24 - [Data Formatting Conventions]
-**Learning:** For financial or metric data (like Credits or Bandwidth), use `toLocaleString` for readable thousand separators and dynamic unit switching (GB to TB) to maintain UI polish while reflecting simulated "live" data.
-**Action:** Implement dynamic formatting in UI components to stay consistent with the underlying P2P stats simulation.
+## 2025-02-25 - [Proper Media Stream Cleanup]
+**Learning:** When implementing screen sharing via `getDisplayMedia`, merely removing the stream from a video element is insufficient; all tracks must be explicitly stopped via `track.stop()` to terminate capture and remove browser-level indicators.
+**Action:** Always store the `MediaStream` in a `useRef` and iterate over tracks to stop them during cleanup or state toggles.
