@@ -5,6 +5,13 @@ describe('Signaling Server', () => {
   let clientSocket1, clientSocket2;
   let port;
 
+  // Helper to wait for an event
+  const waitFor = (socket, event) => {
+    return new Promise((resolve) => {
+      socket.once(event, resolve);
+    });
+  };
+
   beforeAll((done) => {
     httpServer.listen(() => {
       port = httpServer.address().port;
@@ -37,32 +44,27 @@ describe('Signaling Server', () => {
     if (clientSocket2.connected) clientSocket2.disconnect();
   });
 
-  test('should allow users to join a room and notify others', (done) => {
+  test('should allow users to join a room and notify others', async () => {
     const roomId = 'room-1';
-    // clientSocket2.id is available since we waited for connect in beforeEach
     const user2Id = clientSocket2.id;
 
     // Client 1 joins room
     clientSocket1.emit('join-stream', { streamId: roomId, username: 'User1' });
+    // Wait for Client 1 to receive confirmation (room count update)
+    await waitFor(clientSocket1, 'room-users-update');
 
-    // Client 1 listens for user-connected (triggered when Client 2 joins)
-    clientSocket1.on('user-connected', (data) => {
-      try {
-        expect(data.id).toBe(user2Id);
-        expect(data.username).toBe('User2');
-        done();
-      } catch (error) {
-        done(error);
-      }
-    });
+    // Setup listener for Client 2 joining
+    const userConnectedPromise = waitFor(clientSocket1, 'user-connected');
 
-    // Client 2 joins room after a short delay
-    setTimeout(() => {
-      clientSocket2.emit('join-stream', { streamId: roomId, username: 'User2' });
-    }, 100);
+    // Client 2 joins room
+    clientSocket2.emit('join-stream', { streamId: roomId, username: 'User2' });
+
+    const data = await userConnectedPromise;
+    expect(data.id).toBe(user2Id);
+    expect(data.username).toBe('User2');
   });
 
-  test('should relay offer to target peer', (done) => {
+  test('should relay offer to target peer', async () => {
     const targetSocketId = clientSocket2.id;
     const payload = {
       target: targetSocketId,
@@ -70,20 +72,15 @@ describe('Signaling Server', () => {
       sdp: 'mock-sdp-offer'
     };
 
-    clientSocket2.on('offer', (receivedPayload) => {
-      try {
-        const expected = { ...payload, sender: clientSocket1.id };
-        expect(receivedPayload).toEqual(expected);
-        done();
-      } catch (error) {
-        done(error);
-      }
-    });
-
+    const offerPromise = waitFor(clientSocket2, 'offer');
     clientSocket1.emit('offer', payload);
+
+    const receivedPayload = await offerPromise;
+    const expected = { ...payload, sender: clientSocket1.id };
+    expect(receivedPayload).toEqual(expected);
   });
 
-  test('should relay answer to target peer', (done) => {
+  test('should relay answer to target peer', async () => {
     const targetSocketId = clientSocket1.id;
     const payload = {
       target: targetSocketId,
@@ -91,40 +88,31 @@ describe('Signaling Server', () => {
       sdp: 'mock-sdp-answer'
     };
 
-    clientSocket1.on('answer', (receivedPayload) => {
-      try {
-        const expected = { ...payload, sender: clientSocket2.id };
-        expect(receivedPayload).toEqual(expected);
-        done();
-      } catch (error) {
-        done(error);
-      }
-    });
-
+    const answerPromise = waitFor(clientSocket1, 'answer');
     clientSocket2.emit('answer', payload);
+
+    const receivedPayload = await answerPromise;
+    const expected = { ...payload, sender: clientSocket2.id };
+    expect(receivedPayload).toEqual(expected);
   });
 
-  test('should relay ice-candidate to target peer', (done) => {
+  test('should relay ice-candidate to target peer', async () => {
     const targetSocketId = clientSocket2.id;
     const payload = {
       target: targetSocketId,
       candidate: 'mock-candidate'
     };
 
-    clientSocket2.on('ice-candidate', (receivedPayload) => {
-      try {
-        const expected = { ...payload, sender: clientSocket1.id };
-        expect(receivedPayload).toEqual(expected);
-        done();
-      } catch (error) {
-        done(error);
-      }
-    });
-
+    const candidatePromise = waitFor(clientSocket2, 'ice-candidate');
     clientSocket1.emit('ice-candidate', payload);
+
+    const receivedPayload = await candidatePromise;
+    const expected = { ...payload, sender: clientSocket1.id };
+    expect(receivedPayload).toEqual(expected);
   });
 
-  test('should not crash on invalid offer payload', (done) => {
+  test('should not crash on invalid offer payload', async () => {
+    // Send invalid payload (missing target) - server should ignore
     clientSocket1.emit('offer', { sdp: 'invalid' });
 
     const targetSocketId = clientSocket2.id;
@@ -134,45 +122,32 @@ describe('Signaling Server', () => {
       sdp: 'valid-sdp'
     };
 
-    clientSocket2.on('offer', (receivedPayload) => {
-      try {
-        const expected = { ...validPayload, sender: clientSocket1.id };
-        expect(receivedPayload).toEqual(expected);
-        done();
-      } catch (error) {
-        done(error);
-      }
-    });
+    const offerPromise = waitFor(clientSocket2, 'offer');
+    clientSocket1.emit('offer', validPayload);
 
-    setTimeout(() => {
-      clientSocket1.emit('offer', validPayload);
-    }, 20);
+    const receivedPayload = await offerPromise;
+    const expected = { ...validPayload, sender: clientSocket1.id };
+    expect(receivedPayload).toEqual(expected);
   });
 
-  test('should notify others when a user disconnects', (done) => {
+  test('should notify others when a user disconnects', async () => {
     const roomId = 'room-disconnect';
-    const user1Id = clientSocket1.id; // Store ID before disconnect
+    const user1Id = clientSocket1.id;
 
+    // Both join
     clientSocket2.emit('join-stream', { streamId: roomId, username: 'User2' });
+    await waitFor(clientSocket2, 'room-users-update');
 
-    setTimeout(() => {
-      clientSocket1.emit('join-stream', { streamId: roomId, username: 'User1' });
-    }, 20);
+    const userConnectedPromise = waitFor(clientSocket2, 'user-connected');
+    clientSocket1.emit('join-stream', { streamId: roomId, username: 'User1' });
+    await userConnectedPromise;
 
-    clientSocket2.on('user-connected', (data) => {
-      if (data.id === user1Id) {
-        clientSocket1.disconnect();
-      }
-    });
+    // Verify disconnect notification
+    const userDisconnectedPromise = waitFor(clientSocket2, 'user-disconnected');
+    clientSocket1.disconnect();
 
-    clientSocket2.on('user-disconnected', (data) => {
-      try {
-        expect(data.id).toBe(user1Id);
-        expect(data.username).toBe('User1');
-        done();
-      } catch (error) {
-        done(error);
-      }
-    });
+    const data = await userDisconnectedPromise;
+    expect(data.id).toBe(user1Id);
+    expect(data.username).toBe('User1');
   });
 });
