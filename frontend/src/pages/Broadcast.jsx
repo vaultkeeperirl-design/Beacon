@@ -1,12 +1,61 @@
-import { useState } from 'react';
-import { Camera, Mic, Settings, Monitor, Radio, Users, Percent, Trash2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Camera, Mic, MicOff, CameraOff, Settings, Monitor, Radio, Users, Percent, Trash2 } from 'lucide-react';
 
 export default function Broadcast() {
   const [isLive, setIsLive] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
   const [squad, setSquad] = useState([
     { id: 1, name: 'You (Host)', split: 100, isHost: true },
   ]);
   const [inviteInput, setInviteInput] = useState('');
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  useEffect(() => {
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.error("Error accessing media devices:", err);
+      }
+    }
+
+    startCamera();
+
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  const toggleMic = () => {
+    if (streamRef.current) {
+      const audioTrack = streamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsMuted(!audioTrack.enabled);
+      }
+    }
+  };
+
+  const toggleCamera = () => {
+    if (streamRef.current) {
+      const videoTrack = streamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsCameraOff(!videoTrack.enabled);
+      }
+    }
+  };
 
   const addSquadMember = () => {
     if (!inviteInput) return;
@@ -71,18 +120,43 @@ export default function Broadcast() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
          <div className="lg:col-span-2 space-y-6">
             <div className="aspect-video bg-black rounded-xl overflow-hidden relative group border border-neutral-800 shadow-2xl ring-1 ring-neutral-800">
-               <div className="absolute inset-0 flex items-center justify-center text-neutral-700 flex-col gap-4">
-                  <Camera className="w-16 h-16 opacity-50" />
-                  <span className="font-medium text-lg">Camera Preview</span>
-               </div>
+               <video
+                 ref={videoRef}
+                 autoPlay
+                 muted
+                 playsInline
+                 className={`w-full h-full object-cover ${isCameraOff ? 'hidden' : 'block'}`}
+               />
+               {isCameraOff && (
+                  <div className="absolute inset-0 flex items-center justify-center text-neutral-700 flex-col gap-4 bg-neutral-950">
+                    <CameraOff className="w-16 h-16 opacity-50" />
+                    <span className="font-medium text-lg text-neutral-500 uppercase tracking-widest">Camera Disabled</span>
+                  </div>
+               )}
 
                {/* Controls Overlay */}
-               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-neutral-900/90 backdrop-blur px-6 py-3 rounded-full border border-neutral-700 shadow-xl">
-                  <button className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-white tooltip" title="Mute Mic"><Mic className="w-5 h-5" /></button>
-                  <button className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-white tooltip" title="Disable Camera"><Camera className="w-5 h-5" /></button>
-                  <button className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-white tooltip" title="Share Screen"><Monitor className="w-5 h-5" /></button>
+               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-neutral-900/90 backdrop-blur px-6 py-3 rounded-full border border-neutral-700 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <button
+                    onClick={toggleMic}
+                    className={`p-2 rounded-full transition-colors tooltip ${isMuted ? 'bg-red-500 text-white hover:bg-red-600' : 'hover:bg-neutral-700 text-white'}`}
+                    title={isMuted ? "Unmute Mic" : "Mute Mic"}
+                  >
+                    {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                  </button>
+                  <button
+                    onClick={toggleCamera}
+                    className={`p-2 rounded-full transition-colors tooltip ${isCameraOff ? 'bg-red-500 text-white hover:bg-red-600' : 'hover:bg-neutral-700 text-white'}`}
+                    title={isCameraOff ? "Enable Camera" : "Disable Camera"}
+                  >
+                    {isCameraOff ? <CameraOff className="w-5 h-5" /> : <Camera className="w-5 h-5" />}
+                  </button>
+                  <button className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-white tooltip" title="Share Screen">
+                    <Monitor className="w-5 h-5" />
+                  </button>
                   <div className="w-px h-6 bg-neutral-700 mx-2"></div>
-                  <button className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-white tooltip" title="Settings"><Settings className="w-5 h-5" /></button>
+                  <button className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-white tooltip" title="Settings">
+                    <Settings className="w-5 h-5" />
+                  </button>
                </div>
             </div>
 
