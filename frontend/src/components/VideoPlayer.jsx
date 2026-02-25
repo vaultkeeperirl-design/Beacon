@@ -1,4 +1,4 @@
-import { Maximize, Volume2, VolumeX, Settings, Pause, Play } from 'lucide-react';
+import { Maximize, Minimize, Volume2, VolumeX, Settings, Pause, Play } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import StreamSettings from './StreamSettings';
@@ -8,10 +8,33 @@ export default function VideoPlayer({ streamUrl = "https://commondatastorage.goo
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const videoRef = useRef(null);
+  const containerRef = useRef(null);
 
   // Using useP2PSettings instead of useP2P to avoid unnecessary re-renders when stats update
   const { settings } = useP2PSettings();
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   // Synchronize playback state
   useEffect(() => {
@@ -34,7 +57,10 @@ export default function VideoPlayer({ streamUrl = "https://commondatastorage.goo
   }, [isMuted]);
 
   return (
-    <div className="relative aspect-video bg-black rounded-lg overflow-hidden group shadow-2xl ring-1 ring-neutral-800">
+    <div
+      ref={containerRef}
+      className="relative aspect-video bg-black rounded-lg overflow-hidden group shadow-2xl ring-1 ring-neutral-800"
+    >
       <video
         ref={videoRef}
         src={streamUrl}
@@ -83,8 +109,12 @@ export default function VideoPlayer({ streamUrl = "https://commondatastorage.goo
             >
               <Settings className="w-5 h-5" />
             </button>
-            <button className="text-white hover:text-beacon-500 transition-colors">
-              <Maximize className="w-5 h-5" />
+            <button
+              className="text-white hover:text-beacon-500 transition-colors"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+            >
+              {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
             </button>
           </div>
         </div>
