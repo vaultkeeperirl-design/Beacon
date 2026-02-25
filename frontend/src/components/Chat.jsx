@@ -1,27 +1,36 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { Send, Smile } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
+import { useP2PSettings } from '../context/P2PContext';
 
 // Random color generator for anonymous users
 const colors = ['text-red-400', 'text-green-400', 'text-blue-400', 'text-yellow-400', 'text-purple-400', 'text-pink-400', 'text-indigo-400'];
 const getRandomColor = () => colors[Math.floor(Math.random() * colors.length)];
 const randomUserColor = getRandomColor();
 
+// Performance Optimization: Extract individual message to a memoized component.
+// This prevents all messages from re-rendering when a single new message is added.
+const ChatMessage = memo(({ msg }) => (
+  <div className="text-sm break-words leading-relaxed group hover:bg-neutral-900/50 -mx-2 px-2 py-1 rounded transition-colors">
+    <span className={`font-bold ${msg.color || 'text-neutral-400'} mr-2 cursor-pointer hover:underline text-xs uppercase tracking-wide opacity-90`}>{msg.user}:</span>
+    <span className="text-neutral-300 group-hover:text-white transition-colors">{msg.text}</span>
+  </div>
+));
+
+ChatMessage.displayName = 'ChatMessage';
+
 export default function Chat({ streamId }) {
   const { socket, isConnected } = useSocket();
-  const [messages, setMessages] = useState([]);
+  const { username } = useP2PSettings();
+  const [messages, setMessages] = useState([
+    { id: 'welcome', user: 'System', text: 'Welcome to the chat! Connect to the swarm.', color: 'text-neutral-500' }
+  ]);
   const [input, setInput] = useState('');
-  // Generate a random user ID for this session if not logged in
-  const [username] = useState(() => 'Anon_' + Math.floor(Math.random() * 10000));
 
   const chatEndRef = useRef(null);
 
-  useEffect(() => {
-    // Reset messages when streamId changes
-    setMessages([
-      { id: 'welcome', user: 'System', text: 'Welcome to the chat! Connect to the swarm.', color: 'text-neutral-500' }
-    ]);
-  }, [streamId]);
+  // Note: Resetting of messages when streamId changes is now handled by a 'key' on
+  // the component in Watch.jsx, which is more idiomatic and avoids cascading renders.
 
   useEffect(() => {
     if (!socket || !streamId) return;
@@ -30,7 +39,14 @@ export default function Chat({ streamId }) {
     socket.emit('join-stream', streamId);
 
     const handleMessage = (msg) => {
-      setMessages((prev) => [...prev, msg]);
+      setMessages((prev) => {
+        const newMessages = [...prev, msg];
+        // Performance Optimization: Limit to last 100 messages to keep DOM size and memory usage low.
+        if (newMessages.length > 100) {
+          return newMessages.slice(-100);
+        }
+        return newMessages;
+      });
     };
 
     socket.on('chat-message', handleMessage);
@@ -41,7 +57,9 @@ export default function Chat({ streamId }) {
   }, [socket, streamId]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Performance Optimization: Use behavior: 'auto' instead of 'smooth'
+    // for faster, less CPU-intensive scrolling during high-frequency chat updates.
+    chatEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages]);
 
   const sendMessage = (e) => {
@@ -67,10 +85,7 @@ export default function Chat({ streamId }) {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
         {messages.map((msg) => (
-          <div key={msg.id} className="text-sm break-words leading-relaxed group hover:bg-neutral-900/50 -mx-2 px-2 py-1 rounded transition-colors">
-            <span className={`font-bold ${msg.color || 'text-neutral-400'} mr-2 cursor-pointer hover:underline text-xs uppercase tracking-wide opacity-90`}>{msg.user}:</span>
-            <span className="text-neutral-300 group-hover:text-white transition-colors">{msg.text}</span>
-          </div>
+          <ChatMessage key={msg.id} msg={msg} />
         ))}
         <div ref={chatEndRef} />
       </div>

@@ -16,6 +16,9 @@ export function P2PProvider({ children }) {
   const [isSharing, setIsSharing] = useState(true);
   const [currentStreamId, setCurrentStreamId] = useState(null);
 
+  // Persist username across stream changes/remounts
+  const [username] = useState(() => 'Anon_' + Math.floor(Math.random() * 10000));
+
   const [settings, setSettings] = useState({
     maxUploadSpeed: 50, // Mbps
     quality: '1080p60',
@@ -37,8 +40,9 @@ export function P2PProvider({ children }) {
     settings,
     updateSettings,
     currentStreamId,
-    setCurrentStreamId
-  }), [isSharing, settings, currentStreamId]);
+    setCurrentStreamId,
+    username
+  }), [isSharing, settings, currentStreamId, username]);
 
   return (
     <P2PSettingsContext.Provider value={settingsValue}>
