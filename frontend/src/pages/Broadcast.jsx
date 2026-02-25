@@ -2,18 +2,22 @@ import { useState, useRef, useEffect } from 'react';
 import { Camera, Mic, MicOff, CameraOff, Settings, Monitor, Radio, Users, Percent, Trash2 } from 'lucide-react';
 import { useP2PSettings } from '../context/P2PContext';
 import Chat from '../components/Chat';
+import StreamSettings from '../components/StreamSettings';
 
 export default function Broadcast() {
   const { username, setCurrentStreamId } = useP2PSettings();
   const [isLive, setIsLive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
+  const [isSharingScreen, setIsSharingScreen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [squad, setSquad] = useState([
     { id: 1, name: 'You (Host)', split: 100, isHost: true },
   ]);
   const [inviteInput, setInviteInput] = useState('');
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const screenStreamRef = useRef(null);
 
   useEffect(() => {
     if (isLive) {
@@ -46,6 +50,9 @@ export default function Broadcast() {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => track.stop());
+      }
     };
   }, []);
 
@@ -65,6 +72,50 @@ export default function Broadcast() {
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsCameraOff(!videoTrack.enabled);
+      }
+    }
+  };
+
+  const toggleScreenShare = async () => {
+    if (isSharingScreen) {
+      // Stop the screen tracks properly
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => track.stop());
+        screenStreamRef.current = null;
+      }
+      // Revert to camera stream
+      if (videoRef.current && streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+      }
+      setIsSharingScreen(false);
+    } else {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            cursor: "always"
+          },
+          audio: false
+        });
+
+        screenStreamRef.current = screenStream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = screenStream;
+        }
+
+        // Handle the case where user stops sharing via browser UI
+        const screenTrack = screenStream.getVideoTracks()[0];
+        screenTrack.onended = () => {
+          if (videoRef.current && streamRef.current) {
+            videoRef.current.srcObject = streamRef.current;
+          }
+          setIsSharingScreen(false);
+          screenStreamRef.current = null;
+        };
+
+        setIsSharingScreen(true);
+      } catch (err) {
+        console.error("Error starting screen share:", err);
       }
     }
   };
@@ -162,11 +213,19 @@ export default function Broadcast() {
                   >
                     {isCameraOff ? <CameraOff className="w-5 h-5" /> : <Camera className="w-5 h-5" />}
                   </button>
-                  <button className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-white tooltip" title="Share Screen">
+                  <button
+                    onClick={toggleScreenShare}
+                    className={`p-2 rounded-full transition-colors tooltip ${isSharingScreen ? 'bg-beacon-600 text-white shadow-lg shadow-beacon-600/50' : 'hover:bg-neutral-700 text-white'}`}
+                    title={isSharingScreen ? "Stop Sharing" : "Share Screen"}
+                  >
                     <Monitor className="w-5 h-5" />
                   </button>
                   <div className="w-px h-6 bg-neutral-700 mx-2"></div>
-                  <button className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-white tooltip" title="Settings">
+                  <button
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-white tooltip"
+                    title="Settings"
+                  >
                     <Settings className="w-5 h-5" />
                   </button>
                </div>
@@ -305,6 +364,8 @@ export default function Broadcast() {
             </div>
          </div>
       </div>
+      {/* Settings Modal */}
+      <StreamSettings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }
