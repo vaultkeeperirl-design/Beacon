@@ -44,6 +44,3 @@ The economy.
 - **Encryption:** WebRTC is encrypted by default (DTLS/SRTP).
 - **Identity:** Public keys / Crypto-wallets (Planned).
 - **Anonymity:** Peers see IP addresses of neighbors (inherent to P2P). We are transparent about this. Use a VPN if you are paranoid.
-
-## NO FREELOADERS
-The architecture enforces contribution. If you don't upload, your download speed is throttled by the swarm.
