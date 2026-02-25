@@ -1,0 +1,55 @@
+{
+  "name": "beacon-desktop",
+  "version": "1.0.0",
+  "description": "Beacon P2P Streaming Desktop App",
+  "author": "Beacon Team",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "prebuild": "node scripts/build.js",
+    "build": "npm run prebuild && electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.beacon.p2p",
+    "productName": "Beacon",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "dist/frontend/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "dist/backend",
+        "to": "backend",
+        "filter": [
+          "!**/node_modules/electron/**/*",
+          "!**/tests/**/*",
+          "!**/.git/**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "build/icon.png",
+      "category": "Network"
+    }
+  }
+}
