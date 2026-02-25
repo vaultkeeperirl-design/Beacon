@@ -13,7 +13,7 @@ export default function Watch() {
          <div className="py-6 px-4 lg:px-0">
            <div className="flex flex-col md:flex-row items-start justify-between gap-4">
              <div>
-               <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">Building a P2P streaming app from scratch</h1>
+               <h1 className="text-2xl md:text-3xl font-poppins font-extrabold text-brand mb-2 leading-tight">Building a P2P streaming app from scratch</h1>
                <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-400">
                  <div className="flex items-center gap-2">
                     <div className="w-10 h-10 rounded-full bg-neutral-800 overflow-hidden border border-neutral-700">
@@ -52,7 +52,7 @@ export default function Watch() {
               <div className="absolute top-0 right-0 p-4 opacity-10">
                  <img src="/icon.png" alt="Beacon" className="w-48 h-48 object-contain" />
               </div>
-              <h3 className="font-semibold text-white mb-3 text-lg relative z-10">About this stream</h3>
+              <h3 className="font-poppins font-semibold text-white mb-3 text-lg relative z-10">About this stream</h3>
               <p className="text-neutral-300 text-sm leading-relaxed relative z-10 max-w-3xl">
                  Welcome to the future of streaming! This stream is powered by the Beacon P2P Mesh Network.
                  By watching, you are actively participating in the distribution of this stream to other viewers in your region.

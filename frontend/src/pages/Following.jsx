@@ -22,7 +22,7 @@ export default function Following() {
             <Heart className="w-8 h-8 text-beacon-500 fill-beacon-500" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-white">Following</h1>
+            <h1 className="text-3xl font-poppins font-extrabold text-brand">Following</h1>
             <p className="text-neutral-400">Keep up with your favorite streamers.</p>
           </div>
        </div>
@@ -30,7 +30,7 @@ export default function Following() {
        <div className="flex items-center justify-between mb-6">
          <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-green-500" />
-            <h2 className="text-xl font-bold text-white">Live Now</h2>
+            <h2 className="text-xl font-poppins font-bold text-white">Live Now</h2>
             <span className="bg-neutral-800 text-neutral-400 text-xs px-2 py-0.5 rounded-full ml-2">{MOCK_FOLLOWED_STREAMS.length}</span>
          </div>
        </div>
@@ -43,7 +43,7 @@ export default function Following() {
 
        <div className="border-t border-neutral-800 pt-8 mb-6">
            <div className="flex items-center justify-between mb-6">
-             <h2 className="text-xl font-bold text-white">Offline Channels</h2>
+             <h2 className="text-xl font-poppins font-bold text-white">Offline Channels</h2>
              <div className="flex gap-2">
                 <button className="flex items-center gap-2 px-3 py-1.5 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-neutral-300 hover:text-white hover:border-neutral-700 transition-colors">
                   <span>Sort by: Recently Live</span>

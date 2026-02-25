@@ -47,7 +47,7 @@ export default function Broadcast() {
     <div className="max-w-7xl mx-auto pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Broadcast Studio</h1>
+          <h1 className="text-3xl font-poppins font-extrabold text-brand tracking-tight">Broadcast Studio</h1>
           <p className="text-neutral-400 mt-1">Manage your stream and network node settings</p>
         </div>
 
@@ -87,7 +87,7 @@ export default function Broadcast() {
             </div>
 
             <div className="bg-neutral-900/50 rounded-xl p-6 border border-neutral-800">
-               <h3 className="font-semibold text-white mb-6 flex items-center gap-2 text-lg">
+               <h3 className="font-poppins font-semibold text-white mb-6 flex items-center gap-2 text-lg">
                  <Radio className="w-5 h-5 text-beacon-500" />
                  Stream Info
                </h3>
@@ -113,7 +113,7 @@ export default function Broadcast() {
             {/* Co-Streaming Section */}
             <div className="bg-neutral-900/50 rounded-xl p-6 border border-neutral-800">
                <div className="flex items-center justify-between mb-6">
-                 <h3 className="font-semibold text-white flex items-center gap-2 text-lg">
+                 <h3 className="font-poppins font-semibold text-white flex items-center gap-2 text-lg">
                    <Users className="w-5 h-5 text-beacon-500" />
                    Co-Streaming & Revenue Splits
                  </h3>
@@ -203,7 +203,7 @@ export default function Broadcast() {
             </div>
 
             <div className="bg-neutral-900/50 rounded-xl p-6 border border-neutral-800">
-               <h3 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider text-neutral-400">Quick Actions</h3>
+               <h3 className="font-poppins font-semibold text-white mb-4 text-sm uppercase tracking-wider text-neutral-400">Quick Actions</h3>
                <div className="grid grid-cols-2 gap-3">
                   <button className="p-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-medium text-white transition-colors border border-neutral-700">Raid Channel</button>
                   <button className="p-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-medium text-white transition-colors border border-neutral-700">Start Poll</button>
