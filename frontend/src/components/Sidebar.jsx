@@ -35,7 +35,7 @@ export default function Sidebar() {
                 </div>
                 <div className="flex items-center gap-1">
                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                   <span className="text-xs text-neutral-500">{(Math.random() * 5).toFixed(1)}k</span>
+                   <span className="text-xs text-neutral-500">{((i * 0.8 + 0.5) % 5).toFixed(1)}k</span>
                 </div>
               </div>
             ))}
