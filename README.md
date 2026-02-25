@@ -31,6 +31,12 @@ We turn bandwidth into currency.
 *   **Relays:** Get paid for their bandwidth.
 *   **Viewers:** Enjoy a platform free from corporate censorship.
 
+### 4. Co-Streaming Revenue
+Collaboration over competition. On Beacon, streaming together means earning together.
+*   **Split Payments:** Hosting a squad stream? Revenue is split between all participants. 5 streamers, 1 stream, everyone gets paid.
+*   **Host Control:** Channel hosts invite guests and set the splits. No backend deals, just smart contracts and fair pay.
+*   **Incentive to Collab:** We want you to stream together. Growing the network means growing the pie for everyone.
+
 ## 🛠 Tech Stack
 
 We are building a robust, scalable P2P architecture:
