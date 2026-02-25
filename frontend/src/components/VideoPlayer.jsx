@@ -1,13 +1,14 @@
 import { Maximize, Volume2, Settings, Pause, Play } from 'lucide-react';
 import { useState } from 'react';
-import { useP2P } from '../context/P2PContext';
+import { useP2PSettings } from '../context/P2PContext';
 import StreamSettings from './StreamSettings';
 import VideoStatsOverlay from './VideoStatsOverlay';
 
 export default function VideoPlayer({ streamUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const { settings } = useP2P();
+  // Using useP2PSettings instead of useP2P to avoid unnecessary re-renders when stats update
+  const { settings } = useP2PSettings();
 
   return (
     <div className="relative aspect-video bg-black rounded-lg overflow-hidden group shadow-2xl ring-1 ring-neutral-800">

@@ -1,8 +1,9 @@
 import React from 'react';
-import { useP2P } from '../context/P2PContext';
+import { useP2PStats, useP2PSettings } from '../context/P2PContext';
 
 export default function VideoStatsOverlay() {
-  const { stats, settings } = useP2P();
+  const stats = useP2PStats();
+  const { settings } = useP2PSettings();
 
   if (!settings.showStats) return null;
 

@@ -1,9 +1,11 @@
 import React from 'react';
-import { useP2P } from '../context/P2PContext';
+import { useP2PSettings } from '../context/P2PContext';
 import { X, Server, Wifi, Zap, Activity } from 'lucide-react';
 
 export default function StreamSettings({ isOpen, onClose }) {
-  const { settings, updateSettings, isSharing, setIsSharing } = useP2P();
+  // Using useP2PSettings instead of useP2P to avoid unnecessary re-renders when stats update.
+  // Settings only change when the user interacts with this modal.
+  const { settings, updateSettings, isSharing, setIsSharing } = useP2PSettings();
 
   if (!isOpen) return null;
 
