@@ -1,6 +1,0 @@
-* [Home](Home)
-* [Architecture](Architecture)
-* [Contributing](Contributing)
-* [Manifesto](Manifesto)
-* [Backend Overview](Backend-Overview)
-* [Frontend Overview](Frontend-Overview)
