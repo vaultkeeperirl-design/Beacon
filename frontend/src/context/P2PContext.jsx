@@ -26,7 +26,7 @@ export function P2PProvider({ children }) {
     lowLatency: false,
   });
 
-  const stats = useRealP2PStats(isSharing, settings, currentStreamId);
+  const stats = useRealP2PStats(isSharing, settings, currentStreamId, username);
 
   const updateSettings = (newSettings) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));

@@ -43,12 +43,13 @@ describe('Signaling Server', () => {
     const user2Id = clientSocket2.id;
 
     // Client 1 joins room
-    clientSocket1.emit('join-stream', roomId);
+    clientSocket1.emit('join-stream', { streamId: roomId, username: 'User1' });
 
     // Client 1 listens for user-connected (triggered when Client 2 joins)
-    clientSocket1.on('user-connected', (id) => {
+    clientSocket1.on('user-connected', (data) => {
       try {
-        expect(id).toBe(user2Id);
+        expect(data.id).toBe(user2Id);
+        expect(data.username).toBe('User2');
         done();
       } catch (error) {
         done(error);
@@ -57,7 +58,7 @@ describe('Signaling Server', () => {
 
     // Client 2 joins room after a short delay
     setTimeout(() => {
-      clientSocket2.emit('join-stream', roomId);
+      clientSocket2.emit('join-stream', { streamId: roomId, username: 'User2' });
     }, 100);
   });
 
@@ -152,21 +153,22 @@ describe('Signaling Server', () => {
     const roomId = 'room-disconnect';
     const user1Id = clientSocket1.id; // Store ID before disconnect
 
-    clientSocket2.emit('join-stream', roomId);
+    clientSocket2.emit('join-stream', { streamId: roomId, username: 'User2' });
 
     setTimeout(() => {
-      clientSocket1.emit('join-stream', roomId);
+      clientSocket1.emit('join-stream', { streamId: roomId, username: 'User1' });
     }, 20);
 
-    clientSocket2.on('user-connected', (id) => {
-      if (id === user1Id) {
+    clientSocket2.on('user-connected', (data) => {
+      if (data.id === user1Id) {
         clientSocket1.disconnect();
       }
     });
 
-    clientSocket2.on('user-disconnected', (id) => {
+    clientSocket2.on('user-disconnected', (data) => {
       try {
-        expect(id).toBe(user1Id);
+        expect(data.id).toBe(user1Id);
+        expect(data.username).toBe('User1');
         done();
       } catch (error) {
         done(error);
