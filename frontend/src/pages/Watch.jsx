@@ -1,8 +1,23 @@
 import VideoPlayer from '../components/VideoPlayer';
 import Chat from '../components/Chat';
 import { Share2, ThumbsUp, MoreHorizontal, UserPlus } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useP2P } from '../context/P2PContext';
 
 export default function Watch() {
+  const { id } = useParams();
+  const { setCurrentStreamId } = useP2P();
+
+  useEffect(() => {
+    if (id) {
+       setCurrentStreamId(id);
+    }
+    return () => {
+       setCurrentStreamId(null);
+    };
+  }, [id, setCurrentStreamId]);
+
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-64px)] overflow-hidden">
       <div className="flex-1 flex flex-col h-full overflow-y-auto lg:overflow-hidden pb-20 lg:pb-0 pr-0 lg:pr-80">
@@ -68,7 +83,7 @@ export default function Watch() {
          </div>
       </div>
 
-      <Chat />
+      <Chat streamId={id} />
     </div>
   );
 }
