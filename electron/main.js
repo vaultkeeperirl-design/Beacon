@@ -1,16 +1,49 @@
-const { app, BrowserWindow, screen, Tray, Menu } = require('electron');
+const { app, BrowserWindow, screen, Tray, Menu, ipcMain } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
-let mainWindow;
+let launcherWindow;
+let appWindow;
 let backendProcess;
 let tray = null;
 let isQuitting = false;
+let backendPort = null;
 
-function createWindow(port) {
+function createLauncherWindow() {
+  launcherWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    resizable: false,
+    frame: true,
+    autoHideMenuBar: true,
+    icon: path.join(__dirname, 'build/icon.png'),
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false, // For simplicity in this launcher script
+    }
+  });
+
+  launcherWindow.loadFile(path.join(__dirname, 'launcher/index.html'));
+
+  launcherWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      launcherWindow.hide();
+      return false;
+    }
+  });
+}
+
+function createAppWindow(port) {
+  if (appWindow) {
+    appWindow.show();
+    appWindow.focus();
+    return;
+  }
+
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
-  mainWindow = new BrowserWindow({
+  appWindow = new BrowserWindow({
     width: Math.min(1200, width),
     height: Math.min(800, height),
     webPreferences: {
@@ -24,22 +57,16 @@ function createWindow(port) {
 
   if (!app.isPackaged) {
     // Development mode
-    mainWindow.loadURL(`http://localhost:5173?port=${port}`);
+    appWindow.loadURL(`http://localhost:5173?port=${port}`);
   } else {
     // Production mode
-    mainWindow.loadFile(path.join(__dirname, 'dist/frontend/index.html'), { query: { port: port.toString() } });
+    appWindow.loadFile(path.join(__dirname, 'dist/frontend/index.html'), { query: { port: port.toString() } });
   }
 
-  mainWindow.on('close', (event) => {
-    if (!isQuitting) {
-      event.preventDefault();
-      mainWindow.hide();
-      return false;
-    }
-  });
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
+  appWindow.on('closed', () => {
+    appWindow = null;
+    // When main app closes, show launcher again
+    if (launcherWindow) launcherWindow.show();
   });
 }
 
@@ -49,8 +76,10 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Open Beacon',
-      click: () => mainWindow.show()
+      label: 'Open Launcher',
+      click: () => {
+        if (launcherWindow) launcherWindow.show();
+      }
     },
     {
       label: 'Quit Beacon',
@@ -65,7 +94,7 @@ function createTray() {
   tray.setContextMenu(contextMenu);
 
   tray.on('double-click', () => {
-    mainWindow.show();
+    if (launcherWindow) launcherWindow.show();
   });
 }
 
@@ -74,7 +103,6 @@ function startBackend() {
     const isDev = !app.isPackaged;
 
     if (isDev) {
-      // Assume backend is running on 3000
       console.log('Running in development mode. Assuming backend at port 3000.');
       resolve(3000);
       return;
@@ -108,28 +136,39 @@ function startBackend() {
       console.error('Failed to start backend:', err);
       reject(err);
     });
-
-    backendProcess.on('close', (code) => {
-      console.log(`Backend process exited with code ${code}`);
-    });
   });
 }
 
 app.whenReady().then(async () => {
+  createLauncherWindow();
+  createTray();
+
   try {
-    const port = await startBackend();
-    createTray();
-    createWindow(port);
+    backendPort = await startBackend();
+    if (launcherWindow) {
+      launcherWindow.webContents.send('node-ready');
+    }
   } catch (err) {
     console.error('Failed to initialize app:', err);
-    app.quit();
+    if (launcherWindow) {
+        launcherWindow.webContents.send('node-error');
+    }
   }
 
   app.on('activate', () => {
-    if (mainWindow) {
-        mainWindow.show();
+    if (BrowserWindow.getAllWindows().length === 0) {
+        if (launcherWindow) launcherWindow.show();
     }
   });
+});
+
+ipcMain.on('launch-app', () => {
+    if (backendPort) {
+        createAppWindow(backendPort);
+        if (launcherWindow) launcherWindow.hide(); // Hide launcher when app starts
+    } else {
+        console.error('Backend not ready yet');
+    }
 });
 
 app.on('before-quit', () => {

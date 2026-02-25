@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beacon Launcher</title>
+  <style>
+    body {
+      background-color: #1a1a1a;
+      color: #e5e5e5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      margin-right: 15px;
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: bold;
+      background: linear-gradient(to right, #f97316, #d97706);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .status-panel {
+      background-color: #262626;
+      border: 1px solid #404040;
+      border-radius: 8px;
+      padding: 20px;
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 20px;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .status-label {
+      color: #a3a3a3;
+    }
+
+    .status-value {
+      font-weight: bold;
+      color: #22c55e;
+    }
+
+    .btn {
+      background: linear-gradient(to right, #f97316, #ea580c);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      border-radius: 6px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      width: 100%;
+      max-width: 300px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .footer {
+      margin-top: auto;
+      text-align: center;
+      font-size: 12px;
+      color: #525252;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="../build/icon.png" class="logo" alt="Beacon">
+    <div class="title">BEACON</div>
+  </div>
+
+  <div class="content">
+    <div class="status-panel">
+      <div class="status-row">
+        <span class="status-label">Node Status</span>
+        <span class="status-value" id="node-status">Starting...</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Network</span>
+        <span class="status-value">Mesh Online</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Version</span>
+        <span class="status-value">1.0.0</span>
+      </div>
+    </div>
+
+    <button id="launch-btn" class="btn">Launch Beacon</button>
+  </div>
+
+  <div class="footer">
+    Decentralized Streaming Network &bull; v1.0.0
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    const launchBtn = document.getElementById('launch-btn');
+    const nodeStatus = document.getElementById('node-status');
+
+    launchBtn.addEventListener('click', () => {
+      ipcRenderer.send('launch-app');
+    });
+
+    ipcRenderer.on('node-ready', () => {
+      nodeStatus.textContent = 'Active (Relaying)';
+      nodeStatus.style.color = '#22c55e';
+    });
+
+    ipcRenderer.on('node-error', () => {
+        nodeStatus.textContent = 'Error';
+        nodeStatus.style.color = '#ef4444';
+    });
+  </script>
+</body>
+</html>

@@ -5,9 +5,11 @@ const { execSync } = require('child_process');
 const rootDir = path.resolve(__dirname, '..');
 const frontendDir = path.resolve(rootDir, '../frontend');
 const backendDir = path.resolve(rootDir, '../backend');
+const launcherDir = path.resolve(rootDir, 'launcher');
 const distDir = path.join(rootDir, 'dist');
 const distFrontend = path.join(distDir, 'frontend');
 const distBackend = path.join(distDir, 'backend');
+const distLauncher = path.join(distDir, 'launcher');
 const buildDir = path.join(rootDir, 'build');
 
 console.log('Cleaning dist...');
@@ -28,6 +30,9 @@ execSync('pnpm install && pnpm build', { cwd: frontendDir, stdio: 'inherit' });
 
 console.log('Copying Frontend...');
 fs.cpSync(path.join(frontendDir, 'dist'), distFrontend, { recursive: true });
+
+console.log('Copying Launcher...');
+fs.cpSync(launcherDir, distLauncher, { recursive: true });
 
 console.log('Copying Backend...');
 // Custom copy implementation to filter out node_modules and .git
