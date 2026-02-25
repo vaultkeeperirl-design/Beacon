@@ -49,6 +49,9 @@ We are building a robust, scalable P2P architecture:
 
 ## Progress Screenshots
 
+### Launcher / Installer
+![Launcher](screenshots/launcher.png)
+
 ### Home Page
 ![Home Page](screenshots/home_page.png)
 
