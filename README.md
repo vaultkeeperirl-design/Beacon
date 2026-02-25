@@ -64,6 +64,9 @@ We are building a robust, scalable P2P architecture:
 ### Wallet & Earnings
 ![Wallet](screenshots/wallet_page.png)
 
+## Funding Coming Soon
+We are currently setting up our sponsorship platforms (Patreon/Ko-fi). Check back soon if you'd like to support the development of Beacon!
+
 ## 🚀 Roadmap
 
 *   [ ] **MVP Core:** Basic P2P streaming with WebRTC.
