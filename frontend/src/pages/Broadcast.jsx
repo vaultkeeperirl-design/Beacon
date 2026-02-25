@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Camera, Mic, MicOff, CameraOff, Settings, Monitor, Radio, Users, Percent, Trash2 } from 'lucide-react';
+import { useP2PSettings } from '../context/P2PContext';
+import Chat from '../components/Chat';
 
 export default function Broadcast() {
+  const { username, setCurrentStreamId } = useP2PSettings();
   const [isLive, setIsLive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
@@ -11,6 +14,15 @@ export default function Broadcast() {
   const [inviteInput, setInviteInput] = useState('');
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+
+  useEffect(() => {
+    if (isLive) {
+       setCurrentStreamId(username);
+    } else {
+       setCurrentStreamId(null);
+    }
+    return () => setCurrentStreamId(null);
+  }, [isLive, username, setCurrentStreamId]);
 
   useEffect(() => {
     async function startCamera() {
@@ -261,19 +273,25 @@ export default function Broadcast() {
          </div>
 
          <div className="space-y-6">
-            <div className="bg-neutral-900/50 rounded-xl border border-neutral-800 h-[600px] flex flex-col overflow-hidden">
-               <div className="p-4 border-b border-neutral-800 bg-neutral-900 font-semibold text-sm text-neutral-400 uppercase tracking-wider text-center">
-                  Stream Chat Preview
-               </div>
-               <div className="flex-1 flex items-center justify-center text-neutral-600 text-sm italic bg-neutral-950/30">
-                  <div className="text-center p-8">
-                    <p className="mb-2">Chat is offline.</p>
-                    <p className="text-xs text-neutral-700">Messages will appear here once you go live.</p>
+            <div className="bg-neutral-900/50 rounded-xl border border-neutral-800 h-[600px] flex flex-col overflow-hidden relative">
+               {isLive ? (
+                 <Chat streamId={username} className="relative border-none shadow-none flex-1 w-full" />
+               ) : (
+                 <>
+                  <div className="p-4 border-b border-neutral-800 bg-neutral-900 font-semibold text-sm text-neutral-400 uppercase tracking-wider text-center">
+                    Stream Chat Preview
                   </div>
-               </div>
-               <div className="p-4 border-t border-neutral-800 bg-neutral-900">
-                  <div className="w-full h-10 bg-neutral-800 rounded-lg animate-pulse"></div>
-               </div>
+                  <div className="flex-1 flex items-center justify-center text-neutral-600 text-sm italic bg-neutral-950/30">
+                      <div className="text-center p-8">
+                        <p className="mb-2">Chat is offline.</p>
+                        <p className="text-xs text-neutral-700">Messages will appear here once you go live.</p>
+                      </div>
+                  </div>
+                  <div className="p-4 border-t border-neutral-800 bg-neutral-900">
+                      <div className="w-full h-10 bg-neutral-800 rounded-lg animate-pulse"></div>
+                  </div>
+                 </>
+               )}
             </div>
 
             <div className="bg-neutral-900/50 rounded-xl p-6 border border-neutral-800">
