@@ -19,7 +19,11 @@ const ChatMessage = memo(({ msg }) => (
 
 ChatMessage.displayName = 'ChatMessage';
 
-export default function Chat({ streamId }) {
+export default function Chat({
+  streamId,
+  className = "fixed right-0 top-16 bottom-0 w-80 z-40 hidden lg:flex shadow-xl border-l border-neutral-800",
+  showHeader = true
+}) {
   const { socket, isConnected } = useSocket();
   const { username } = useP2PSettings();
   const [messages, setMessages] = useState([
@@ -77,11 +81,13 @@ export default function Chat({ streamId }) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-neutral-950 border-l border-neutral-800 w-80 fixed right-0 top-16 bottom-0 z-40 hidden lg:flex shadow-xl">
-      <div className="p-3 border-b border-neutral-800 font-bold text-center uppercase tracking-wider text-xs text-neutral-500 bg-neutral-900/50 backdrop-blur-sm flex justify-between px-4">
-        <span>Stream Chat</span>
-        <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} self-center`} title={isConnected ? 'Connected' : 'Disconnected'}></span>
-      </div>
+    <div className={`flex flex-col h-full bg-neutral-950 ${className}`}>
+      {showHeader && (
+        <div className="p-3 border-b border-neutral-800 font-bold text-center uppercase tracking-wider text-xs text-neutral-500 bg-neutral-900/50 backdrop-blur-sm flex justify-between px-4">
+          <span>Stream Chat</span>
+          <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} self-center`} title={isConnected ? 'Connected' : 'Disconnected'}></span>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
         {messages.map((msg) => (
