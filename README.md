@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="frontend/public/logo-full.png" width="400" alt="Beacon Logo">
+  <img src="frontend/public/logo-full.png" width="300" alt="Beacon Logo">
 </p>
 
 **Beacon** is a next-generation, decentralized Peer-to-Peer (P2P) streaming platform designed to break free from centralized control. Forget about paying Amazon AWS for server fees. Forget about gatekeepers deciding who gets to blow up. **Beacon** is built by the community, for the community.
