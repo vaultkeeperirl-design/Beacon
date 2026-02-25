@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { Camera, Mic, Settings, Monitor, Radio, Users, Percent, Trash2 } from 'lucide-react';
-import { P2PProvider } from '../context/P2PContext';
-import P2PStats from '../components/P2PStats';
 
-function BroadcastContent() {
+export default function Broadcast() {
   const [isLive, setIsLive] = useState(false);
   const [squad, setSquad] = useState([
     { id: 1, name: 'You (Host)', split: 100, isHost: true },
@@ -215,16 +213,6 @@ function BroadcastContent() {
             </div>
          </div>
       </div>
-
-      <P2PStats />
     </div>
-  );
-}
-
-export default function Broadcast() {
-  return (
-    <P2PProvider>
-      <BroadcastContent />
-    </P2PProvider>
   );
 }
