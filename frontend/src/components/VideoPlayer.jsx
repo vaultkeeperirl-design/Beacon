@@ -1,8 +1,13 @@
 import { Maximize, Volume2, Settings, Pause, Play } from 'lucide-react';
 import { useState } from 'react';
+import { useP2P } from '../context/P2PContext';
+import StreamSettings from './StreamSettings';
+import VideoStatsOverlay from './VideoStatsOverlay';
 
 export default function VideoPlayer({ streamUrl = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }) {
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { settings } = useP2P();
 
   return (
     <div className="relative aspect-video bg-black rounded-lg overflow-hidden group shadow-2xl ring-1 ring-neutral-800">
@@ -15,8 +20,14 @@ export default function VideoPlayer({ streamUrl = "http://commondatastorage.goog
         playsInline
       />
 
+      {/* Stats Overlay (Condition handled inside component) */}
+      <VideoStatsOverlay />
+
+      {/* Settings Modal */}
+      <StreamSettings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
       {/* Overlay UI */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <button
@@ -35,8 +46,13 @@ export default function VideoPlayer({ streamUrl = "http://commondatastorage.goog
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-xs font-mono text-beacon-400 border border-beacon-500/30 px-2 py-0.5 rounded bg-beacon-500/10">P2P: 1080p60</span>
-            <button className="text-white hover:text-beacon-500 transition-colors">
+            <span className="text-xs font-mono text-beacon-400 border border-beacon-500/30 px-2 py-0.5 rounded bg-beacon-500/10">
+              P2P: {settings?.quality || '1080p60'}
+            </span>
+            <button
+              className="text-white hover:text-beacon-500 transition-colors"
+              onClick={() => setIsSettingsOpen(true)}
+            >
               <Settings className="w-5 h-5" />
             </button>
             <button className="text-white hover:text-beacon-500 transition-colors">
