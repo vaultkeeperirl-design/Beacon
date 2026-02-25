@@ -18,27 +18,35 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
-  socket.on('join-stream', (streamId) => {
-    // Leave previous room if any to prevent double counting or stale state
-    if (socket.currentRoom && socket.currentRoom !== streamId) {
-       socket.leave(socket.currentRoom);
-       // Notify previous room
-       const prevCount = io.sockets.adapter.rooms.get(socket.currentRoom)?.size || 0;
-       io.to(socket.currentRoom).emit('room-users-update', prevCount);
-       socket.to(socket.currentRoom).emit('user-disconnected', socket.id);
+  socket.on('join-stream', (data) => {
+    const streamId = typeof data === 'string' ? data : data?.streamId;
+    const username = typeof data === 'object' ? data?.username : null;
+
+    if (username) {
+      socket.username = username;
     }
 
-    if (streamId) {
+    // Leave previous room if any to prevent double counting or stale state
+    if (socket.currentRoom && socket.currentRoom !== streamId) {
+       const prevRoom = socket.currentRoom;
+       socket.leave(prevRoom);
+       // Notify previous room
+       const prevCount = io.sockets.adapter.rooms.get(prevRoom)?.size || 0;
+       io.to(prevRoom).emit('room-users-update', prevCount);
+       socket.to(prevRoom).emit('user-disconnected', { id: socket.id, username: socket.username });
+    }
+
+    if (streamId && socket.currentRoom !== streamId) {
         socket.join(streamId);
         socket.currentRoom = streamId;
-        console.log(`Socket ${socket.id} joined stream ${streamId}`);
+        console.log(`Socket ${socket.id} (${socket.username || 'unknown'}) joined stream ${streamId}`);
 
         // Broadcast updated participant count to the room
         const count = io.sockets.adapter.rooms.get(streamId)?.size || 0;
         io.to(streamId).emit('room-users-update', count);
 
         // Notify others for potential P2P connection
-        socket.to(streamId).emit('user-connected', socket.id);
+        socket.to(streamId).emit('user-connected', { id: socket.id, username: socket.username });
     }
   });
 
@@ -48,7 +56,7 @@ io.on('connection', (socket) => {
        socket.leave(room);
        const count = io.sockets.adapter.rooms.get(room)?.size || 0;
        io.to(room).emit('room-users-update', count);
-       socket.to(room).emit('user-disconnected', socket.id);
+       socket.to(room).emit('user-disconnected', { id: socket.id, username: socket.username });
        socket.currentRoom = null;
        console.log(`Socket ${socket.id} left stream ${room}`);
     }
@@ -100,7 +108,7 @@ io.on('connection', (socket) => {
       // Socket is automatically removed from rooms on disconnect
       const count = io.sockets.adapter.rooms.get(streamId)?.size || 0;
       io.to(streamId).emit('room-users-update', count);
-      socket.to(streamId).emit('user-disconnected', socket.id);
+      socket.to(streamId).emit('user-disconnected', { id: socket.id, username: socket.username });
     }
   });
 });

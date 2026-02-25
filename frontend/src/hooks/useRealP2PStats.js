@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSocket } from './useSocket';
 
-export function useRealP2PStats(isSharing, settings, streamId) {
+export function useRealP2PStats(isSharing, settings, streamId, username) {
   const { socket, isConnected } = useSocket();
   const [stats, setStats] = useState({
     uploadSpeed: 0,
@@ -11,6 +11,8 @@ export function useRealP2PStats(isSharing, settings, streamId) {
     totalUploaded: 12.5,
     bufferHealth: 5.0,
   });
+
+  const isBroadcasting = streamId === username;
 
   useEffect(() => {
     if (!socket || !isConnected) return;
@@ -23,7 +25,7 @@ export function useRealP2PStats(isSharing, settings, streamId) {
     socket.on('room-users-update', handleUserCount);
 
     if (streamId) {
-      socket.emit('join-stream', streamId);
+      socket.emit('join-stream', { streamId, username });
     } else {
       socket.emit('leave-stream');
     }
@@ -33,14 +35,27 @@ export function useRealP2PStats(isSharing, settings, streamId) {
       // Reset peers when streamId changes or we disconnect to avoid stale stats
       setStats(prev => ({ ...prev, peersConnected: 0 }));
     };
-  }, [socket, isConnected, streamId]);
+  }, [socket, isConnected, streamId, username]);
 
   useEffect(() => {
-    if (!isSharing || !streamId) return;
+    if (!streamId) return;
 
     const interval = setInterval(() => {
       setStats(prev => {
-         const newUpload = Math.random() * 0.5; // Minimal keep-alive traffic simulation
+         let newUpload = 0;
+         let newDownload = 0;
+
+         if (isBroadcasting) {
+            // Broadcasters upload the source stream
+            newUpload = 12 + Math.random() * 8;
+            newDownload = 0.5 + Math.random(); // Signaling & management traffic
+         } else {
+            // Viewers download the stream
+            newDownload = 6 + Math.random() * 4;
+            // Only upload if sharing is enabled
+            newUpload = isSharing ? (1 + Math.random() * 3) : 0;
+         }
+
          const earnedCredits = newUpload * 0.01;
 
          // Simulate fluctuating download speed when active
@@ -59,9 +74,9 @@ export function useRealP2PStats(isSharing, settings, streamId) {
 
     return () => {
       clearInterval(interval);
-      setStats(prev => ({ ...prev, uploadSpeed: 0 }));
+      setStats(prev => ({ ...prev, uploadSpeed: 0, downloadSpeed: 0 }));
     };
-  }, [isSharing, streamId]);
+  }, [isSharing, streamId, isBroadcasting]);
 
   return stats;
 }

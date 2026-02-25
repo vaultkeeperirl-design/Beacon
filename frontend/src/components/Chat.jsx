@@ -40,7 +40,7 @@ export default function Chat({
     if (!socket || !streamId) return;
 
     // Join the stream room (idempotent)
-    socket.emit('join-stream', streamId);
+    socket.emit('join-stream', { streamId, username });
 
     const handleMessage = (msg) => {
       setMessages((prev) => {
@@ -53,12 +53,31 @@ export default function Chat({
       });
     };
 
+    const handleUserEvent = (data, eventType) => {
+       const userLabel = data.username || `User (${data.id.substring(0, 4)})`;
+       const text = eventType === 'connected' ? 'joined the chat' : 'left the chat';
+
+       setMessages((prev) => [
+         ...prev.slice(-99),
+         {
+           id: `${data.id}-${Date.now()}`,
+           user: 'System',
+           text: `${userLabel} ${text}`,
+           color: 'text-neutral-500'
+         }
+       ]);
+    };
+
     socket.on('chat-message', handleMessage);
+    socket.on('user-connected', (data) => handleUserEvent(data, 'connected'));
+    socket.on('user-disconnected', (data) => handleUserEvent(data, 'disconnected'));
 
     return () => {
       socket.off('chat-message', handleMessage);
+      socket.off('user-connected');
+      socket.off('user-disconnected');
     };
-  }, [socket, streamId]);
+  }, [socket, streamId, username]);
 
   useEffect(() => {
     // Performance Optimization: Use behavior: 'auto' instead of 'smooth'
