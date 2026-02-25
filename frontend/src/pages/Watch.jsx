@@ -3,11 +3,12 @@ import Chat from '../components/Chat';
 import { Share2, ThumbsUp, MoreHorizontal, UserPlus } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useEffect } from 'react';
-import { useP2P } from '../context/P2PContext';
+import { useP2PSettings } from '../context/P2PContext';
 
 export default function Watch() {
   const { id } = useParams();
-  const { setCurrentStreamId } = useP2P();
+  // Using useP2PSettings to avoid re-rendering the whole page every second when stats update
+  const { setCurrentStreamId } = useP2PSettings();
 
   useEffect(() => {
     if (id) {

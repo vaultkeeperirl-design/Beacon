@@ -1,9 +1,10 @@
 import React from 'react';
-import { useP2P } from '../context/P2PContext';
+import { useP2PStats, useP2PSettings } from '../context/P2PContext';
 import { Network, Upload, Download, Coins } from 'lucide-react';
 
 export default function P2PStats() {
-  const { stats, isSharing } = useP2P();
+  const stats = useP2PStats();
+  const { isSharing } = useP2PSettings();
 
   // If stats is undefined (e.g. context not provided), return null or fallback
   if (!stats) return null;
