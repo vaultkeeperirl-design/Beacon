@@ -11,6 +11,12 @@ export default function Broadcast() {
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [title, setTitle] = useState('Building the next big thing on Beacon!');
+  const [tags, setTags] = useState('Dev, Tech, Coding');
+  const [notification, setNotification] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [adBreakTimer, setAdBreakTimer] = useState(0);
   const [squad, setSquad] = useState([
     { id: 1, name: 'You (Host)', split: 100, isHost: true },
   ]);
@@ -27,6 +33,16 @@ export default function Broadcast() {
     }
     return () => setCurrentStreamId(null);
   }, [isLive, username, setCurrentStreamId]);
+
+  useEffect(() => {
+    let interval;
+    if (adBreakTimer > 0) {
+      interval = setInterval(() => {
+        setAdBreakTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [adBreakTimer]);
 
   useEffect(() => {
     async function startCamera() {
@@ -155,6 +171,21 @@ export default function Broadcast() {
      setSquad(updatedSquad);
   };
 
+  const handleUpdateInfo = () => {
+    setIsUpdating(true);
+    // Simulate API call to update stream metadata
+    setTimeout(() => {
+      setIsUpdating(false);
+      setUpdateSuccess(true);
+      setTimeout(() => setUpdateSuccess(false), 3000);
+    }, 1000);
+  };
+
+  const startAdBreak = () => {
+    if (adBreakTimer > 0) return;
+    setAdBreakTimer(60);
+  };
+
   return (
     <div className="max-w-7xl mx-auto pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -238,20 +269,51 @@ export default function Broadcast() {
                </h3>
                <div className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-neutral-400 mb-2">Title</label>
-                    <input type="text" className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-beacon-500 outline-none transition-colors shadow-inner" defaultValue="Building the next big thing on Beacon!" placeholder="Enter a catchy title" />
+                    <label htmlFor="stream-title" className="block text-sm font-medium text-neutral-400 mb-2">Title</label>
+                    <input
+                      id="stream-title"
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-beacon-500 outline-none transition-colors shadow-inner"
+                      placeholder="Enter a catchy title"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-neutral-400 mb-2">Tags</label>
-                    <input type="text" className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-beacon-500 outline-none transition-colors shadow-inner" defaultValue="Dev, Tech, Coding" placeholder="Add tags separated by commas" />
+                    <label htmlFor="stream-tags" className="block text-sm font-medium text-neutral-400 mb-2">Tags</label>
+                    <input
+                      id="stream-tags"
+                      type="text"
+                      value={tags}
+                      onChange={(e) => setTags(e.target.value)}
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-beacon-500 outline-none transition-colors shadow-inner"
+                      placeholder="Add tags separated by commas"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-neutral-400 mb-2">Go Live Notification</label>
-                     <textarea className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-beacon-500 outline-none transition-colors shadow-inner h-24 resize-none" placeholder="Tell your followers what you're up to..."></textarea>
+                    <label htmlFor="stream-notification" className="block text-sm font-medium text-neutral-400 mb-2">Go Live Notification</label>
+                     <textarea
+                       id="stream-notification"
+                       value={notification}
+                       onChange={(e) => setNotification(e.target.value)}
+                       className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-beacon-500 outline-none transition-colors shadow-inner h-24 resize-none"
+                       placeholder="Tell your followers what you're up to..."
+                     ></textarea>
                   </div>
                </div>
-               <div className="mt-6 flex justify-end">
-                  <button className="px-6 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors font-medium border border-neutral-700">Update Info</button>
+               <div className="mt-6 flex items-center justify-end gap-4">
+                  {updateSuccess && (
+                    <span className="text-green-500 text-sm font-medium animate-fade-in">
+                      Changes saved successfully!
+                    </span>
+                  )}
+                  <button
+                    onClick={handleUpdateInfo}
+                    disabled={isUpdating}
+                    className="px-6 py-2 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium border border-neutral-700"
+                  >
+                    {isUpdating ? 'Saving...' : 'Update Info'}
+                  </button>
                </div>
             </div>
 
@@ -359,7 +421,17 @@ export default function Broadcast() {
                   <button className="p-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-medium text-white transition-colors border border-neutral-700">Raid Channel</button>
                   <button className="p-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-medium text-white transition-colors border border-neutral-700">Start Poll</button>
                   <button className="p-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-medium text-white transition-colors border border-neutral-700">Manage Mods</button>
-                  <button className="p-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-medium text-white transition-colors border border-neutral-700">Ad Break (60s)</button>
+                  <button
+                    onClick={startAdBreak}
+                    disabled={adBreakTimer > 0}
+                    className={`p-3 rounded-lg text-sm font-medium transition-all border ${
+                      adBreakTimer > 0
+                        ? 'bg-neutral-900 border-neutral-800 text-neutral-500 cursor-not-allowed'
+                        : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-700'
+                    }`}
+                  >
+                    {adBreakTimer > 0 ? `Ad Break (${adBreakTimer}s)` : 'Ad Break (60s)'}
+                  </button>
                </div>
             </div>
          </div>
