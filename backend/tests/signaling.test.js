@@ -39,11 +39,11 @@ describe('Signaling Server', () => {
 
   test('should allow users to join a room and notify others', (done) => {
     const roomId = 'room-1';
-    const user1Id = 'user-1';
-    const user2Id = 'user-2';
+    // clientSocket2.id is available since we waited for connect in beforeEach
+    const user2Id = clientSocket2.id;
 
     // Client 1 joins room
-    clientSocket1.emit('join-room', roomId, user1Id);
+    clientSocket1.emit('join-stream', roomId);
 
     // Client 1 listens for user-connected (triggered when Client 2 joins)
     clientSocket1.on('user-connected', (id) => {
@@ -57,8 +57,8 @@ describe('Signaling Server', () => {
 
     // Client 2 joins room after a short delay
     setTimeout(() => {
-      clientSocket2.emit('join-room', roomId, user2Id);
-    }, 50);
+      clientSocket2.emit('join-stream', roomId);
+    }, 100);
   });
 
   test('should relay offer to target peer', (done) => {
@@ -71,7 +71,8 @@ describe('Signaling Server', () => {
 
     clientSocket2.on('offer', (receivedPayload) => {
       try {
-        expect(receivedPayload).toEqual(payload);
+        const expected = { ...payload, sender: clientSocket1.id };
+        expect(receivedPayload).toEqual(expected);
         done();
       } catch (error) {
         done(error);
@@ -91,7 +92,8 @@ describe('Signaling Server', () => {
 
     clientSocket1.on('answer', (receivedPayload) => {
       try {
-        expect(receivedPayload).toEqual(payload);
+        const expected = { ...payload, sender: clientSocket2.id };
+        expect(receivedPayload).toEqual(expected);
         done();
       } catch (error) {
         done(error);
@@ -110,7 +112,8 @@ describe('Signaling Server', () => {
 
     clientSocket2.on('ice-candidate', (receivedPayload) => {
       try {
-        expect(receivedPayload).toEqual(payload);
+        const expected = { ...payload, sender: clientSocket1.id };
+        expect(receivedPayload).toEqual(expected);
         done();
       } catch (error) {
         done(error);
@@ -121,10 +124,8 @@ describe('Signaling Server', () => {
   });
 
   test('should not crash on invalid offer payload', (done) => {
-    // Send invalid payload (missing target)
     clientSocket1.emit('offer', { sdp: 'invalid' });
 
-    // Server should remain responsive. Verify by sending a valid message.
     const targetSocketId = clientSocket2.id;
     const validPayload = {
       target: targetSocketId,
@@ -134,14 +135,14 @@ describe('Signaling Server', () => {
 
     clientSocket2.on('offer', (receivedPayload) => {
       try {
-        expect(receivedPayload).toEqual(validPayload);
+        const expected = { ...validPayload, sender: clientSocket1.id };
+        expect(receivedPayload).toEqual(expected);
         done();
       } catch (error) {
         done(error);
       }
     });
 
-    // Send valid payload after invalid one
     setTimeout(() => {
       clientSocket1.emit('offer', validPayload);
     }, 20);
@@ -149,18 +150,14 @@ describe('Signaling Server', () => {
 
   test('should notify others when a user disconnects', (done) => {
     const roomId = 'room-disconnect';
-    const user1Id = 'user-d1';
-    const user2Id = 'user-d2';
+    const user1Id = clientSocket1.id; // Store ID before disconnect
 
-    // Client 2 joins first
-    clientSocket2.emit('join-room', roomId, user2Id);
+    clientSocket2.emit('join-stream', roomId);
 
-    // Client 1 joins
     setTimeout(() => {
-      clientSocket1.emit('join-room', roomId, user1Id);
+      clientSocket1.emit('join-stream', roomId);
     }, 20);
 
-    // Wait for Client 2 to see Client 1 join, then disconnect Client 1
     clientSocket2.on('user-connected', (id) => {
       if (id === user1Id) {
         clientSocket1.disconnect();

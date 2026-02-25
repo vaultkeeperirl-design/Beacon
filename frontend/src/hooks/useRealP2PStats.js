@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSocket } from './useSocket';
 
-export function useRealP2PStats(isSharing, settings) {
+export function useRealP2PStats(isSharing, settings, streamId) {
   const { socket, isConnected } = useSocket();
   const [stats, setStats] = useState({
     uploadSpeed: 0,
@@ -25,16 +25,19 @@ export function useRealP2PStats(isSharing, settings) {
 
     socket.on('room-users-update', handleUserCount);
 
-    // Join the stream room to get updates
-    socket.emit('join-stream', 'test-stream');
+    if (streamId) {
+      socket.emit('join-stream', streamId);
+    } else {
+      socket.emit('leave-stream');
+    }
 
     return () => {
       socket.off('room-users-update', handleUserCount);
     };
-  }, [socket, isConnected]);
+  }, [socket, isConnected, streamId]);
 
   useEffect(() => {
-    if (!isSharing) {
+    if (!isSharing || !streamId) {
       setStats(prev => ({ ...prev, uploadSpeed: 0 }));
       return;
     }
@@ -55,7 +58,7 @@ export function useRealP2PStats(isSharing, settings) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isSharing]);
+  }, [isSharing, streamId]);
 
   return stats;
 }

@@ -7,7 +7,7 @@ const colors = ['text-red-400', 'text-green-400', 'text-blue-400', 'text-yellow-
 const getRandomColor = () => colors[Math.floor(Math.random() * colors.length)];
 const randomUserColor = getRandomColor();
 
-export default function Chat() {
+export default function Chat({ streamId }) {
   const { socket, isConnected } = useSocket();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -17,21 +17,17 @@ export default function Chat() {
   const chatEndRef = useRef(null);
 
   useEffect(() => {
-    // Only add welcome message on mount
+    // Reset messages when streamId changes
     setMessages([
       { id: 'welcome', user: 'System', text: 'Welcome to the chat! Connect to the swarm.', color: 'text-neutral-500' }
     ]);
-  }, []);
+  }, [streamId]);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !streamId) return;
 
-    // Join the default stream room (or dynamic based on props)
-    // For now, assuming global 'test-stream'
-    // Note: We might be joining twice if P2PContext also joins, but rooms are sets, so it's fine.
-    // However, it's cleaner if the Page handles joining. But Chat needs to know streamId.
-    // Since we hardcode 'test-stream' for now, this is okay.
-    socket.emit('join-stream', 'test-stream');
+    // Join the stream room (idempotent)
+    socket.emit('join-stream', streamId);
 
     const handleMessage = (msg) => {
       setMessages((prev) => [...prev, msg]);
@@ -42,7 +38,7 @@ export default function Chat() {
     return () => {
       socket.off('chat-message', handleMessage);
     };
-  }, [socket]);
+  }, [socket, streamId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -50,10 +46,10 @@ export default function Chat() {
 
   const sendMessage = (e) => {
     e.preventDefault();
-    if (!input.trim() || !socket) return;
+    if (!input.trim() || !socket || !streamId) return;
 
     socket.emit('chat-message', {
-      streamId: 'test-stream',
+      streamId: streamId,
       user: username,
       text: input,
       color: randomUserColor

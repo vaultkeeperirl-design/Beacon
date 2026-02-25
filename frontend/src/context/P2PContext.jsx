@@ -6,6 +6,7 @@ const P2PContext = createContext();
 
 export function P2PProvider({ children }) {
   const [isSharing, setIsSharing] = useState(true);
+  const [currentStreamId, setCurrentStreamId] = useState(null);
 
   const [settings, setSettings] = useState({
     maxUploadSpeed: 50, // Mbps
@@ -14,14 +15,14 @@ export function P2PProvider({ children }) {
     lowLatency: false,
   });
 
-  const stats = useRealP2PStats(isSharing, settings);
+  const stats = useRealP2PStats(isSharing, settings, currentStreamId);
 
   const updateSettings = (newSettings) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
   };
 
   return (
-    <P2PContext.Provider value={{ stats, isSharing, setIsSharing, settings, updateSettings }}>
+    <P2PContext.Provider value={{ stats, isSharing, setIsSharing, settings, updateSettings, currentStreamId, setCurrentStreamId }}>
       {children}
     </P2PContext.Provider>
   );
