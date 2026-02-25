@@ -1,12 +1,8 @@
 import StreamCard from '../components/StreamCard';
 import { Filter, ChevronDown, Heart, Activity } from 'lucide-react';
+import { useFollowing } from '../context/FollowingContext';
 
-const MOCK_FOLLOWED_STREAMS = [
-  { id: 1, title: 'Building a P2P streaming app from scratch', streamer: 'JulesDev', viewers: '12.5k', tags: ['Coding', 'React', 'WebRTC'], thumbnail: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600' },
-  { id: 3, title: 'Cooking with reckless abandon', streamer: 'ChefChaos', viewers: '5.1k', tags: ['IRL', 'Cooking'], thumbnail: 'https://images.unsplash.com/photo-1556910103-1c02745a30bf?auto=format&fit=crop&q=80&w=600' },
-  { id: 5, title: 'Speedrunning Mario 64', streamer: 'RetroGamer', viewers: '2.9k', tags: ['Retro', 'Speedrun'], thumbnail: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=600' },
-];
-
+// Keep mocks for offline or if needed, but primarily use context
 const MOCK_OFFLINE_CHANNELS = [
     { id: 101, name: 'TechTalks', lastStream: '2 hours ago', category: 'Talk Shows', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=TechTalks' },
     { id: 102, name: 'AdventureTime', lastStream: 'Yesterday', category: 'Travel', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AdventureTime' },
@@ -15,6 +11,12 @@ const MOCK_OFFLINE_CHANNELS = [
 ];
 
 export default function Following() {
+  const { followedChannels } = useFollowing();
+
+  // In a real app, we would fetch live status here.
+  // For now, we assume followed channels that are marked 'isLive' are live.
+  const liveChannels = followedChannels.filter(c => c.isLive);
+
   return (
     <div>
        <div className="flex items-center gap-3 mb-8">
@@ -31,15 +33,30 @@ export default function Following() {
          <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-green-500" />
             <h2 className="text-xl font-poppins font-bold text-white">Live Now</h2>
-            <span className="bg-neutral-800 text-neutral-400 text-xs px-2 py-0.5 rounded-full ml-2">{MOCK_FOLLOWED_STREAMS.length}</span>
+            <span className="bg-neutral-800 text-neutral-400 text-xs px-2 py-0.5 rounded-full ml-2">{liveChannels.length}</span>
          </div>
        </div>
 
-       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-         {MOCK_FOLLOWED_STREAMS.map(stream => (
-           <StreamCard key={stream.id} {...stream} />
-         ))}
-       </div>
+       {liveChannels.length > 0 ? (
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+           {liveChannels.map(channel => (
+             <StreamCard
+                key={channel.id}
+                id={channel.id}
+                title={channel.title || 'Untitled Stream'}
+                streamer={channel.name}
+                viewers="1.2k" // Mock viewers
+                tags={channel.tags || ['Live']}
+                thumbnail={`https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600`} // Mock thumbnail
+             />
+           ))}
+         </div>
+       ) : (
+         <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-12 text-center mb-12">
+            <p className="text-neutral-400 mb-4">You are not following any live channels.</p>
+            <p className="text-sm text-neutral-500">Go explore and follow some streamers!</p>
+         </div>
+       )}
 
        <div className="border-t border-neutral-800 pt-8 mb-6">
            <div className="flex items-center justify-between mb-6">
