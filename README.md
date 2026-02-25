@@ -17,7 +17,7 @@ Current platforms like Twitch (purple) and Kick (green) rely on massive, expensi
 
 ## ⚡ How It Works
 
-### 1. Mandatory Bandwidth Sharing ("No Freeloaders")
+### 1. Mandatory Bandwidth Sharing
 To play, you gotta host. It's brutal but fair. By streaming on Beacon, you dedicate a portion of your PC's bandwidth to help relay streams to others.
 
 ### 2. Incentivized Contribution
