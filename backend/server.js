@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -113,9 +114,18 @@ io.on('connection', (socket) => {
   });
 });
 
-app.get('/', (req, res) => {
-  res.send('Backend is running with Socket.IO');
-});
+if (process.env.SERVE_STATIC) {
+  const buildPath = path.join(__dirname, 'client_build');
+  app.use(express.static(buildPath));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(buildPath, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.send('Backend is running with Socket.IO');
+  });
+}
 
 const PORT = process.env.PORT || 3000;
 
