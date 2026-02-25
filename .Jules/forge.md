@@ -21,3 +21,7 @@
 ## 2025-05-24 - [Fullscreen UI Management]
 **Learning:** To maintain custom video controls during fullscreen, use `requestFullscreen()` on the container element rather than the video element itself. Additionally, always listen for the `fullscreenchange` event on the document to keep React state in sync when the user exits fullscreen via system keys like Escape.
 **Action:** Use a container ref for fullscreen and a dedicated effect for event listener cleanup.
+
+## 2025-05-25 - [Broadcast Studio Placeholder Elimination]
+**Learning:** Turning static placeholders into controlled components involves adding `useState` hooks for input values, implementing async simulation (e.g., `setTimeout`) for loading/success states, and ensuring proper accessibility by linking labels to inputs via `htmlFor` and `id`.
+**Action:** Always verify that input labels are correctly associated and provide clear visual feedback for "saving" operations.
