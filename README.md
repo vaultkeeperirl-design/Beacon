@@ -1,4 +1,8 @@
-# 🔸 Beacon 🔸
+<p align="center">
+  <img src="frontend/public/logo-full.png" width="400" alt="Beacon Logo">
+</p>
+
+# <img src="frontend/public/logo-icon.png" width="32"/> Beacon <img src="frontend/public/logo-icon.png" width="32"/>
 
 **Beacon** is a next-generation, decentralized Peer-to-Peer (P2P) streaming platform designed to break free from centralized control.
 
@@ -74,4 +78,4 @@ We are building a robust, scalable P2P architecture:
 
 ---
 
-*Join the revolution. Light the Beacon.* 🔸
+*Join the revolution. Light the Beacon.* <img src="frontend/public/logo-icon.png" width="16"/>

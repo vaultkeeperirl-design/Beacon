@@ -6,14 +6,18 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        poppins: ['Poppins', 'sans-serif'],
+      },
       colors: {
+        brand: '#FF6200',
         beacon: {
           50: '#fff7ed',
           100: '#ffedd5',
           200: '#fed7aa',
           300: '#fdba74',
           400: '#fb923c',
-          500: '#f97316', // Primary brand color
+          500: '#FF6200', // Updated Primary brand color
           600: '#ea580c',
           700: '#c2410c',
           800: '#9a3412',

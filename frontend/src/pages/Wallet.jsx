@@ -5,7 +5,7 @@ export default function Wallet() {
     <div className="max-w-6xl mx-auto py-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
          <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Wallet & Earnings</h1>
+            <h1 className="text-4xl font-poppins font-extrabold text-brand mb-2">Wallet & Earnings</h1>
             <p className="text-neutral-400">Track your P2P contributions and rewards</p>
          </div>
          <div className="flex gap-4">

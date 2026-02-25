@@ -21,7 +21,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col justify-end p-8">
              <div className="max-w-2xl animate-fade-in-up">
                 <span className="bg-beacon-600 text-white text-xs font-bold px-2 py-1 rounded uppercase tracking-wider mb-2 inline-block">Featured Stream</span>
-                <h1 className="text-4xl font-bold text-white mb-2 leading-tight">The Grand Tournament Finals</h1>
+                <h1 className="text-4xl font-poppins font-extrabold text-white mb-2 leading-tight">The Grand Tournament Finals</h1>
                 <p className="text-neutral-300 mb-4 line-clamp-2">Watch the top players compete for the championship title in this epic showdown. Powered by decentralized streaming nodes.</p>
                 <button className="bg-white text-black hover:bg-neutral-200 px-6 py-2 rounded-lg font-bold transition-colors">
                    Watch Now
@@ -33,7 +33,7 @@ export default function Home() {
        <div className="flex items-center justify-between mb-6">
          <div className="flex items-center gap-2">
             <Flame className="w-6 h-6 text-beacon-500 fill-current" />
-            <h2 className="text-2xl font-bold text-white">Live Channels</h2>
+            <h2 className="text-2xl font-poppins font-bold text-white">Live Channels</h2>
          </div>
          <div className="flex gap-2">
             <button className="flex items-center gap-2 px-3 py-1.5 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-neutral-300 hover:text-white hover:border-neutral-700 transition-colors">
