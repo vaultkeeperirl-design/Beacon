@@ -9,3 +9,7 @@
 ## 2025-05-23 - [Reusable Real-time Components]
 **Learning:** Refactoring fixed sidebar components (like Chat) to accept a `className` prop allows them to be embedded into complex grid layouts (like the Broadcast Studio) without duplicating logic.
 **Action:** Always design sidebar components with layout flexibility to support both fixed and inline modes.
+
+## 2025-02-25 - [Proper Media Stream Cleanup]
+**Learning:** When implementing screen sharing via `getDisplayMedia`, merely removing the stream from a video element is insufficient; all tracks must be explicitly stopped via `track.stop()` to terminate capture and remove browser-level indicators.
+**Action:** Always store the `MediaStream` in a `useRef` and iterate over tracks to stop them during cleanup or state toggles.
