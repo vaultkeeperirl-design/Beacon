@@ -21,6 +21,6 @@ Every byte counts. Every cycle counts.
 - **Backend:** Node.js + Socket.IO.
 - **Testing:** `pnpm test` (Vitest/Jest).
 
-## 5. NO FREELOADERS (AGAIN)
+## 5. NO FREELOADERS
 Don't just open issues complaining. Submit a PR to fix it.
 We are a community. We build together.
