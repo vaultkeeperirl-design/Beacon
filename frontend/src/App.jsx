@@ -6,21 +6,24 @@ import Broadcast from './pages/Broadcast';
 import Wallet from './pages/Wallet';
 import Following from './pages/Following';
 import { P2PProvider } from './context/P2PContext';
+import { FollowingProvider } from './context/FollowingContext';
 
 function App() {
   return (
     <P2PProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route path="watch/:id" element={<Watch />} />
-            <Route path="broadcast" element={<Broadcast />} />
-            <Route path="wallet" element={<Wallet />} />
-            <Route path="following" element={<Following />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <FollowingProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Home />} />
+              <Route path="watch/:id" element={<Watch />} />
+              <Route path="broadcast" element={<Broadcast />} />
+              <Route path="wallet" element={<Wallet />} />
+              <Route path="following" element={<Following />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </FollowingProvider>
     </P2PProvider>
   );
 }

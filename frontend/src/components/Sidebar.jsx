@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Home, Users, BarChart2, MessageSquare, Radio, Compass } from 'lucide-react';
 import P2PStats from './P2PStats';
+import { useFollowing } from '../context/FollowingContext';
 
 export default function Sidebar() {
+  const { followedChannels } = useFollowing();
   const menuItems = [
     { name: 'Home', icon: Home, path: '/' },
     { name: 'Browse', icon: Compass, path: '/' },
