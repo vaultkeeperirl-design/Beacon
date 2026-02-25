@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState } from 'react';
-import { useP2PSimulation } from '../hooks/useP2PSimulation';
+import { useRealP2PStats } from '../hooks/useRealP2PStats';
 
 const P2PContext = createContext();
 
@@ -14,7 +14,7 @@ export function P2PProvider({ children }) {
     lowLatency: false,
   });
 
-  const stats = useP2PSimulation(isSharing, settings);
+  const stats = useRealP2PStats(isSharing, settings);
 
   const updateSettings = (newSettings) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
