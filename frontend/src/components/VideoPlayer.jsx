@@ -1,18 +1,42 @@
-import { Maximize, Volume2, Settings, Pause, Play } from 'lucide-react';
-import { useState } from 'react';
+import { Maximize, Volume2, VolumeX, Settings, Pause, Play } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import StreamSettings from './StreamSettings';
 import VideoStatsOverlay from './VideoStatsOverlay';
 
 export default function VideoPlayer({ streamUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }) {
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const videoRef = useRef(null);
+
   // Using useP2PSettings instead of useP2P to avoid unnecessary re-renders when stats update
   const { settings } = useP2PSettings();
+
+  // Synchronize playback state
+  useEffect(() => {
+    if (!videoRef.current) return;
+
+    if (isPlaying) {
+      videoRef.current.play().catch(err => {
+        console.warn("Autoplay/Play blocked:", err);
+        setIsPlaying(false);
+      });
+    } else {
+      videoRef.current.pause();
+    }
+  }, [isPlaying]);
+
+  // Synchronize mute state
+  useEffect(() => {
+    if (!videoRef.current) return;
+    videoRef.current.muted = isMuted;
+  }, [isMuted]);
 
   return (
     <div className="relative aspect-video bg-black rounded-lg overflow-hidden group shadow-2xl ring-1 ring-neutral-800">
       <video
+        ref={videoRef}
         src={streamUrl}
         className="w-full h-full object-cover"
         autoPlay
@@ -37,8 +61,11 @@ export default function VideoPlayer({ streamUrl = "https://commondatastorage.goo
             >
               {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
             </button>
-            <button className="text-white hover:text-beacon-500 transition-colors group/vol">
-              <Volume2 className="w-6 h-6" />
+            <button
+              className="text-white hover:text-beacon-500 transition-colors group/vol"
+              onClick={() => setIsMuted(!isMuted)}
+            >
+              {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
             </button>
             <div className="flex items-center gap-2 text-sm font-bold text-red-500 uppercase tracking-widest bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
