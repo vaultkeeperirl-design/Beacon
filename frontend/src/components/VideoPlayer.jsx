@@ -4,7 +4,7 @@ import { useP2P } from '../context/P2PContext';
 import StreamSettings from './StreamSettings';
 import VideoStatsOverlay from './VideoStatsOverlay';
 
-export default function VideoPlayer({ streamUrl = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }) {
+export default function VideoPlayer({ streamUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { settings } = useP2P();
