@@ -13,10 +13,7 @@ export function useRealP2PStats(isSharing, settings, streamId) {
   });
 
   useEffect(() => {
-    if (!socket || !isConnected) {
-      setStats(prev => ({ ...prev, peersConnected: 0 }));
-      return;
-    }
+    if (!socket || !isConnected) return;
 
     const handleUserCount = (count) => {
       // Subtract 1 to exclude self, but show 0 if negative
@@ -33,14 +30,13 @@ export function useRealP2PStats(isSharing, settings, streamId) {
 
     return () => {
       socket.off('room-users-update', handleUserCount);
+      // Reset peers when streamId changes or we disconnect to avoid stale stats
+      setStats(prev => ({ ...prev, peersConnected: 0 }));
     };
   }, [socket, isConnected, streamId]);
 
   useEffect(() => {
-    if (!isSharing || !streamId) {
-      setStats(prev => ({ ...prev, uploadSpeed: 0 }));
-      return;
-    }
+    if (!isSharing || !streamId) return;
 
     const interval = setInterval(() => {
       setStats(prev => {
@@ -57,7 +53,10 @@ export function useRealP2PStats(isSharing, settings, streamId) {
       });
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      setStats(prev => ({ ...prev, uploadSpeed: 0 }));
+    };
   }, [isSharing, streamId]);
 
   return stats;

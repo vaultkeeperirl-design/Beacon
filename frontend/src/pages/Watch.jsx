@@ -84,7 +84,10 @@ export default function Watch() {
          </div>
       </div>
 
-      <Chat streamId={id} />
+      {/* ⚡ Performance Optimization: Using a key here ensures that Chat state resets
+          idiomatically when the stream changes, avoiding expensive cascading renders
+          and keeping the code cleaner. */}
+      <Chat key={id} streamId={id} />
     </div>
   );
 }

@@ -16,8 +16,8 @@ export const getSocket = () => {
 };
 
 export const useSocket = () => {
-  const [isConnected, setIsConnected] = useState(false);
   const socketInstance = getSocket();
+  const [isConnected, setIsConnected] = useState(socketInstance.connected);
 
   useEffect(() => {
     const onConnect = () => setIsConnected(true);
@@ -25,10 +25,6 @@ export const useSocket = () => {
 
     socketInstance.on('connect', onConnect);
     socketInstance.on('disconnect', onDisconnect);
-
-    if (socketInstance.connected) {
-      setIsConnected(true);
-    }
 
     return () => {
       socketInstance.off('connect', onConnect);
