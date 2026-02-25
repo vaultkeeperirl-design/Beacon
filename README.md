@@ -52,6 +52,9 @@ We are building a robust, scalable P2P architecture:
 ### Home Page
 ![Home Page](screenshots/home_page.png)
 
+### Following Page
+![Following Page](screenshots/following_page.png)
+
 ### Watch Page (Mock Player & Chat)
 ![Watch Page](screenshots/watch_page.png)
 
