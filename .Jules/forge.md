@@ -9,3 +9,7 @@
 ## 2025-05-23 - [Reusable Real-time Components]
 **Learning:** Refactoring fixed sidebar components (like Chat) to accept a `className` prop allows them to be embedded into complex grid layouts (like the Broadcast Studio) without duplicating logic.
 **Action:** Always design sidebar components with layout flexibility to support both fixed and inline modes.
+
+## 2025-05-24 - [Data Formatting Conventions]
+**Learning:** For financial or metric data (like Credits or Bandwidth), use `toLocaleString` for readable thousand separators and dynamic unit switching (GB to TB) to maintain UI polish while reflecting simulated "live" data.
+**Action:** Implement dynamic formatting in UI components to stay consistent with the underlying P2P stats simulation.
