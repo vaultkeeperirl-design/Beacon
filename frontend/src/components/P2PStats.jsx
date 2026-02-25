@@ -9,7 +9,7 @@ export default function P2PStats() {
   if (!stats) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 bg-neutral-900/90 backdrop-blur-md border border-beacon-500/20 rounded-lg p-4 w-64 shadow-2xl z-50">
+    <div className="bg-neutral-950/30 border border-beacon-500/20 rounded-lg p-4 w-full">
       <div className="flex items-center justify-between mb-3 border-b border-neutral-800 pb-2">
         <div className="flex items-center gap-2">
           <Network className="w-4 h-4 text-beacon-500" />
