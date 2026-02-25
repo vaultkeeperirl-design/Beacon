@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Search, User, Wallet, Radio } from 'lucide-react';
+import { useP2PStats } from '../context/P2PContext';
 
 export default function Navbar() {
+  const stats = useP2PStats();
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-neutral-900 border-b border-neutral-800 flex items-center px-4 justify-between">
       <div className="flex items-center gap-4">
@@ -32,7 +34,9 @@ export default function Navbar() {
         <Link to="/wallet">
           <div className="hidden md:flex items-center gap-2 text-xs font-medium text-neutral-400 bg-neutral-950 px-3 py-1.5 rounded-full border border-neutral-800 hover:border-beacon-500/30 transition-colors cursor-pointer group">
              <Wallet className="w-3.5 h-3.5 text-beacon-500 group-hover:text-beacon-400 transition-colors" />
-             <span className="font-mono text-white group-hover:text-beacon-100">2,450 CR</span>
+             <span className="font-mono text-white group-hover:text-beacon-100">
+                {stats.credits.toLocaleString(undefined, { maximumFractionDigits: 0 })} CR
+             </span>
           </div>
         </Link>
 

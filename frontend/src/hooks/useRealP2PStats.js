@@ -43,9 +43,13 @@ export function useRealP2PStats(isSharing, settings, streamId) {
          const newUpload = Math.random() * 0.5; // Minimal keep-alive traffic simulation
          const earnedCredits = newUpload * 0.01;
 
+         // Simulate fluctuating download speed when active
+         const newDownload = Math.max(5, Math.min(100, prev.downloadSpeed + (Math.random() - 0.5) * 10));
+
          return {
              ...prev,
              uploadSpeed: parseFloat(newUpload.toFixed(1)),
+             downloadSpeed: parseFloat(newDownload.toFixed(1)),
              credits: parseFloat((prev.credits + earnedCredits).toFixed(4)),
              totalUploaded: parseFloat((prev.totalUploaded + (newUpload / 8 / 1024)).toFixed(4)),
              bufferHealth: 5.0 + (Math.random() - 0.5),

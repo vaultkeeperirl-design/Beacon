@@ -1,6 +1,8 @@
 import { Wallet as WalletIcon, TrendingUp, ArrowUpRight, ArrowDownRight, Clock, ShieldCheck, Zap, Users } from 'lucide-react';
+import { useP2PStats } from '../context/P2PContext';
 
 export default function Wallet() {
+  const stats = useP2PStats();
   return (
     <div className="max-w-6xl mx-auto py-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
@@ -30,7 +32,9 @@ export default function Wallet() {
                   </div>
                   <p className="text-neutral-400 text-xs font-bold uppercase tracking-wider">Total Balance</p>
                </div>
-               <h2 className="text-3xl font-bold text-white font-mono tracking-tight mt-4">2,450.00 <span className="text-lg text-beacon-500">CR</span></h2>
+               <h2 className="text-3xl font-bold text-white font-mono tracking-tight mt-4">
+                  {stats.credits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-lg text-beacon-500">CR</span>
+               </h2>
                <div className="mt-4 flex items-center gap-2 text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded-full w-fit">
                   <TrendingUp className="w-3 h-3" />
                   <span>+12.5%</span>
@@ -63,7 +67,11 @@ export default function Wallet() {
                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest bg-neutral-800 px-2 py-1 rounded">30 Days</span>
             </div>
             <p className="text-neutral-400 text-xs font-bold uppercase tracking-wider mb-2">Bandwidth</p>
-            <h2 className="text-2xl font-bold text-white font-mono">1.2 TB</h2>
+            <h2 className="text-2xl font-bold text-white font-mono">
+               {stats.totalUploaded > 1024
+                  ? (stats.totalUploaded / 1024).toFixed(2) + ' TB'
+                  : stats.totalUploaded.toFixed(1) + ' GB'}
+            </h2>
             <div className="w-full bg-neutral-800 h-1.5 rounded-full mt-4 overflow-hidden">
                <div className="bg-blue-500 h-full w-[75%] rounded-full"></div>
             </div>
