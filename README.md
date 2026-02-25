@@ -4,7 +4,7 @@
 
 **Beacon** is a next-generation, decentralized Peer-to-Peer (P2P) streaming platform designed to break free from centralized control. Forget about paying Amazon AWS for server fees. Forget about gatekeepers deciding who gets to blow up. **Beacon** is built by the community, for the community.
 
-## <img src="frontend/public/logo-icon.png" width="32"/> The Vision: Decentralized Streaming
+## <img src="frontend/public/logo-icon.png" width="16"/> The Vision: Decentralized Streaming
 
 Current platforms like Twitch (purple) and Kick (green) rely on massive, expensive server farms. This centralization leads to high costs, arbitrary bans, and unfair revenue splits.
 
