@@ -1,13 +1,21 @@
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+const getBackendUrl = () => {
+  if (typeof window !== 'undefined' && window.location) {
+    const params = new URLSearchParams(window.location.search);
+    const port = params.get('port');
+    if (port) return `http://localhost:${port}`;
+  }
+  return import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+};
 
 let socket;
 
 export const getSocket = () => {
     if (!socket) {
-        socket = io(SOCKET_URL, {
+        const url = getBackendUrl();
+        socket = io(url, {
             transports: ['websocket'],
             reconnection: true,
         });

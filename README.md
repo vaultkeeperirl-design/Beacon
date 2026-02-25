@@ -47,6 +47,37 @@ We are building a robust, scalable P2P architecture:
 *   **P2P Protocol:** WebRTC (for real-time, low-latency communication)
 *   **Infrastructure:** Specialized mesh networking to avoid single points of failure.
 
+## Desktop App
+
+The Beacon Desktop App bundles the frontend and a local backend node for a seamless experience. It handles the local signaling server and provides a dedicated window for streaming.
+
+### Installation
+
+**Windows**
+1.  Download the installer `.exe` from the releases page.
+2.  Run the installer.
+3.  Launch **Beacon** from your desktop or start menu.
+
+**Mac**
+1.  Download the `.dmg` from the releases page.
+2.  Drag **Beacon** to your Applications folder.
+3.  Launch **Beacon**.
+
+### Building from Source
+
+To build the desktop application locally:
+
+```bash
+cd electron
+npm install
+npm run dist
+```
+
+This will generate installers in `electron/release/`.
+
+### Desktop Launcher
+![Desktop Launcher](screenshots/launcher.png)
+
 ## Progress Screenshots
 
 ### Home Page
