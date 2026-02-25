@@ -4,10 +4,12 @@
   "description": "Launcher for Beacon P2P Streaming Platform",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
+    "dev": "concurrently \"pnpm run dev:react\" \"pnpm run dev:electron\"",
     "dev:react": "vite",
     "dev:electron": "wait-on http://localhost:5173 && electron .",
     "build": "node build-launcher.js && vite build && electron-builder",
+    "build:win": "node build-launcher.js && vite build && electron-builder --win",
+    "build:linux": "node build-launcher.js && vite build && electron-builder --linux",
     "pack": "node build-launcher.js && vite build && electron-builder --dir"
   },
   "build": {
