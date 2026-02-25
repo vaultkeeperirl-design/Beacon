@@ -1,10 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Home, Users, BarChart2, MessageSquare, Radio, Compass } from 'lucide-react';
 import P2PStats from './P2PStats';
-import { useFollowing } from '../context/FollowingContext';
 
 export default function Sidebar() {
-  const { followedChannels } = useFollowing();
   const menuItems = [
     { name: 'Home', icon: Home, path: '/' },
     { name: 'Browse', icon: Compass, path: '/' },
@@ -14,7 +12,7 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 bg-neutral-900 border-r border-neutral-800 hidden lg:flex flex-col shrink-0 z-40">
-      <div className="sticky top-16 h-[calc(100vh-4rem)] flex flex-col">
+      <div className="sticky top-16 h-[calc(100vh_-_4rem)] flex flex-col">
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
           {menuItems.map((item) => (
             <Link to={item.path} key={item.name} className="flex items-center gap-3 px-3 py-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors group">
