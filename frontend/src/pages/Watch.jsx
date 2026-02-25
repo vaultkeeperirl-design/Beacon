@@ -1,13 +1,10 @@
-import { useParams } from 'react-router-dom';
 import VideoPlayer from '../components/VideoPlayer';
 import Chat from '../components/Chat';
 import P2PStats from '../components/P2PStats';
 import { P2PProvider } from '../context/P2PContext';
-import { Share2, ThumbsUp, MoreHorizontal, UserPlus, Zap } from 'lucide-react';
+import { Share2, ThumbsUp, MoreHorizontal, UserPlus } from 'lucide-react';
 
 export default function Watch() {
-  const { id } = useParams();
-
   return (
     <P2PProvider>
       <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-64px)] overflow-hidden">
@@ -55,8 +52,8 @@ export default function Watch() {
              </div>
 
              <div className="mt-8 bg-gradient-to-br from-neutral-900 to-neutral-950 rounded-xl p-6 border border-neutral-800 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5">
-                   <Zap className="w-48 h-48 text-beacon-500" />
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                   <img src="/icon.png" alt="Beacon" className="w-48 h-48 object-contain" />
                 </div>
                 <h3 className="font-semibold text-white mb-3 text-lg relative z-10">About this stream</h3>
                 <p className="text-neutral-300 text-sm leading-relaxed relative z-10 max-w-3xl">
