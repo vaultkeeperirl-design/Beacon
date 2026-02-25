@@ -41,6 +41,20 @@ We are building a robust, scalable P2P architecture:
 *   **P2P Protocol:** WebRTC (for real-time, low-latency communication)
 *   **Infrastructure:** Specialized mesh networking to avoid single points of failure.
 
+## Progress Screenshots
+
+### Home Page
+![Home Page](screenshots/home_page.png)
+
+### Watch Page (Mock Player & Chat)
+![Watch Page](screenshots/watch_page.png)
+
+### Broadcast Studio
+![Broadcast Studio](screenshots/broadcast_page.png)
+
+### Wallet & Earnings
+![Wallet](screenshots/wallet_page.png)
+
 ## 🚀 Roadmap
 
 *   [ ] **MVP Core:** Basic P2P streaming with WebRTC.
