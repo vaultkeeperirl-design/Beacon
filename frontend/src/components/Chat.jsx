@@ -11,7 +11,7 @@ const randomUserColor = getRandomColor();
 // Performance Optimization: Extract individual message to a memoized component.
 // This prevents all messages from re-rendering when a single new message is added.
 const ChatMessage = memo(({ msg }) => (
-  <div className="text-sm break-words leading-relaxed group hover:bg-neutral-900/50 -mx-2 px-2 py-1 rounded transition-colors">
+  <div className={`text-sm break-words leading-relaxed group hover:bg-neutral-900/50 -mx-2 px-2 py-1 rounded transition-colors ${msg.isPending ? 'opacity-50' : ''}`}>
     <span className={`font-bold ${msg.color || 'text-neutral-400'} mr-2 cursor-pointer hover:underline text-xs uppercase tracking-wide opacity-90`}>{msg.user}:</span>
     <span className="text-neutral-300 group-hover:text-white transition-colors">{msg.text}</span>
   </div>
@@ -44,6 +44,31 @@ export default function Chat({
 
     const handleMessage = (msg) => {
       setMessages((prev) => {
+        // Optimistic UI Reconciliation
+        // We attempt to match the incoming message with a pending message in our local state.
+        // Priority match: msg.senderId === socket.id (Robust, relies on backend sending senderId)
+        // Fallback match: msg.user === username AND msg.text (Defensive, in case senderId is missing)
+
+        const isFromMe = (msg.senderId && msg.senderId === socket.id) ||
+                         (msg.user === username); // Simple check, refined inside findIndex
+
+        if (isFromMe) {
+          const pendingIndex = prev.findIndex(m =>
+            m.isPending &&
+            m.text === msg.text &&
+            (m.user === msg.user) // Ensure user matches too
+          );
+
+          if (pendingIndex !== -1) {
+            const newMessages = [...prev];
+            // Replace the pending message with the real server message (removing isPending flag)
+            // We use the server's ID, which might cause a re-mount of the ChatMessage component,
+            // but that is acceptable for the benefit of consistency.
+            newMessages[pendingIndex] = { ...msg, isPending: false };
+            return newMessages;
+          }
+        }
+
         const newMessages = [...prev, msg];
         // Performance Optimization: Limit to last 100 messages to keep DOM size and memory usage low.
         if (newMessages.length > 100) {
@@ -89,10 +114,28 @@ export default function Chat({
     e.preventDefault();
     if (!input.trim() || !socket || !streamId) return;
 
+    const messageText = input;
+
+    // Optimistic Update: Immediately add message to state with pending flag
+    const tempId = `temp-${Date.now()}`;
+    const tempMsg = {
+      id: tempId,
+      user: username,
+      text: messageText,
+      color: randomUserColor,
+      isPending: true
+    };
+
+    setMessages(prev => {
+      const newMessages = [...prev, tempMsg];
+      if (newMessages.length > 100) return newMessages.slice(-100);
+      return newMessages;
+    });
+
     socket.emit('chat-message', {
       streamId: streamId,
       user: username,
-      text: input,
+      text: messageText,
       color: randomUserColor
     });
 
