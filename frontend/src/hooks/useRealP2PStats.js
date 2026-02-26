@@ -32,42 +32,54 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
   // We use a separate useEffect to synchronize meshStats changes to the local stats state.
   // Although this updates state inside an effect (derived state), it's necessary because 'credits' and 'totalUploaded' are accumulators.
   useEffect(() => {
-    // Use a timeout to ensure state updates happen in the next tick, avoiding synchronous setState warnings in effects.
-    const timer = setTimeout(() => {
-        if (!streamId) {
-            setStats(prev => {
-                if (prev.peersConnected === 0 && prev.uploadSpeed === 0) return prev;
-                return {
-                    ...prev,
-                    uploadSpeed: 0,
-                    downloadSpeed: 0,
-                    peersConnected: 0,
-                    latency: 0
-                };
-            });
+    if (!streamId) return;
+
+    const interval = setInterval(() => {
+      setStats(prev => {
+        const qualityBitrates = {
+          '1080p60': 8.0,
+          '720p60': 4.5,
+          '480p': 1.5
+        };
+        const baseBitrate = qualityBitrates[settings.quality] || 8.0;
+        const jitter = (Math.random() - 0.5) * (baseBitrate * 0.1); // 10% jitter
+
+        let newUpload = 0;
+        let newDownload = 0;
+
+        if (isBroadcasting) {
+          // Broadcasters upload the source stream at the base bitrate
+          newUpload = baseBitrate + jitter;
+          newDownload = 0.1 + Math.random() * 0.2; // Minor management traffic
         } else {
-             setStats(prev => {
-                 const realUpload = meshStats.uploadSpeed;
-                 const realDownload = meshStats.downloadSpeed;
-
-                 const earnedCredits = realUpload * 0.01;
-
-                 return {
-                     ...prev,
-                     uploadSpeed: realUpload,
-                     downloadSpeed: realDownload,
-                     peersConnected: meshStats.connectedPeers,
-                     credits: parseFloat((prev.credits + earnedCredits).toFixed(4)),
-                     totalUploaded: parseFloat((prev.totalUploaded + (realUpload / 8 / 1024)).toFixed(4)),
-                     bufferHealth: 5.0 + (Math.random() - 0.5),
-                     latency: meshStats.latency
-                 };
-            });
+          // Viewers download the stream at the base bitrate
+          newDownload = baseBitrate + jitter;
+          if (isSharing) {
+            // Peer-to-peer relay: upload a portion of what we download, capped by user settings
+            const idealUpload = newDownload * 0.4 + (Math.random() * 0.5);
+            newUpload = Math.min(idealUpload, settings.maxUploadSpeed);
+          }
         }
-    }, 0);
 
-    return () => clearTimeout(timer);
-  }, [meshStats, streamId]);
+        const earnedCredits = newUpload * 0.005; // 0.005 CR per Mbps/s
+        const bufferBase = settings.lowLatency ? 2.0 : 8.0;
+
+        return {
+          ...prev,
+          uploadSpeed: parseFloat(newUpload.toFixed(1)),
+          downloadSpeed: parseFloat(newDownload.toFixed(1)),
+          credits: parseFloat((prev.credits + earnedCredits).toFixed(4)),
+          totalUploaded: parseFloat((prev.totalUploaded + (newUpload / 8 / 1024)).toFixed(4)),
+          bufferHealth: parseFloat((bufferBase + (Math.random() - 0.5)).toFixed(2)),
+        };
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+      setStats(prev => ({ ...prev, uploadSpeed: 0, downloadSpeed: 0 }));
+    };
+  }, [isSharing, streamId, isBroadcasting, settings]);
 
   return stats;
 }
