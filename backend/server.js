@@ -254,6 +254,16 @@ if (process.env.SERVE_STATIC) {
   });
 }
 
+// Endpoint for Launcher to fetch network stats
+app.get('/api/node-stats', (req, res) => {
+    // Total connected sockets across all namespaces
+    const meshNodes = io.engine.clientsCount;
+    res.json({
+        status: 'Online',
+        meshNodes: meshNodes
+    });
+});
+
 const PORT = process.env.PORT || 3000;
 
 if (require.main === module) {

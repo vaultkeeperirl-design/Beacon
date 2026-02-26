@@ -16,8 +16,21 @@ export function P2PProvider({ children }) {
   const [isSharing, setIsSharing] = useState(true);
   const [currentStreamId, setCurrentStreamId] = useState(null);
 
-  // Persist username across stream changes/remounts
-  const [username] = useState(() => 'Anon_' + Math.floor(Math.random() * 10000));
+  // Persist username in localStorage for basic identity
+  const [username, setUsername] = useState(() => {
+    const saved = localStorage.getItem('beacon_username');
+    if (saved) return saved;
+    const newUsername = 'User_' + Math.floor(Math.random() * 100000);
+    localStorage.setItem('beacon_username', newUsername);
+    return newUsername;
+  });
+
+  const updateUsername = (newName) => {
+    if (!newName || newName.trim() === '') return;
+    const cleanName = newName.trim().substring(0, 20);
+    localStorage.setItem('beacon_username', cleanName);
+    setUsername(cleanName);
+  };
 
   const [settings, setSettings] = useState({
     maxUploadSpeed: 50, // Mbps
@@ -41,7 +54,8 @@ export function P2PProvider({ children }) {
     updateSettings,
     currentStreamId,
     setCurrentStreamId,
-    username
+    username,
+    updateUsername
   }), [isSharing, settings, currentStreamId, username]);
 
   return (
