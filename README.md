@@ -37,6 +37,11 @@ Collaboration over competition. On Beacon, streaming together means earning toge
 *   **Host Control:** Channel hosts invite guests and set the splits. No backend deals, just smart contracts and fair pay.
 *   **Incentive to Collab:** We want you to stream together. Growing the network means growing the pie for everyone.
 
+### 5. Auto-Host / Raids
+Keep the party going. When a stream ends, Beacon automatically raids another active streamer on the network.
+*   **Help Everyone Grow:** If you don't pick a specific streamer to host, we randomly select one from the network.
+*   **Continuous Discovery:** Viewers are constantly introduced to new content creators.
+
 ## 🛠 Tech Stack
 
 We are building a robust, scalable P2P architecture:
