@@ -71,6 +71,8 @@ export default function Chat({
              type="submit"
              className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-beacon-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
              disabled={!input.trim() || !isConnected}
+             aria-label="Send message"
+             title="Send"
           >
             <Send className="w-4 h-4" />
           </button>

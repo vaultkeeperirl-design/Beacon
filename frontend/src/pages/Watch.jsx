@@ -1,8 +1,8 @@
 import VideoPlayer from '../components/VideoPlayer';
 import Chat from '../components/Chat';
-import { Share2, ThumbsUp, MoreHorizontal, UserPlus, UserCheck } from 'lucide-react';
+import { Share2, ThumbsUp, MoreHorizontal, UserPlus, UserCheck, Check } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import { useFollowing } from '../context/FollowingContext';
 import { useSocket } from '../hooks/useSocket';
@@ -14,6 +14,7 @@ export default function Watch() {
   const { setCurrentStreamId } = useP2PSettings();
   const { follow, unfollow, isFollowing } = useFollowing();
   const { socket } = useSocket();
+  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     if (!socket) return;
@@ -61,6 +62,17 @@ export default function Watch() {
     }
   };
 
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setIsCopied(true);
+  };
+
+  useEffect(() => {
+    if (!isCopied) return;
+    const timeout = setTimeout(() => setIsCopied(false), 2000);
+    return () => clearTimeout(timeout);
+  }, [isCopied]);
+
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-64px)] overflow-hidden">
       <div className="flex-1 flex flex-col h-full overflow-y-auto lg:overflow-hidden pb-20 lg:pb-0 pr-0 lg:pr-80">
@@ -97,17 +109,32 @@ export default function Watch() {
                       ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 shadow-none'
                       : 'bg-beacon-600 hover:bg-beacon-500 shadow-beacon-600/20'
                   }`}
+                  aria-label={isFollowed ? `Unfollow ${id}` : `Follow ${id}`}
+                  title={isFollowed ? 'Unfollow' : 'Follow'}
                 >
                   {isFollowed ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
                   <span>{isFollowed ? 'Following' : 'Follow'}</span>
                 </button>
-                <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700">
+                <button
+                  className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700"
+                  aria-label="Like stream"
+                  title="Like"
+                >
                   <ThumbsUp className="w-5 h-5" />
                 </button>
-                <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700">
-                  <Share2 className="w-5 h-5" />
+                <button
+                  onClick={handleShare}
+                  className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700"
+                  aria-label={isCopied ? "Link copied to clipboard" : "Share stream"}
+                  title={isCopied ? "Copied!" : "Share"}
+                >
+                  {isCopied ? <Check className="w-5 h-5 text-green-500" /> : <Share2 className="w-5 h-5" />}
                 </button>
-                <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700">
+                <button
+                  className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700"
+                  aria-label="More options"
+                  title="More"
+                >
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
              </div>
