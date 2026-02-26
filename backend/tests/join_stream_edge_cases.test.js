@@ -4,7 +4,7 @@ const { server, io } = require("../server");
 describe("Bug Reproduction: socket.currentRoom desync", () => {
   let clientSocket;
   let clientSocket2;
-  const port = 3003; // Different port to avoid conflict
+  let port;
 
   // Helper to wait for an event
   const waitFor = (socket, event) => {
@@ -14,14 +14,17 @@ describe("Bug Reproduction: socket.currentRoom desync", () => {
   };
 
   beforeAll((done) => {
-    server.listen(port, () => {
+    server.listen(0, () => {
+      port = server.address().port;
       done();
     });
   });
 
   afterAll((done) => {
     io.close();
-    server.close(done);
+    server.close(() => {
+      done();
+    });
   });
 
   beforeEach((done) => {
@@ -76,5 +79,31 @@ describe("Bug Reproduction: socket.currentRoom desync", () => {
     // If bug exists, count will be 1 (only clientSocket2).
     // If fixed, count should be 2.
     expect(count).toBe(2);
+  });
+
+  test("should update activeStreams when re-joining as host", async () => {
+    const streamId = "host-transition-room";
+    const username = streamId; // Host username equals streamId
+
+    // 1. Join as anonymous viewer
+    clientSocket.emit("join-stream", streamId);
+    await waitFor(clientSocket, "room-users-update");
+
+    // 2. Re-join as host (same streamId, but providing username)
+    const updatePromise = waitFor(clientSocket, "room-users-update");
+    clientSocket.emit("join-stream", { streamId, username });
+    await updatePromise;
+
+    // 3. Verify stream is active by checking if viewers are redirected on disconnect
+    // (A bit indirect to test activeStreams set, but effective)
+
+    // Join a viewer
+    clientSocket2.emit("join-stream", streamId);
+    await waitFor(clientSocket2, "room-users-update");
+
+    const endedPromise = waitFor(clientSocket2, "stream-ended");
+    clientSocket.disconnect(); // Host disconnects
+
+    await endedPromise; // Should be called if stream was in activeStreams
   });
 });
