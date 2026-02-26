@@ -51,7 +51,8 @@ function waitForServer(port) {
 
     const check = () => {
       attempts++;
-      const req = http.get(`http://localhost:${port}`, (res) => {
+      // Use 127.0.0.1 to avoid IPv4/IPv6 ambiguity on localhost
+      const req = http.get(`http://127.0.0.1:${port}`, (res) => {
         if (res.statusCode === 200) {
           resolve();
         } else {
@@ -104,11 +105,14 @@ async function startBackend() {
   const serverPromise = waitForServer(3000);
 
   const exitPromise = new Promise((_, reject) => {
-    backendProcess.once('close', (code) => {
-      console.log(`Backend exited prematurely with code ${code}`);
-      backendProcess = null;
-      reject(new Error(`Backend exited with code ${code}`));
-    });
+    // Only listen for 'close' if the process is still running
+    if (backendProcess) {
+      backendProcess.once('close', (code) => {
+        console.log(`Backend exited prematurely with code ${code}`);
+        backendProcess = null;
+        reject(new Error(`Backend exited with code ${code}`));
+      });
+    }
   });
 
   await Promise.race([serverPromise, exitPromise]);
@@ -243,7 +247,7 @@ ipcMain.on('launch-app', async (event) => {
       icon: path.join(__dirname, '../public/icon.png')
     });
 
-    appWindow.loadURL('http://localhost:3000');
+    appWindow.loadURL('http://127.0.0.1:3000');
 
     appWindow.on('closed', () => {
       appWindow = null;
