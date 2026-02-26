@@ -42,7 +42,7 @@ export default function Chat({
   };
 
   return (
-    <div className={`flex flex-col h-full bg-neutral-950 ${className}`}>
+    <div className={`flex flex-col bg-neutral-950 ${className}`}>
       {showHeader && (
         <div className="p-3 border-b border-neutral-800 font-bold text-center uppercase tracking-wider text-xs text-neutral-500 bg-neutral-900/50 backdrop-blur-sm flex justify-between px-4">
           <span>Stream Chat</span>
