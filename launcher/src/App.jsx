@@ -17,11 +17,18 @@ function App() {
   const [status, setStatus] = useState(STATUS.NOT_INSTALLED);
   const [progress, setProgress] = useState(0);
   const [isElectron, setIsElectron] = useState(false);
+  const [appVersion, setAppVersion] = useState('0.0.0');
 
   useEffect(() => {
     // Check if running in Electron
     if (window.electron) {
       setIsElectron(true);
+
+      if (window.electron.ipcRenderer && window.electron.ipcRenderer.invoke) {
+        window.electron.ipcRenderer.invoke('get-app-version').then((version) => {
+          setAppVersion(version);
+        });
+      }
 
       // Listen for installation progress
       window.electron.ipcRenderer.on('install-progress', (event, value) => {
@@ -95,7 +102,7 @@ function App() {
       <Sidebar />
       <MainLayout>
         {/* Header / Logo Area */}
-        <div className="flex flex-col gap-2 mb-8">
+        <div className="flex flex-col gap-2 mb-8 app-drag-region">
            <div className="flex items-center gap-3">
              <img src="logo-full.png" alt="Beacon" className="h-16 object-contain" />
              <span className="text-xs text-orange-500 uppercase tracking-widest border border-orange-500/30 px-2 py-0.5 rounded bg-orange-500/10">Beta</span>
@@ -153,7 +160,7 @@ function App() {
         <div className="mt-8 pt-6 border-t border-gray-800 flex items-center justify-between">
            <div className="flex flex-col gap-1">
              <h1 className="text-3xl font-black text-white tracking-tight">BEACON</h1>
-             <span className="text-xs text-gray-500 font-mono">v0.1.0-alpha</span>
+             <span className="text-xs text-gray-500 font-mono">v{appVersion}</span>
            </div>
 
            <div className="flex items-center gap-6 w-1/2 max-w-md">

@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electron', {
       return () => ipcRenderer.removeListener(channel, subscription);
     },
     once: (channel, func) => ipcRenderer.once(channel, (event, ...args) => func(event, ...args)),
-    removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
+    removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
+    invoke: (channel, data) => ipcRenderer.invoke(channel, data)
   }
 });
