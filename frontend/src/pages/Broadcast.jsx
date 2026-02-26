@@ -3,6 +3,8 @@ import { Camera, Mic, MicOff, CameraOff, Settings, Monitor, Radio, Users, Percen
 import { useP2PSettings } from '../context/P2PContext';
 import Chat from '../components/Chat';
 import StreamSettings from '../components/StreamSettings';
+import PollCreator from '../components/PollCreator';
+import { usePoll } from '../hooks/usePoll';
 
 export default function Broadcast() {
   const { username, setCurrentStreamId } = useP2PSettings();
@@ -11,6 +13,7 @@ export default function Broadcast() {
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPollCreatorOpen, setIsPollCreatorOpen] = useState(false);
   const [title, setTitle] = useState('Building the next big thing on Beacon!');
   const [tags, setTags] = useState('Dev, Tech, Coding');
   const [notification, setNotification] = useState('');
@@ -24,6 +27,9 @@ export default function Broadcast() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const screenStreamRef = useRef(null);
+
+  // Poll hook
+  const { startPoll, activePoll, endPoll } = usePoll(username);
 
   useEffect(() => {
     if (isLive) {
@@ -184,6 +190,18 @@ export default function Broadcast() {
   const startAdBreak = () => {
     if (adBreakTimer > 0) return;
     setAdBreakTimer(60);
+  };
+
+  const handleStartPoll = (question, options) => {
+    startPoll(question, options);
+  };
+
+  const handlePollClick = () => {
+    if (activePoll) {
+      endPoll();
+    } else {
+      setIsPollCreatorOpen(true);
+    }
   };
 
   return (
@@ -419,7 +437,16 @@ export default function Broadcast() {
                <h3 className="font-poppins font-semibold text-white mb-4 text-sm uppercase tracking-wider text-neutral-400">Quick Actions</h3>
                <div className="grid grid-cols-2 gap-3">
                   <button className="p-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-medium text-white transition-colors border border-neutral-700">Raid Channel</button>
-                  <button className="p-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-medium text-white transition-colors border border-neutral-700">Start Poll</button>
+                  <button
+                    onClick={handlePollClick}
+                    className={`p-3 rounded-lg text-sm font-medium transition-colors border ${
+                      activePoll
+                        ? 'bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500/20'
+                        : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-700'
+                    }`}
+                  >
+                    {activePoll ? 'End Active Poll' : 'Start Poll'}
+                  </button>
                   <button className="p-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-medium text-white transition-colors border border-neutral-700">Manage Mods</button>
                   <button
                     onClick={startAdBreak}
@@ -438,6 +465,12 @@ export default function Broadcast() {
       </div>
       {/* Settings Modal */}
       <StreamSettings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      {/* Poll Creator Modal */}
+      <PollCreator
+        isOpen={isPollCreatorOpen}
+        onClose={() => setIsPollCreatorOpen(false)}
+        onStartPoll={handleStartPoll}
+      />
     </div>
   );
 }

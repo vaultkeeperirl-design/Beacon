@@ -18,6 +18,8 @@ const io = new Server(server, {
 
 // Track active streams (where host is present)
 const activeStreams = new Set();
+// Track active polls per stream
+const activePolls = new Map();
 
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
@@ -68,6 +70,11 @@ io.on('connection', (socket) => {
         // Broadcast updated participant count to the room (and acknowledged requester)
         const count = io.sockets.adapter.rooms.get(streamId)?.size || 0;
         io.to(streamId).emit('room-users-update', count);
+
+        // Send current active poll to the joining user
+        if (activePolls.has(streamId)) {
+          socket.emit('poll-update', activePolls.get(streamId));
+        }
     }
   });
 
@@ -125,6 +132,58 @@ io.on('connection', (socket) => {
       senderId: socket.id
     });
   });
+
+  // --- Poll Logic ---
+
+  socket.on('create-poll', ({ streamId, question, options }) => {
+    if (!streamId || socket.currentRoom !== streamId) return;
+
+    // Only host can create polls (simple check: username matches streamId)
+    // In a real app, use proper auth/permissions
+    if (socket.username !== streamId) return;
+
+    if (!question || !options || !Array.isArray(options) || options.length < 2) return;
+
+    const poll = {
+      id: Date.now(),
+      question,
+      options: options.map(opt => ({ text: opt, votes: 0 })),
+      totalVotes: 0,
+      isActive: true
+    };
+
+    activePolls.set(streamId, poll);
+    io.to(streamId).emit('poll-started', poll);
+  });
+
+  socket.on('vote-poll', ({ streamId, pollId, optionIndex }) => {
+    if (!streamId || socket.currentRoom !== streamId) return;
+
+    const poll = activePolls.get(streamId);
+    if (!poll || poll.id !== pollId || !poll.isActive) return;
+
+    if (optionIndex >= 0 && optionIndex < poll.options.length) {
+      poll.options[optionIndex].votes++;
+      poll.totalVotes++;
+
+      // Broadcast update
+      io.to(streamId).emit('poll-update', poll);
+    }
+  });
+
+  socket.on('end-poll', ({ streamId }) => {
+    if (!streamId || socket.currentRoom !== streamId) return;
+    if (socket.username !== streamId) return;
+
+    if (activePolls.has(streamId)) {
+      const poll = activePolls.get(streamId);
+      poll.isActive = false;
+      io.to(streamId).emit('poll-ended', poll);
+      activePolls.delete(streamId);
+    }
+  });
+
+  // ------------------
 
   // WebRTC Signaling
   socket.on('signal', ({ to, signal }) => {

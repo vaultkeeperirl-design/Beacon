@@ -1,0 +1,38 @@
+
+> beacon-monorepo@ dev:web /app
+> concurrently "cd backend && pnpm dev" "cd frontend && pnpm dev"
+
+[0]
+[0] > backend@1.0.4 dev /app/backend
+[0] > nodemon server.js
+[0]
+[1]
+[1] > frontend@1.0.3 dev /app/frontend
+[1] > vite
+[1]
+[0] [33m[nodemon] 3.1.14[39m
+[0] [33m[nodemon] to restart at any time, enter `rs`[39m
+[0] [33m[nodemon] watching path(s): *.*[39m
+[0] [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[0] [32m[nodemon] starting `node server.js`[39m
+[0] Server running on port 3000
+[1]
+[1]   VITE v7.3.1  ready in 376 ms
+[1]
+[1]   ➜  Local:   http://localhost:5173/
+[1]   ➜  Network: use --host to expose
+[0] New client connected: S0UamIKWkyToa3KnAAAB
+[0] Client disconnected: S0UamIKWkyToa3KnAAAB
+[0] New client connected: aSs6b24CWDLv0Yu6AAAD
+[0] Client disconnected: aSs6b24CWDLv0Yu6AAAD
+[0] New client connected: 3C4LALddEo27hr74AAAF
+[0] Client disconnected: 3C4LALddEo27hr74AAAF
+[0] New client connected: ooEDsDH_PTuayFQMAAAH
+[0] Socket ooEDsDH_PTuayFQMAAAH (Anon_1175) joined stream Anon_1175
+[0] Client disconnected: ooEDsDH_PTuayFQMAAAH
+[0] New client connected: fSvjGQ6cfgn-Fu6sAAAJ
+[0] Socket fSvjGQ6cfgn-Fu6sAAAJ (Anon_1196) joined stream Anon_1196
+[0] Client disconnected: fSvjGQ6cfgn-Fu6sAAAJ
+[0] [32m[nodemon] restarting due to changes...[39m
+[0] [32m[nodemon] starting `node server.js`[39m
+[0] Server running on port 3000
