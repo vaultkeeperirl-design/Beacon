@@ -173,18 +173,6 @@ function createWindow() {
     // Otherwise, default minimize behavior (taskbar) applies
   });
 
-  mainWindow.on('close', (event) => {
-    if (!isQuitting) {
-      // Only hide to tray if the tray was successfully created
-      if (tray) {
-        event.preventDefault();
-        mainWindow.hide();
-        return false;
-      }
-      // If tray failed, we allow normal close (which might quit the app depending on window-all-closed)
-    }
-  });
-
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
