@@ -21,6 +21,55 @@ function App() {
   const [appVersion, setAppVersion] = useState('0.0.0');
   const [backendVersion, setBackendVersion] = useState(null);
   const [installStatus, setInstallStatus] = useState('');
+  const [networkStats, setNetworkStats] = useState({
+    status: 'Offline',
+    meshNodes: 0
+  });
+
+  useEffect(() => {
+    // Poll for network stats
+    const fetchStats = async () => {
+      // In production/electron, the backend runs on a dynamic port.
+      // However, the launcher currently doesn't know this port.
+      // Since the launcher spawns the backend, we might need a way to know the port.
+      // Or, we assume the user has launched the app and we rely on 'localhost' if we knew the port.
+      //
+      // BUT: The backend is started by 'launchStreamingApp' in main.js.
+      // If the backend isn't running, we can't fetch stats.
+      // For now, let's assume if status is PLAYING, we might try to fetch.
+      //
+      // WAIT: The requirement is "Launcher acts as a P2P node... even before you launch".
+      // This implies the backend should be running in the background.
+      // Currently `main.js` only starts backend on 'launch-app'.
+      //
+      // For this step, we will implement the polling logic, but it will only succeed
+      // if the backend is actually running.
+      // If we want it "always on", we'd need to modify main.js to auto-start backend.
+      // Given the current architecture, we'll poll `http://127.0.0.1:<PORT>`
+      // We need to know the port.
+      //
+      // LIMITATION: The frontend (Launcher UI) doesn't know the dynamic port picked by the main process.
+      // We need to add an IPC handler to get the port or proxy the request.
+
+      if (window.electron && window.electron.ipcRenderer) {
+          try {
+             // We'll need to add 'get-node-stats' to main.js or similar
+             // For now, let's simulate the UI update part until we wire up the IPC.
+          } catch (e) {
+             console.error(e);
+          }
+      }
+    };
+
+    // Placeholder: We will use an IPC event to receive stats updates from main process
+    // because main process knows the port and can query the backend.
+    if (window.electron) {
+        window.electron.ipcRenderer.on('node-stats-update', (event, stats) => {
+            setNetworkStats(stats);
+        });
+    }
+
+  }, []);
 
   useEffect(() => {
     // Check if running in Electron
@@ -39,6 +88,8 @@ function App() {
                 window.electron.ipcRenderer.invoke('get-backend-version').then(ver => {
                     if (ver) setBackendVersion(ver);
                 });
+                // Request to start background node if installed
+                window.electron.ipcRenderer.send('start-background-node');
             } else {
                 setStatus(STATUS.NOT_INSTALLED);
             }
@@ -183,12 +234,12 @@ function App() {
                 </h3>
                 <div className="space-y-2 text-sm text-gray-400">
                   <div className="flex justify-between">
-                    <span>Signaling Server</span>
-                    <span className="text-green-400">Online</span>
+                    <span>Node Status</span>
+                    <span className={networkStats.status === 'Online' ? "text-green-400" : "text-gray-500"}>{networkStats.status}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Mesh Nodes</span>
-                    <span className="text-orange-400">1,240 Active</span>
+                    <span className="text-orange-400">{networkStats.meshNodes} Active</span>
                   </div>
                 </div>
               </div>

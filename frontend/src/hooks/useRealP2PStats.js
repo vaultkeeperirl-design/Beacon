@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSocket } from './useSocket';
+import { useP2PMesh } from './useP2PMesh';
 
 export function useRealP2PStats(isSharing, settings, streamId, username) {
   const { socket, isConnected } = useSocket();
+  const meshStats = useP2PMesh(); // Use the real mesh stats
+
   const [stats, setStats] = useState({
     uploadSpeed: 0,
     downloadSpeed: 0,
@@ -12,17 +15,9 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
     bufferHealth: 5.0,
   });
 
-  const isBroadcasting = streamId === username;
-
+  // Manage room joining/leaving
   useEffect(() => {
     if (!socket || !isConnected) return;
-
-    const handleUserCount = (count) => {
-      // Subtract 1 to exclude self, but show 0 if negative
-      setStats(prev => ({ ...prev, peersConnected: Math.max(0, count - 1) }));
-    };
-
-    socket.on('room-users-update', handleUserCount);
 
     if (streamId) {
       socket.emit('join-stream', { streamId, username });
@@ -30,55 +25,49 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
       socket.emit('leave-stream');
     }
 
-    return () => {
-      socket.off('room-users-update', handleUserCount);
-      // Reset peers when streamId changes or we disconnect to avoid stale stats
-      setStats(prev => ({ ...prev, peersConnected: 0 }));
-    };
+    // No return cleanup for socket emit, but we handle state reset below
   }, [socket, isConnected, streamId, username]);
 
+  // Sync mesh stats to exposed stats state
+  // We use a separate useEffect to synchronize meshStats changes to the local stats state.
+  // Although this updates state inside an effect (derived state), it's necessary because 'credits' and 'totalUploaded' are accumulators.
   useEffect(() => {
-    if (!streamId) return;
+    // Use a timeout to ensure state updates happen in the next tick, avoiding synchronous setState warnings in effects.
+    const timer = setTimeout(() => {
+        if (!streamId) {
+            setStats(prev => {
+                if (prev.peersConnected === 0 && prev.uploadSpeed === 0) return prev;
+                return {
+                    ...prev,
+                    uploadSpeed: 0,
+                    downloadSpeed: 0,
+                    peersConnected: 0,
+                    latency: 0
+                };
+            });
+        } else {
+             setStats(prev => {
+                 const realUpload = meshStats.uploadSpeed;
+                 const realDownload = meshStats.downloadSpeed;
 
-    const interval = setInterval(() => {
-      setStats(prev => {
-         let newUpload = 0;
-         let newDownload = 0;
+                 const earnedCredits = realUpload * 0.01;
 
-         if (isBroadcasting) {
-            // Broadcasters upload the source stream
-            newUpload = 12 + Math.random() * 8;
-            newDownload = 0.5 + Math.random(); // Signaling & management traffic
-         } else {
-            // Viewers download the stream
-            newDownload = 6 + Math.random() * 4;
-            // Only upload if sharing is enabled
-            newUpload = isSharing ? (1 + Math.random() * 3) : 0;
-         }
+                 return {
+                     ...prev,
+                     uploadSpeed: realUpload,
+                     downloadSpeed: realDownload,
+                     peersConnected: meshStats.connectedPeers,
+                     credits: parseFloat((prev.credits + earnedCredits).toFixed(4)),
+                     totalUploaded: parseFloat((prev.totalUploaded + (realUpload / 8 / 1024)).toFixed(4)),
+                     bufferHealth: 5.0 + (Math.random() - 0.5),
+                     latency: meshStats.latency
+                 };
+            });
+        }
+    }, 0);
 
-         const earnedCredits = newUpload * 0.01;
-
-         // Simulate fluctuating download speed when active
-         // We use a separate variable to avoid conflict with the let above, or just reassign
-         // Reassigning to simulate fluctuation based on previous value
-         newDownload = Math.max(5, Math.min(100, prev.downloadSpeed + (Math.random() - 0.5) * 10));
-
-         return {
-             ...prev,
-             uploadSpeed: parseFloat(newUpload.toFixed(1)),
-             downloadSpeed: parseFloat(newDownload.toFixed(1)),
-             credits: parseFloat((prev.credits + earnedCredits).toFixed(4)),
-             totalUploaded: parseFloat((prev.totalUploaded + (newUpload / 8 / 1024)).toFixed(4)),
-             bufferHealth: 5.0 + (Math.random() - 0.5),
-         };
-      });
-    }, 1000);
-
-    return () => {
-      clearInterval(interval);
-      setStats(prev => ({ ...prev, uploadSpeed: 0, downloadSpeed: 0 }));
-    };
-  }, [isSharing, streamId, isBroadcasting]);
+    return () => clearTimeout(timer);
+  }, [meshStats, streamId]);
 
   return stats;
 }

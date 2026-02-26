@@ -5,7 +5,7 @@ import { X, Server, Wifi, Zap, Activity } from 'lucide-react';
 const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
   // Using useP2PSettings instead of useP2P to avoid unnecessary re-renders when stats update.
   // Settings only change when the user interacts with this modal.
-  const { settings, updateSettings, isSharing, setIsSharing } = useP2PSettings();
+  const { settings, updateSettings, isSharing, setIsSharing, username, updateUsername } = useP2PSettings();
 
   if (!isOpen) return null;
 
@@ -25,7 +25,20 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
           Stream Configuration
         </h2>
 
-        <div className="space-y-6">
+        <div className="space-y-6 h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+           {/* User Settings */}
+          <div className="space-y-3 pb-4 border-b border-neutral-800">
+            <label htmlFor="username" className="text-sm font-semibold text-neutral-300">Display Name</label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => updateUsername(e.target.value)}
+              className="w-full bg-neutral-800 text-white rounded px-3 py-2 text-sm border border-neutral-700 focus:outline-none focus:border-beacon-500"
+              placeholder="Enter your username"
+            />
+          </div>
+
           {/* Quality Selection */}
           <div className="space-y-3">
             <label className="text-sm font-semibold text-neutral-300">Video Quality</label>

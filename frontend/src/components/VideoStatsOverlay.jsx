@@ -17,7 +17,7 @@ export default function VideoStatsOverlay() {
         </div>
         <div className="flex justify-between gap-8">
           <span className="text-white/60">Latency:</span>
-          <span>{settings.lowLatency ? 'Low (~2s)' : 'Standard (~8s)'}</span>
+          <span>{stats.latency ? `${stats.latency}ms` : (settings.lowLatency ? 'Low (~2s)' : 'Standard (~8s)')}</span>
         </div>
         <div className="flex justify-between gap-8">
           <span className="text-white/60">Peers:</span>

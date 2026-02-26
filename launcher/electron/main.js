@@ -121,6 +121,9 @@ async function startBackend() {
     console.error(`Backend Error: ${data}`);
   });
 
+  // Start stats polling
+  startStatsPolling(port);
+
   const serverPromise = waitForServer(port);
 
   const exitPromise = new Promise((_, reject) => {
@@ -137,6 +140,31 @@ async function startBackend() {
 
   await Promise.race([serverPromise, exitPromise]);
   return port;
+}
+
+let statsInterval;
+function startStatsPolling(port) {
+  if (statsInterval) clearInterval(statsInterval);
+
+  statsInterval = setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+
+    http.get(`http://127.0.0.1:${port}/api/node-stats`, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        try {
+          const stats = JSON.parse(data);
+          mainWindow.webContents.send('node-stats-update', stats);
+        } catch (e) {
+          console.error('Error parsing stats:', e);
+        }
+      });
+    }).on('error', (err) => {
+       // Backend might be starting up or shutting down
+       mainWindow.webContents.send('node-stats-update', { status: 'Offline', meshNodes: 0 });
+    });
+  }, 2000); // Poll every 2 seconds
 }
 
 async function performInstall(event) {
@@ -228,6 +256,17 @@ app.on('before-quit', () => {
 });
 
 // IPC Handlers
+
+ipcMain.on('start-background-node', async () => {
+  if (!backendProcess) {
+     try {
+       await startBackend();
+       console.log("Background node started.");
+     } catch (e) {
+       console.error("Failed to start background node:", e);
+     }
+  }
+});
 
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
