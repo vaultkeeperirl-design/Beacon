@@ -396,7 +396,7 @@ export default function Broadcast() {
          <div className="space-y-6">
             <div className="bg-neutral-900/50 rounded-xl border border-neutral-800 h-[600px] flex flex-col overflow-hidden">
                {isLive ? (
-                  <Chat streamId={username} className="relative hidden lg:flex" />
+                  <Chat streamId={username} className="relative hidden lg:flex h-full" />
                ) : (
                   <>
                     <div className="p-4 border-b border-neutral-800 bg-neutral-900 font-semibold text-sm text-neutral-400 uppercase tracking-wider text-center">
