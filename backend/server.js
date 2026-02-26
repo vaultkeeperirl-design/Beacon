@@ -149,11 +149,15 @@ io.on('connection', (socket) => {
       question,
       options: options.map(opt => ({ text: opt, votes: 0 })),
       totalVotes: 0,
-      isActive: true
+      isActive: true,
+      voters: new Set() // Track who voted
     };
 
     activePolls.set(streamId, poll);
-    io.to(streamId).emit('poll-started', poll);
+    // Note: We don't send 'voters' Set to client, we should probably strip it or rely on JSON.stringify behavior
+    // (Sets are serialized as {} in JSON.stringify unless handled, which is fine for hiding data but we should be clean)
+    const { voters, ...pollData } = poll;
+    io.to(streamId).emit('poll-started', pollData);
   });
 
   socket.on('vote-poll', ({ streamId, pollId, optionIndex }) => {
@@ -162,12 +166,18 @@ io.on('connection', (socket) => {
     const poll = activePolls.get(streamId);
     if (!poll || poll.id !== pollId || !poll.isActive) return;
 
+    if (poll.voters.has(socket.id)) {
+        return; // Already voted
+    }
+
     if (optionIndex >= 0 && optionIndex < poll.options.length) {
       poll.options[optionIndex].votes++;
       poll.totalVotes++;
+      poll.voters.add(socket.id);
 
-      // Broadcast update
-      io.to(streamId).emit('poll-update', poll);
+      // Broadcast update (exclude voters set)
+      const { voters, ...pollData } = poll;
+      io.to(streamId).emit('poll-update', pollData);
     }
   });
 
