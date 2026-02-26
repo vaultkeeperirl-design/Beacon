@@ -5,6 +5,7 @@ import ProgressBar from './components/ProgressBar';
 import { Play, Download, RefreshCw, Radio, Trash2 } from 'lucide-react';
 
 const STATUS = {
+  LOADING: 'LOADING',
   NOT_INSTALLED: 'NOT_INSTALLED',
   INSTALLING: 'INSTALLING',
   INSTALLED: 'INSTALLED',
@@ -14,10 +15,12 @@ const STATUS = {
 };
 
 function App() {
-  const [status, setStatus] = useState(STATUS.NOT_INSTALLED);
+  const [status, setStatus] = useState(STATUS.LOADING);
   const [progress, setProgress] = useState(0);
   const [isElectron, setIsElectron] = useState(false);
   const [appVersion, setAppVersion] = useState('0.0.0');
+  const [backendVersion, setBackendVersion] = useState(null);
+  const [installStatus, setInstallStatus] = useState('');
 
   useEffect(() => {
     // Check if running in Electron
@@ -33,6 +36,9 @@ function App() {
         window.electron.ipcRenderer.invoke('check-install').then((isInstalled) => {
             if (isInstalled) {
                 setStatus(STATUS.INSTALLED);
+                window.electron.ipcRenderer.invoke('get-backend-version').then(ver => {
+                    if (ver) setBackendVersion(ver);
+                });
             } else {
                 setStatus(STATUS.NOT_INSTALLED);
             }
@@ -44,8 +50,15 @@ function App() {
         setProgress(value);
       });
 
+      window.electron.ipcRenderer.on('install-status', (event, message) => {
+        setInstallStatus(message);
+      });
+
       window.electron.ipcRenderer.on('install-complete', () => {
         setStatus(STATUS.INSTALLED);
+        window.electron.ipcRenderer.invoke('get-backend-version').then(ver => {
+            if (ver) setBackendVersion(ver);
+        });
       });
 
       // Listen for launch status
@@ -59,6 +72,7 @@ function App() {
 
       window.electron.ipcRenderer.on('uninstall-complete', () => {
         setStatus(STATUS.NOT_INSTALLED);
+        setBackendVersion(null);
       });
 
       window.electron.ipcRenderer.on('launch-error', (event, error) => {
@@ -191,12 +205,21 @@ function App() {
         <div className="mt-8 pt-6 border-t border-gray-800 flex items-center justify-between">
            <div className="flex flex-col gap-1">
              <h1 className="text-3xl font-black text-white tracking-tight">BEACON</h1>
-             <span className="text-xs text-gray-500 font-mono">v{appVersion}</span>
+             <div className="flex flex-col">
+                <span className="text-xs text-gray-500 font-mono">Launcher v{appVersion}</span>
+                {backendVersion && <span className="text-xs text-gray-600 font-mono">Core v{backendVersion}</span>}
+             </div>
            </div>
 
            <div className="flex items-center gap-6 w-1/2 max-w-md">
              {/* Action Button */}
              <div className="flex-1">
+               {status === STATUS.LOADING && (
+                 <button disabled className="w-full bg-gray-800 text-gray-500 font-bold py-4 px-8 rounded border border-gray-700 cursor-wait flex items-center justify-center gap-2 uppercase tracking-wide text-lg">
+                   <RefreshCw className="w-6 h-6 animate-spin" /> Checking...
+                 </button>
+               )}
+
                {status === STATUS.NOT_INSTALLED && (
                  <button
                    onClick={handleInstall}
@@ -211,7 +234,7 @@ function App() {
                     <button disabled className="w-full bg-gray-700 text-gray-400 font-bold py-4 px-8 rounded cursor-not-allowed flex items-center justify-center gap-2 uppercase tracking-wide text-lg">
                       {status === STATUS.INSTALLING ? 'Installing...' : 'Updating...'}
                     </button>
-                    <ProgressBar value={progress} label={status === STATUS.INSTALLING ? "Downloading assets..." : "Verifying files..."} />
+                    <ProgressBar value={progress} label={installStatus || (status === STATUS.INSTALLING ? "Downloading assets..." : "Verifying files...")} />
                  </div>
                )}
 

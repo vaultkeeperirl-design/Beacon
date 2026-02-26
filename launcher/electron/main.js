@@ -159,6 +159,7 @@ async function performInstall(event) {
 
     // Report initial progress
     event.sender.send('install-progress', 10);
+    event.sender.send('install-status', 'Preparing installation...');
 
     // Stop backend if running before updating/installing
     if (backendProcess) {
@@ -168,6 +169,7 @@ async function performInstall(event) {
     }
 
     console.log(`Copying from ${sourcePath} to ${installPath}`);
+    event.sender.send('install-status', 'Copying application files...');
 
     // In dev mode, we copy everything including node_modules to ensure functionality.
     // In production, resources/backend should already contain necessary files (including bundled modules).
@@ -180,6 +182,7 @@ async function performInstall(event) {
     await fsPromises.cp(sourcePath, installPath, { recursive: true, filter });
 
     event.sender.send('install-progress', 100);
+    event.sender.send('install-status', 'Installation complete!');
     event.sender.send('install-complete');
 
   } catch (error) {
@@ -217,6 +220,19 @@ ipcMain.handle('get-app-version', () => {
 ipcMain.handle('check-install', () => {
   const scriptPath = path.join(installPath, 'server.js');
   return fs.existsSync(scriptPath);
+});
+
+ipcMain.handle('get-backend-version', async () => {
+    try {
+        const pkgPath = path.join(installPath, 'package.json');
+        if (fs.existsSync(pkgPath)) {
+            const pkg = JSON.parse(await fsPromises.readFile(pkgPath, 'utf8'));
+            return pkg.version;
+        }
+    } catch (e) {
+        console.error('Failed to read backend version', e);
+    }
+    return null;
 });
 
 ipcMain.on('install-app', async (event) => {
