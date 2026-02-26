@@ -7,6 +7,8 @@ import Broadcast from './pages/Broadcast';
 import Wallet from './pages/Wallet';
 import Following from './pages/Following';
 import Channel from './pages/Channel';
+import TermsOfService from './pages/TermsOfService';
+import CommunityGuidelines from './pages/CommunityGuidelines';
 import { P2PProvider } from './context/P2PContext';
 import { FollowingProvider } from './context/FollowingContext';
 
@@ -24,6 +26,8 @@ function App() {
               <Route path="broadcast" element={<Broadcast />} />
               <Route path="wallet" element={<Wallet />} />
               <Route path="following" element={<Following />} />
+              <Route path="terms" element={<TermsOfService />} />
+              <Route path="guidelines" element={<CommunityGuidelines />} />
             </Route>
           </Routes>
         </BrowserRouter>

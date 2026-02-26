@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
-import { Home, Users, BarChart2, MessageSquare, Radio, Compass } from 'lucide-react';
+import { Home, Users, BarChart2, MessageSquare, Radio, Compass, ShieldCheck, FileText } from 'lucide-react';
 import P2PStats from './P2PStats';
 
 const Sidebar = memo(function Sidebar() {
@@ -23,6 +23,20 @@ const Sidebar = memo(function Sidebar() {
           ))}
 
           <div className="pt-6 border-t border-neutral-800 mt-4">
+            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-4 px-3">
+               Legal
+            </h3>
+            <div className="space-y-1 mb-6">
+                <Link to="/terms" className="flex items-center gap-3 px-3 py-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors group">
+                    <FileText className="w-5 h-5 group-hover:text-beacon-500 transition-colors" />
+                    <span className="font-medium text-sm">Terms of Service</span>
+                </Link>
+                <Link to="/guidelines" className="flex items-center gap-3 px-3 py-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors group">
+                    <ShieldCheck className="w-5 h-5 group-hover:text-beacon-500 transition-colors" />
+                    <span className="font-medium text-sm">Guidelines</span>
+                </Link>
+            </div>
+
             <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-4 px-3">
               Recommended Channels
             </h3>

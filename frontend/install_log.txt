@@ -1,0 +1,53 @@
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +328
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 10.28.0 → 10.30.3.   │
+   │   Changelog: https://pnpm.io/v/10.30.3   │
+   │     To update, run: pnpm add -g pnpm     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+
+Progress: resolved 328, reused 0, downloaded 40, added 12
+Progress: resolved 328, reused 0, downloaded 111, added 49
+Progress: resolved 328, reused 0, downloaded 232, added 207
+Progress: resolved 328, reused 0, downloaded 328, added 328, done
+
+dependencies:
++ lucide-react 0.575.0
++ react 19.2.4
++ react-dom 19.2.4
++ react-router-dom 7.13.1
++ simple-peer 9.11.1
++ socket.io-client 4.8.3
+
+devDependencies:
++ @eslint/js 9.39.3
++ @testing-library/jest-dom 6.9.1
++ @testing-library/react 16.3.2
++ @testing-library/user-event 14.6.1
++ @types/react 19.2.14
++ @types/react-dom 19.2.3
++ @vitejs/plugin-react 5.1.4
++ autoprefixer 10.4.24
++ eslint 9.39.3
++ eslint-plugin-react-hooks 7.0.1
++ eslint-plugin-react-refresh 0.4.26
++ globals 16.5.0
++ jsdom 28.1.0
++ postcss 8.5.6
++ tailwindcss 3.4.19
++ vite 7.3.1
++ vitest 4.0.18
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: esbuild@0.27.3.                                     │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 4.9s using pnpm v10.28.0
