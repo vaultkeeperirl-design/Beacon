@@ -8,6 +8,12 @@
     "type": "git",
     "url": "https://github.com/vaultkeeperirl-design/Beacon.git"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild"
+    ]
+  },
   "scripts": {
     "dev": "concurrently \"pnpm run dev:react\" \"pnpm run dev:electron\"",
     "dev:react": "vite",
