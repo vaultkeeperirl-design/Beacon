@@ -1,6 +1,6 @@
 {
   "name": "beacon-launcher",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Launcher for Beacon P2P Streaming Platform",
   "author": "Beacon Team",
   "main": "electron/main.js",
