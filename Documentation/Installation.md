@@ -46,7 +46,60 @@ Before you begin, ensure you have the following installed:
 
     This will install React, Tailwind CSS, Vite, and other frontend dependencies.
 
-## Automatic Builds
+4.  **Launcher Installation (Desktop App)**
+
+    Navigate to the `launcher` directory to set up the desktop application wrapper:
+
+    ```bash
+    cd ../launcher
+    pnpm install
+    ```
+
+    This installs Electron and the build tools required to package the application.
+
+## Running the Desktop App (Development)
+
+To run the full desktop experience (Launcher + Backend + Frontend) in development mode:
+
+1.  Navigate to the `launcher` directory:
+    ```bash
+    cd launcher
+    ```
+2.  Start the development environment:
+    ```bash
+    pnpm dev
+    ```
+    This will concurrently start the React frontend, the Electron main process, and launch the application window.
+
+## Building the Executable
+
+If you want to build the production executable yourself (instead of using the pre-built releases):
+
+1.  Navigate to the `launcher` directory:
+    ```bash
+    cd launcher
+    ```
+2.  Run the build command for your platform:
+
+    *   **Windows**:
+        ```bash
+        pnpm build:win
+        ```
+    *   **Linux**:
+        ```bash
+        pnpm build:linux
+        ```
+    *   **All Platforms**:
+        ```bash
+        pnpm build
+        ```
+
+    The build process will automatically:
+    1.  Build the frontend (`frontend/dist`).
+    2.  Copy the backend code.
+    3.  Package everything into an executable in the `launcher/dist` folder.
+
+## Automatic Builds (Releases)
 
 For a ready-to-use version of the Beacon Launcher, you do not need to build it yourself.
 
