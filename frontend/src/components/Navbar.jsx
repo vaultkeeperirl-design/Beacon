@@ -2,8 +2,11 @@ import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, User, Radio } from 'lucide-react';
 import WalletBalance from './WalletBalance';
+import { useP2PSettings } from '../context/P2PContext';
 
 const Navbar = memo(function Navbar() {
+  const { username } = useP2PSettings();
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-neutral-900 border-b border-neutral-800 flex items-center px-4 justify-between">
       <div className="flex items-center gap-4">
@@ -40,9 +43,11 @@ const Navbar = memo(function Navbar() {
             </button>
         </Link>
 
-        <button className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 hover:border-beacon-500 transition-colors">
-          <User className="w-4 h-4 text-neutral-400" />
-        </button>
+        <Link to={`/channel/${username}`}>
+          <button className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 hover:border-beacon-500 transition-colors">
+            <User className="w-4 h-4 text-neutral-400" />
+          </button>
+        </Link>
       </div>
     </nav>
   );
