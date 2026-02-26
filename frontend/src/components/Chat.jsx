@@ -13,7 +13,7 @@ const ChatMessage = memo(({ msg }) => (
 
 ChatMessage.displayName = 'ChatMessage';
 
-export default function Chat({
+const Chat = memo(function Chat({
   streamId,
   className = "fixed right-0 top-16 bottom-0 w-80 z-40 hidden lg:flex shadow-xl border-l border-neutral-800",
   showHeader = true
@@ -85,4 +85,6 @@ export default function Chat({
       </form>
     </div>
   );
-}
+});
+
+export default Chat;
