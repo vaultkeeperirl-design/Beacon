@@ -61,6 +61,11 @@ function App() {
         setStatus(STATUS.NOT_INSTALLED);
       });
 
+      window.electron.ipcRenderer.on('launch-error', (event, error) => {
+        setStatus(STATUS.INSTALLED);
+        alert(`Failed to launch app: ${error}`);
+      });
+
     }
   }, []);
 
@@ -210,17 +215,21 @@ function App() {
                  </div>
                )}
 
-               {(status === STATUS.INSTALLED || status === STATUS.PLAYING) && (
+               {(status === STATUS.INSTALLED || status === STATUS.PLAYING || status === STATUS.LAUNCHING) && (
                  <button
                    onClick={handleLaunch}
-                   disabled={status === STATUS.PLAYING}
+                   disabled={status === STATUS.PLAYING || status === STATUS.LAUNCHING}
                    className={`w-full font-bold py-4 px-8 rounded transition-all flex items-center justify-center gap-2 uppercase tracking-wide text-lg shadow-[0_0_20px_rgba(249,115,22,0.6)]
-                     ${status === STATUS.PLAYING
+                     ${status === STATUS.PLAYING || status === STATUS.LAUNCHING
                        ? 'bg-gray-700 text-gray-400 cursor-default'
                        : 'bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white transform hover:scale-[1.02] active:scale-[0.98]'
                      }`}
                  >
-                   {status === STATUS.PLAYING ? 'Running' : (
+                   {status === STATUS.PLAYING ? 'Running' : status === STATUS.LAUNCHING ? (
+                     <>
+                       <RefreshCw className="w-6 h-6 animate-spin" /> Launching...
+                     </>
+                   ) : (
                      <>
                        <Play className="w-6 h-6 fill-current" /> Launch
                      </>
@@ -240,7 +249,7 @@ function App() {
                     <RefreshCw className={`w-5 h-5 ${status === STATUS.UPDATING ? 'animate-spin text-orange-500' : ''}`} />
                 </button>
 
-                {status === STATUS.INSTALLED && (
+                {(status === STATUS.INSTALLED || status === STATUS.LAUNCHING) && (
                     <button
                         onClick={handleUninstall}
                         className="p-3 text-gray-500 hover:text-red-500 transition-colors rounded hover:bg-gray-800"

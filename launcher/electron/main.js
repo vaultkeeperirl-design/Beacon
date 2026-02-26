@@ -45,17 +45,30 @@ function createWindow() {
 }
 
 function waitForServer(port) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    const maxAttempts = 60; // 30 seconds total
+
     const check = () => {
-      const req = http.get(`http://localhost:${port}`, (res) => {
+      attempts++;
+      // Use 127.0.0.1 to avoid IPv4/IPv6 ambiguity on localhost
+      const req = http.get(`http://127.0.0.1:${port}`, (res) => {
         if (res.statusCode === 200) {
           resolve();
         } else {
           res.resume();
-          setTimeout(check, 500);
+          if (attempts >= maxAttempts) {
+            reject(new Error('Timeout waiting for backend server'));
+          } else {
+            setTimeout(check, 500);
+          }
         }
       }).on('error', () => {
-        setTimeout(check, 500);
+        if (attempts >= maxAttempts) {
+          reject(new Error('Timeout waiting for backend server'));
+        } else {
+          setTimeout(check, 500);
+        }
       });
       req.end();
     };
@@ -89,12 +102,20 @@ async function startBackend() {
     console.error(`Backend Error: ${data}`);
   });
 
-  backendProcess.on('close', (code) => {
-    console.log(`Backend exited with code ${code}`);
-    backendProcess = null;
+  const serverPromise = waitForServer(3000);
+
+  const exitPromise = new Promise((_, reject) => {
+    // Only listen for 'close' if the process is still running
+    if (backendProcess) {
+      backendProcess.once('close', (code) => {
+        console.log(`Backend exited prematurely with code ${code}`);
+        backendProcess = null;
+        reject(new Error(`Backend exited with code ${code}`));
+      });
+    }
   });
 
-  await waitForServer(3000);
+  await Promise.race([serverPromise, exitPromise]);
 }
 
 async function performInstall(event) {
@@ -211,32 +232,41 @@ ipcMain.on('launch-app', async (event) => {
     return;
   }
 
-  await startBackend();
+  try {
+    await startBackend();
 
-  appWindow = new BrowserWindow({
-    width: 1280,
-    height: 720,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true
-    },
-    autoHideMenuBar: true,
-    title: 'Beacon Streaming',
-    icon: path.join(__dirname, '../public/icon.png')
-  });
+    appWindow = new BrowserWindow({
+      width: 1280,
+      height: 720,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true
+      },
+      autoHideMenuBar: true,
+      title: 'Beacon Streaming',
+      icon: path.join(__dirname, '../public/icon.png')
+    });
 
-  appWindow.loadURL('http://localhost:3000');
+    appWindow.loadURL('http://127.0.0.1:3000');
 
-  appWindow.on('closed', () => {
-    appWindow = null;
+    appWindow.on('closed', () => {
+      appWindow = null;
+      if (backendProcess) {
+        backendProcess.kill();
+        backendProcess = null;
+      }
+      if (mainWindow) {
+        mainWindow.webContents.send('app-closed');
+      }
+    });
+
+    event.sender.send('app-launched');
+  } catch (error) {
+    console.error('Launch failed:', error);
     if (backendProcess) {
       backendProcess.kill();
       backendProcess = null;
     }
-    if (mainWindow) {
-      mainWindow.webContents.send('app-closed');
-    }
-  });
-
-  event.sender.send('app-launched');
+    event.sender.send('launch-error', error.message);
+  }
 });
