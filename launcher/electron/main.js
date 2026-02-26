@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const { fork } = require('child_process');
 const isDev = require('electron-is-dev');
@@ -11,6 +11,8 @@ let mainWindow;
 let backendProcess;
 let backendPort;
 let appWindow;
+let tray = null;
+let isQuitting = false;
 
 const installPath = path.join(app.getPath('userData'), 'beacon-backend');
 
@@ -26,6 +28,114 @@ function getFreePort() {
       });
     });
   });
+}
+
+function createTray() {
+  try {
+    const iconPath = isDev
+      ? path.join(__dirname, '../public/icon.png')
+      : path.join(process.resourcesPath, 'public/icon.png');
+
+    // Fallback if the first path doesn't exist, try the other one just in case
+    // This is a safety measure to ensure we can load the icon.
+    let finalIconPath = iconPath;
+    let trayImage = null;
+
+    if (fs.existsSync(finalIconPath)) {
+      trayImage = nativeImage.createFromPath(finalIconPath);
+    } else {
+      console.warn(`Tray icon not found at ${finalIconPath}, trying fallback...`);
+      // Try the alternative path
+      const altPath = isDev
+        ? path.join(process.resourcesPath, 'public/icon.png')
+        : path.join(__dirname, '../public/icon.png');
+
+      if (fs.existsSync(altPath)) {
+        finalIconPath = altPath;
+        trayImage = nativeImage.createFromPath(finalIconPath);
+      } else {
+         // Last resort: try to find it relative to app path
+         const appPath = app.getAppPath();
+         const relativePath = path.join(appPath, 'public/icon.png');
+         if (fs.existsSync(relativePath)) {
+            finalIconPath = relativePath;
+            trayImage = nativeImage.createFromPath(finalIconPath);
+         } else {
+            console.error('Tray icon could not be found in any expected location.');
+         }
+      }
+    }
+
+    // Double check if image is valid/empty
+    if (!trayImage || trayImage.isEmpty()) {
+       console.warn('Tray image is empty or invalid. Trying to use hardcoded fallback icon.');
+       // Simple 16x16 orange square icon (Beacon color)
+       const fallbackIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAA3SURBVDhPY/wPBAw45P8D4R8oDwwDch8D2Qx45T8Q/oHywDAg9zGQzYBX/gPhHygPDANyHwPZDAD9CR0D+2XUdgAAAABJRU5ErkJggg==';
+       trayImage = nativeImage.createFromDataURL(fallbackIcon);
+    }
+
+    if (trayImage && !trayImage.isEmpty()) {
+      console.log(`Creating tray with icon at: ${finalIconPath || 'fallback'}`);
+      tray = new Tray(trayImage);
+      tray.setToolTip('Beacon Launcher');
+    } else {
+       console.error('Failed to create tray: No valid icon image found even after fallback.');
+       tray = null;
+       return;
+    }
+
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Open Launcher',
+        click: () => {
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        }
+      },
+      {
+        label: 'Launch Beacon Streaming',
+        click: () => {
+          if (mainWindow) {
+            launchStreamingApp(mainWindow.webContents);
+          }
+        }
+      },
+      {
+        label: 'Quit',
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        }
+      }
+    ]);
+
+    tray.setContextMenu(contextMenu);
+
+    tray.on('click', () => {
+      if (mainWindow) {
+        if (mainWindow.isVisible()) {
+          mainWindow.focus();
+        } else {
+          mainWindow.show();
+        }
+      }
+    });
+
+    tray.on('double-click', () => {
+      if (mainWindow) {
+        if (mainWindow.isVisible()) {
+          mainWindow.focus();
+        } else {
+          mainWindow.show();
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Failed to create system tray:', error);
+    tray = null;
+  }
 }
 
 function createWindow() {
@@ -54,9 +164,17 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  mainWindow.on('minimize', (event) => {
+    // Only hide to tray if the tray was successfully created
+    if (tray) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+    // Otherwise, default minimize behavior (taskbar) applies
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
-    app.quit();
   });
 }
 
@@ -191,13 +309,29 @@ async function performInstall(event) {
   }
 }
 
-app.whenReady().then(() => {
-  createWindow();
+const gotTheLock = app.requestSingleInstanceLock();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Someone tried to run a second instance, we should focus our window.
+    if (mainWindow) {
+      if (!mainWindow.isVisible()) mainWindow.show();
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
   });
-});
+
+  app.whenReady().then(() => {
+    createWindow();
+    createTray();
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  });
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -206,6 +340,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  isQuitting = true;
   if (backendProcess) {
     backendProcess.kill();
   }
@@ -265,7 +400,7 @@ ipcMain.on('uninstall-app', async (event) => {
   }
 });
 
-ipcMain.on('launch-app', async (event) => {
+async function launchStreamingApp(eventSender) {
   if (appWindow) {
     appWindow.focus();
     return;
@@ -300,7 +435,9 @@ ipcMain.on('launch-app', async (event) => {
       }
     });
 
-    event.sender.send('app-launched');
+    if (eventSender) {
+      eventSender.send('app-launched');
+    }
   } catch (error) {
     console.error('Launch failed:', error);
     if (backendProcess) {
@@ -308,6 +445,12 @@ ipcMain.on('launch-app', async (event) => {
       backendProcess = null;
       backendPort = null;
     }
-    event.sender.send('launch-error', error.message);
+    if (eventSender) {
+      eventSender.send('launch-error', error.message);
+    }
   }
+}
+
+ipcMain.on('launch-app', async (event) => {
+  await launchStreamingApp(event.sender);
 });
