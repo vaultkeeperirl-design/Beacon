@@ -47,6 +47,24 @@ We are building a robust, scalable P2P architecture:
 *   **P2P Protocol:** WebRTC (for real-time, low-latency communication)
 *   **Infrastructure:** Specialized mesh networking to avoid single points of failure.
 
+## 🏁 Quick Start
+
+**Prerequisites:** Node.js v18+ and pnpm.
+
+```bash
+# 1. Install dependencies for all packages
+pnpm install
+pnpm run bootstrap
+
+# 2. Run the Desktop Launcher (Main App)
+pnpm dev
+
+# 3. (Optional) Run just the Web App
+pnpm dev:web
+```
+
+Detailed setup instructions can be found in [Documentation/Installation.md](Documentation/Installation.md).
+
 ## Progress Screenshots
 
 ### Launcher / Installer
