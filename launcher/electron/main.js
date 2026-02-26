@@ -334,7 +334,16 @@ if (!gotTheLock) {
 }
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  // On Windows/Linux, we now minimize to tray instead of quitting on close.
+  // The 'close' handler on mainWindow prevents the window from actually closing unless quitting.
+  // But if all windows ARE somehow closed (e.g. via code), we normally quit.
+  // However, with tray, we want the app to stay alive.
+  // We only quit if isQuitting is true or on macOS (where window-all-closed is standard app behavior diff).
+  // Actually, the requirement says "launcher closes to tray".
+  // The window close event handler handles the minimizing.
+  // If we reach here, it means windows are actually gone.
+  // If we are quitting, we proceed.
+  if (isQuitting && process.platform !== 'darwin') {
     app.quit();
   }
 });

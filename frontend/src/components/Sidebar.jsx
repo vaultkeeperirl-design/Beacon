@@ -1,8 +1,9 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Home, Users, BarChart2, MessageSquare, Radio, Compass } from 'lucide-react';
 import P2PStats from './P2PStats';
 
-export default function Sidebar() {
+const Sidebar = memo(function Sidebar() {
   const menuItems = [
     { name: 'Home', icon: Home, path: '/' },
     { name: 'Browse', icon: Compass, path: '/browse' },
@@ -51,4 +52,6 @@ export default function Sidebar() {
       </div>
     </aside>
   );
-}
+});
+
+export default Sidebar;
