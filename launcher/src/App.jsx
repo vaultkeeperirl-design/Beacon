@@ -249,7 +249,7 @@ function App() {
                     <RefreshCw className={`w-5 h-5 ${status === STATUS.UPDATING ? 'animate-spin text-orange-500' : ''}`} />
                 </button>
 
-                {status === STATUS.INSTALLED && (
+                {(status === STATUS.INSTALLED || status === STATUS.LAUNCHING) && (
                     <button
                         onClick={handleUninstall}
                         className="p-3 text-gray-500 hover:text-red-500 transition-colors rounded hover:bg-gray-800"

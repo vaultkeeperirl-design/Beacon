@@ -47,7 +47,7 @@ function createWindow() {
 function waitForServer(port) {
   return new Promise((resolve, reject) => {
     let attempts = 0;
-    const maxAttempts = 20; // 10 seconds total
+    const maxAttempts = 60; // 30 seconds total
 
     const check = () => {
       attempts++;
@@ -101,12 +101,17 @@ async function startBackend() {
     console.error(`Backend Error: ${data}`);
   });
 
-  backendProcess.on('close', (code) => {
-    console.log(`Backend exited with code ${code}`);
-    backendProcess = null;
+  const serverPromise = waitForServer(3000);
+
+  const exitPromise = new Promise((_, reject) => {
+    backendProcess.once('close', (code) => {
+      console.log(`Backend exited prematurely with code ${code}`);
+      backendProcess = null;
+      reject(new Error(`Backend exited with code ${code}`));
+    });
   });
 
-  await waitForServer(3000);
+  await Promise.race([serverPromise, exitPromise]);
 }
 
 async function performInstall(event) {
