@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import MainLayout from './components/MainLayout';
 import ProgressBar from './components/ProgressBar';
-import { Play, Download, RefreshCw, Radio } from 'lucide-react';
+import { Play, Download, RefreshCw, Radio, Trash2 } from 'lucide-react';
 
 const STATUS = {
   NOT_INSTALLED: 'NOT_INSTALLED',
@@ -28,14 +28,24 @@ function App() {
         window.electron.ipcRenderer.invoke('get-app-version').then((version) => {
           setAppVersion(version);
         });
+
+        // Check initial install status
+        window.electron.ipcRenderer.invoke('check-install').then((isInstalled) => {
+            if (isInstalled) {
+                setStatus(STATUS.INSTALLED);
+            } else {
+                setStatus(STATUS.NOT_INSTALLED);
+            }
+        });
       }
 
       // Listen for installation progress
       window.electron.ipcRenderer.on('install-progress', (event, value) => {
         setProgress(value);
-        if (value >= 100) {
-          setStatus(STATUS.INSTALLED);
-        }
+      });
+
+      window.electron.ipcRenderer.on('install-complete', () => {
+        setStatus(STATUS.INSTALLED);
       });
 
       // Listen for launch status
@@ -43,8 +53,14 @@ function App() {
         setStatus(STATUS.PLAYING);
       });
 
-      // Check initial installation status (mock for now, assume not installed or check local storage)
-      // For demo, we start at NOT_INSTALLED
+      window.electron.ipcRenderer.on('app-closed', () => {
+        setStatus(STATUS.INSTALLED);
+      });
+
+      window.electron.ipcRenderer.on('uninstall-complete', () => {
+        setStatus(STATUS.NOT_INSTALLED);
+      });
+
     }
   }, []);
 
@@ -68,6 +84,16 @@ function App() {
     }
   };
 
+  const handleUninstall = () => {
+      if (confirm("Are you sure you want to uninstall Beacon P2P Node?")) {
+           if (isElectron) {
+              window.electron.ipcRenderer.send('uninstall-app');
+           } else {
+              setStatus(STATUS.NOT_INSTALLED);
+           }
+      }
+  };
+
   const handleLaunch = () => {
     setStatus(STATUS.LAUNCHING);
     if (isElectron) {
@@ -83,7 +109,7 @@ function App() {
     setProgress(0);
     // similar logic to install
      if (isElectron) {
-      window.electron.ipcRenderer.send('update-app'); // Not implemented yet
+      window.electron.ipcRenderer.send('update-app');
     } else {
       let p = 0;
       const interval = setInterval(() => {
@@ -204,14 +230,26 @@ function App() {
              </div>
 
              {/* Secondary Actions */}
-             <button
-                onClick={handleUpdate}
-                disabled={status !== STATUS.INSTALLED}
-                className="p-3 text-gray-500 hover:text-white transition-colors rounded hover:bg-gray-800 disabled:opacity-20 disabled:cursor-not-allowed"
-                title="Check for Updates"
-             >
-               <RefreshCw className={`w-5 h-5 ${status === STATUS.UPDATING ? 'animate-spin text-orange-500' : ''}`} />
-             </button>
+             <div className="flex gap-2">
+                <button
+                    onClick={handleUpdate}
+                    disabled={status !== STATUS.INSTALLED}
+                    className="p-3 text-gray-500 hover:text-white transition-colors rounded hover:bg-gray-800 disabled:opacity-20 disabled:cursor-not-allowed"
+                    title="Check for Updates"
+                >
+                    <RefreshCw className={`w-5 h-5 ${status === STATUS.UPDATING ? 'animate-spin text-orange-500' : ''}`} />
+                </button>
+
+                {status === STATUS.INSTALLED && (
+                    <button
+                        onClick={handleUninstall}
+                        className="p-3 text-gray-500 hover:text-red-500 transition-colors rounded hover:bg-gray-800"
+                        title="Uninstall"
+                    >
+                        <Trash2 className="w-5 h-5" />
+                    </button>
+                )}
+             </div>
            </div>
         </div>
       </MainLayout>

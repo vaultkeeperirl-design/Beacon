@@ -2,10 +2,15 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { fork } = require('child_process');
 const isDev = require('electron-is-dev');
+const fs = require('fs');
+const fsPromises = require('fs').promises;
+const http = require('http');
 
 let mainWindow;
 let backendProcess;
-let appWindow; // The actual streaming app window
+let appWindow;
+
+const installPath = path.join(app.getPath('userData'), 'beacon-backend');
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -15,7 +20,7 @@ function createWindow() {
     minHeight: 600,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#0f172a', // match bg-gray-900
+      color: '#0f172a',
       symbolColor: '#ffffff'
     },
     webPreferences: {
@@ -35,32 +40,44 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
-    // If launcher closes, we should probably close everything?
-    // Or should we keep the node running?
-    // Usually launcher closing means quitting the app.
     app.quit();
   });
 }
 
-function startBackend() {
+function waitForServer(port) {
+  return new Promise((resolve) => {
+    const check = () => {
+      const req = http.get(`http://localhost:${port}`, (res) => {
+        if (res.statusCode === 200) {
+          resolve();
+        } else {
+          res.resume();
+          setTimeout(check, 500);
+        }
+      }).on('error', () => {
+        setTimeout(check, 500);
+      });
+      req.end();
+    };
+    check();
+  });
+}
+
+async function startBackend() {
   if (backendProcess) return;
 
-  let scriptPath;
-  if (isDev) {
-    scriptPath = path.join(__dirname, '../../backend/server.js');
-  } else {
-    scriptPath = path.join(process.resourcesPath, 'backend/server.js');
+  const scriptPath = path.join(installPath, 'server.js');
+
+  if (!fs.existsSync(scriptPath)) {
+    console.error('Backend not found at:', scriptPath);
+    return;
   }
 
   console.log('Starting backend from:', scriptPath);
 
-  // Fork the backend process
-  // We need to ensure the backend uses its own node_modules
-  const cwd = isDev ? path.join(__dirname, '../../backend') : path.join(process.resourcesPath, 'backend');
-
   backendProcess = fork(scriptPath, [], {
-    cwd: cwd,
-    env: { ...process.env, PORT: 3000, SERVE_STATIC: 'true' }, // Force port 3000
+    cwd: installPath,
+    env: { ...process.env, PORT: 3000, SERVE_STATIC: 'true' },
     stdio: 'pipe'
   });
 
@@ -76,11 +93,60 @@ function startBackend() {
     console.log(`Backend exited with code ${code}`);
     backendProcess = null;
   });
+
+  await waitForServer(3000);
+}
+
+async function performInstall(event) {
+  try {
+    let sourcePath;
+    if (isDev) {
+      sourcePath = path.join(__dirname, '../../backend');
+    } else {
+      sourcePath = path.join(process.resourcesPath, 'backend');
+    }
+
+    if (!fs.existsSync(sourcePath)) {
+      console.error("Source path does not exist:", sourcePath);
+      return;
+    }
+
+    if (!fs.existsSync(installPath)) {
+      await fsPromises.mkdir(installPath, { recursive: true });
+    }
+
+    // Report initial progress
+    event.sender.send('install-progress', 10);
+
+    // Stop backend if running before updating/installing
+    if (backendProcess) {
+      backendProcess.kill();
+      backendProcess = null;
+    }
+
+    console.log(`Copying from ${sourcePath} to ${installPath}`);
+
+    // In dev mode, we copy everything including node_modules to ensure functionality.
+    // In production, resources/backend should already contain necessary files (including bundled modules).
+    const filter = (src) => {
+      if (src.includes('.git')) return false;
+      return true;
+    };
+
+    // Use asynchronous copy to avoid blocking the main thread
+    await fsPromises.cp(sourcePath, installPath, { recursive: true, filter });
+
+    event.sender.send('install-progress', 100);
+    event.sender.send('install-complete');
+
+  } catch (error) {
+    console.error("Install/Update failed:", error);
+    event.sender.send('install-error', error.message);
+  }
 }
 
 app.whenReady().then(() => {
   createWindow();
-  startBackend(); // Start backend immediately as it acts as the node
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -105,26 +171,47 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
 
-ipcMain.on('install-app', (event) => {
-  // Simulate installation
-  let progress = 0;
-  const interval = setInterval(() => {
-    progress += Math.random() * 5; // Random increment
-    if (progress >= 100) {
-      progress = 100;
-      clearInterval(interval);
-      event.sender.send('install-progress', 100);
-    } else {
-      event.sender.send('install-progress', progress);
-    }
-  }, 200);
+ipcMain.handle('check-install', () => {
+  const scriptPath = path.join(installPath, 'server.js');
+  return fs.existsSync(scriptPath);
 });
 
-ipcMain.on('launch-app', (event) => {
+ipcMain.on('install-app', async (event) => {
+  await performInstall(event);
+});
+
+ipcMain.on('update-app', async (event) => {
+  await performInstall(event);
+});
+
+ipcMain.on('uninstall-app', async (event) => {
+  try {
+    if (backendProcess) {
+      backendProcess.kill();
+      backendProcess = null;
+    }
+
+    if (appWindow) {
+      appWindow.close();
+    }
+
+    if (fs.existsSync(installPath)) {
+      await fsPromises.rm(installPath, { recursive: true, force: true });
+    }
+
+    event.sender.send('uninstall-complete');
+  } catch (error) {
+    console.error("Uninstall failed:", error);
+  }
+});
+
+ipcMain.on('launch-app', async (event) => {
   if (appWindow) {
     appWindow.focus();
     return;
   }
+
+  await startBackend();
 
   appWindow = new BrowserWindow({
     width: 1280,
@@ -138,34 +225,18 @@ ipcMain.on('launch-app', (event) => {
     icon: path.join(__dirname, '../public/icon.png')
   });
 
-  // Load the backend URL
-  // The backend should be serving the frontend static files if built
-  // Or in dev, we might want to load the dev server?
-  // But the request says "bundle the local node/backend... launch and update the main steaming app".
-  // So we should load from localhost:3000
   appWindow.loadURL('http://localhost:3000');
 
   appWindow.on('closed', () => {
     appWindow = null;
+    if (backendProcess) {
+      backendProcess.kill();
+      backendProcess = null;
+    }
     if (mainWindow) {
-        mainWindow.webContents.send('app-closed');
+      mainWindow.webContents.send('app-closed');
     }
   });
 
   event.sender.send('app-launched');
-});
-
-ipcMain.on('update-app', (event) => {
-    // Mock update
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += Math.random() * 10;
-        if (progress >= 100) {
-            progress = 100;
-            clearInterval(interval);
-            event.sender.send('install-progress', 100);
-        } else {
-            event.sender.send('install-progress', progress);
-        }
-    }, 100);
 });
