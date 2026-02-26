@@ -61,10 +61,11 @@ describe("Beacon Backend", () => {
 
   test("should broadcast chat messages to the correct room", async () => {
     const streamId = "stream-chat";
-    const msg = { streamId, user: "User1", text: "Hello", color: "red" };
+    const username = "User1";
+    const msg = { streamId, user: username, text: "Hello", color: "red" };
 
     const updatePromise1 = waitFor(clientSocket, "room-users-update");
-    clientSocket.emit("join-stream", streamId);
+    clientSocket.emit("join-stream", { streamId, username });
     await updatePromise1;
 
     const updatePromise2 = waitFor(clientSocket2, "room-users-update");
