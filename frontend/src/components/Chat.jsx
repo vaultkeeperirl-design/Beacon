@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, memo } from 'react';
 import { Send, Smile } from 'lucide-react';
 import { useChat } from '../hooks/useChat';
+import PollWidget from './PollWidget';
 
 // Performance Optimization: Extract individual message to a memoized component.
 // This prevents all messages from re-rendering when a single new message is added.
@@ -13,7 +14,7 @@ const ChatMessage = memo(({ msg }) => (
 
 ChatMessage.displayName = 'ChatMessage';
 
-export default function Chat({
+const Chat = memo(function Chat({
   streamId,
   className = "fixed right-0 top-16 bottom-0 w-80 z-40 hidden lg:flex shadow-xl border-l border-neutral-800",
   showHeader = true
@@ -50,6 +51,9 @@ export default function Chat({
         </div>
       )}
 
+      {/* Poll Widget Area - Renders only if there is an active poll for this stream */}
+      <PollWidget streamId={streamId} />
+
       <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
         {messages.map((msg) => (
           <ChatMessage key={msg.id} msg={msg} />
@@ -85,4 +89,6 @@ export default function Chat({
       </form>
     </div>
   );
-}
+});
+
+export default Chat;

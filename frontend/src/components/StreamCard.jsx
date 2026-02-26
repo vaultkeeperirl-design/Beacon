@@ -1,11 +1,12 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye } from 'lucide-react';
 
-export default function StreamCard({ id, title, streamer, viewers, thumbnail, tags, isLive = true }) {
+const StreamCard = memo(function StreamCard({ id, title, streamer, viewers, thumbnail, tags, isLive = true }) {
   return (
     <div className="group block space-y-3">
       <Link to={`/watch/${id}`} className="block relative aspect-video rounded-lg overflow-hidden bg-neutral-800 border border-neutral-800 group-hover:border-beacon-500/50 transition-colors">
-        <img src={thumbnail} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        <img src={thumbnail} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
         {isLive && (
           <div className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider shadow-sm">
             Live
@@ -19,7 +20,7 @@ export default function StreamCard({ id, title, streamer, viewers, thumbnail, ta
 
       <div className="flex gap-3">
         <Link to={`/channel/${streamer}`} className="block w-10 h-10 rounded-full bg-neutral-700 flex-shrink-0 overflow-hidden border border-neutral-800 hover:ring-2 hover:ring-beacon-500 transition-all">
-          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${streamer}`} alt={streamer} className="w-full h-full object-cover" />
+          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${streamer}`} alt={streamer} className="w-full h-full object-cover" loading="lazy" />
         </Link>
 
         <div className="min-w-0 flex-1">
@@ -43,4 +44,6 @@ export default function StreamCard({ id, title, streamer, viewers, thumbnail, ta
       </div>
     </div>
   );
-}
+});
+
+export default StreamCard;
