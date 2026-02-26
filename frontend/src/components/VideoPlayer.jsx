@@ -1,10 +1,10 @@
 import { Maximize, Minimize, Volume2, VolumeX, Settings, Pause, Play } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import StreamSettings from './StreamSettings';
 import VideoStatsOverlay from './VideoStatsOverlay';
 
-export default function VideoPlayer({ streamUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }) {
+const VideoPlayer = memo(function VideoPlayer({ streamUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -134,4 +134,6 @@ export default function VideoPlayer({ streamUrl = "https://commondatastorage.goo
       </div>
     </div>
   );
-}
+});
+
+export default VideoPlayer;
