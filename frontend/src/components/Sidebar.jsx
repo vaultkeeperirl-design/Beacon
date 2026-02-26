@@ -27,7 +27,7 @@ export default function Sidebar() {
             </h3>
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-1 cursor-pointer hover:bg-neutral-800/50 rounded-lg group transition-colors">
+                <Link to={`/channel/Streamer_${i}`} key={i} className="flex items-center gap-3 px-3 py-1 cursor-pointer hover:bg-neutral-800/50 rounded-lg group transition-colors">
                   <div className="w-8 h-8 rounded-full bg-neutral-800 overflow-hidden relative border border-neutral-700 group-hover:border-beacon-500 transition-colors">
                     <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`} alt="Avatar" className="w-full h-full object-cover" />
                   </div>
@@ -39,7 +39,7 @@ export default function Sidebar() {
                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
                      <span className="text-xs text-neutral-500">{((i * 0.8 + 0.5) % 5).toFixed(1)}k</span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
