@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
+import Browse from './pages/Browse';
 import Watch from './pages/Watch';
 import Broadcast from './pages/Broadcast';
 import Wallet from './pages/Wallet';
@@ -17,6 +18,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<Home />} />
+              <Route path="browse" element={<Browse />} />
               <Route path="watch/:id" element={<Watch />} />
               <Route path="channel/:username" element={<Channel />} />
               <Route path="broadcast" element={<Broadcast />} />

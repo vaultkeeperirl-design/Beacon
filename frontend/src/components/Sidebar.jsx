@@ -5,7 +5,7 @@ import P2PStats from './P2PStats';
 export default function Sidebar() {
   const menuItems = [
     { name: 'Home', icon: Home, path: '/' },
-    { name: 'Browse', icon: Compass, path: '/' },
+    { name: 'Browse', icon: Compass, path: '/browse' },
     { name: 'Following', icon: Users, path: '/following' },
     { name: 'Wallet & Credits', icon: BarChart2, path: '/wallet' },
   ];
