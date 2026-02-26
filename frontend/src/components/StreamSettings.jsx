@@ -34,6 +34,8 @@ export default function StreamSettings({ isOpen, onClose }) {
                 <button
                   key={q}
                   onClick={() => updateSettings({ quality: q })}
+                  aria-pressed={settings.quality === q}
+                  aria-label={`Select ${q} quality`}
                   className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
                     settings.quality === q
                       ? 'bg-beacon-600 text-white border-beacon-500 shadow-lg shadow-beacon-600/20'
@@ -49,13 +51,14 @@ export default function StreamSettings({ isOpen, onClose }) {
           {/* Max Upload Speed */}
           <div className="space-y-3">
             <div className="flex justify-between">
-              <label className="text-sm font-semibold text-neutral-300 flex items-center gap-2">
+              <label htmlFor="max-upload-speed" className="text-sm font-semibold text-neutral-300 flex items-center gap-2">
                 <Wifi className="w-4 h-4 text-blue-500" />
                 Max Upload Speed
               </label>
               <span className="text-sm font-mono text-blue-400">{settings.maxUploadSpeed} Mbps</span>
             </div>
             <input
+              id="max-upload-speed"
               type="range"
               min="0"
               max="100"
@@ -63,6 +66,7 @@ export default function StreamSettings({ isOpen, onClose }) {
               value={settings.maxUploadSpeed}
               onChange={(e) => updateSettings({ maxUploadSpeed: Number(e.target.value) })}
               className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 transition-all"
+              aria-label="Max Upload Speed"
             />
             <p className="text-xs text-neutral-500">
               Higher upload limits allow you to earn more Credits (CR) by relaying to more peers.
@@ -85,6 +89,7 @@ export default function StreamSettings({ isOpen, onClose }) {
                 onClick={() => updateSettings({ lowLatency: !settings.lowLatency })}
                 role="switch"
                 aria-checked={settings.lowLatency}
+                aria-label="Low Latency Mode"
                 className={`w-11 h-6 rounded-full transition-colors relative ${
                   settings.lowLatency ? 'bg-beacon-600' : 'bg-neutral-700'
                 }`}
@@ -109,6 +114,7 @@ export default function StreamSettings({ isOpen, onClose }) {
                 onClick={() => updateSettings({ showStats: !settings.showStats })}
                 role="switch"
                 aria-checked={settings.showStats}
+                aria-label="Show Stats"
                 className={`w-11 h-6 rounded-full transition-colors relative ${
                   settings.showStats ? 'bg-beacon-600' : 'bg-neutral-700'
                 }`}
@@ -133,6 +139,7 @@ export default function StreamSettings({ isOpen, onClose }) {
                 onClick={() => setIsSharing(!isSharing)}
                 role="switch"
                 aria-checked={isSharing}
+                aria-label="P2P Sharing"
                 className={`w-11 h-6 rounded-full transition-colors relative ${
                   isSharing ? 'bg-beacon-600' : 'bg-neutral-700'
                 }`}
