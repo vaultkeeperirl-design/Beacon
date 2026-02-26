@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import MainLayout from './components/MainLayout';
 import ProgressBar from './components/ProgressBar';
+import TermsModal from './components/TermsModal';
 import { Play, Download, RefreshCw, Radio, Trash2 } from 'lucide-react';
 
 const STATUS = {
@@ -25,6 +26,9 @@ function App() {
     status: 'Offline',
     meshNodes: 0
   });
+
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [hasAgreed, setHasAgreed] = useState(false);
 
   useEffect(() => {
     // Poll for network stats
@@ -165,6 +169,11 @@ function App() {
   };
 
   const handleLaunch = () => {
+    if (!hasAgreed) {
+      setShowTermsModal(true);
+      return;
+    }
+
     setStatus(STATUS.LAUNCHING);
     if (isElectron) {
       window.electron.ipcRenderer.send('launch-app');
@@ -195,6 +204,26 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-900 text-white font-sans selection:bg-orange-500 selection:text-white">
+      {showTermsModal && (
+        <TermsModal
+          onAgree={() => {
+            setHasAgreed(true);
+            setShowTermsModal(false);
+            // After agreeing, we can proceed to launch.
+            // But state update is async, so we'll call launch directly or just set state
+            // and let the user click launch again?
+            // Better UX: Auto-launch after agree.
+            setStatus(STATUS.LAUNCHING);
+            if (isElectron) {
+              window.electron.ipcRenderer.send('launch-app');
+            } else {
+              setTimeout(() => setStatus(STATUS.PLAYING), 1000);
+              alert("Launch App!");
+            }
+          }}
+          onCancel={() => setShowTermsModal(false)}
+        />
+      )}
       <Sidebar />
       <MainLayout>
         {/* Header / Logo Area */}

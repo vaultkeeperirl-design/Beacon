@@ -1,0 +1,12 @@
+
+> frontend@1.0.4 dev /app/frontend
+> vite
+
+
+  VITE v7.3.1  ready in 365 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+10:59:01 PM [vite] (client) page reload src/main.jsx
+11:00:00 PM [vite] (client) page reload index.html
+11:00:15 PM [vite] (client) page reload src/main.jsx
