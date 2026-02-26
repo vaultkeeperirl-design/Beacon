@@ -1,16 +1,38 @@
 import VideoPlayer from '../components/VideoPlayer';
 import Chat from '../components/Chat';
 import { Share2, ThumbsUp, MoreHorizontal, UserPlus, UserCheck } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import { useFollowing } from '../context/FollowingContext';
+import { useSocket } from '../hooks/useSocket';
 
 export default function Watch() {
   const { id } = useParams();
+  const navigate = useNavigate();
   // Using useP2PSettings to avoid re-rendering the whole page every second when stats update
   const { setCurrentStreamId } = useP2PSettings();
   const { follow, unfollow, isFollowing } = useFollowing();
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleStreamEnded = ({ redirect }) => {
+       if (redirect) {
+         // Auto-host / Raid logic
+         navigate(`/watch/${redirect}`);
+       } else {
+         navigate('/');
+       }
+    };
+
+    socket.on('stream-ended', handleStreamEnded);
+
+    return () => {
+      socket.off('stream-ended', handleStreamEnded);
+    };
+  }, [socket, navigate]);
 
   useEffect(() => {
     if (id) {

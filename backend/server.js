@@ -16,6 +16,9 @@ const io = new Server(server, {
   }
 });
 
+// Track active streams (where host is present)
+const activeStreams = new Set();
+
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
@@ -30,6 +33,15 @@ io.on('connection', (socket) => {
     // Leave previous room if any to prevent double counting or stale state
     if (socket.currentRoom && socket.currentRoom !== streamId) {
        const prevRoom = socket.currentRoom;
+
+       // activeStreams logic: If host leaves, redirect viewers
+       if (socket.username === prevRoom && activeStreams.has(prevRoom)) {
+          activeStreams.delete(prevRoom);
+          const otherStreams = Array.from(activeStreams);
+          const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
+          socket.to(prevRoom).emit('stream-ended', { redirect });
+       }
+
        socket.leave(prevRoom);
        // Notify previous room
        const prevCount = io.sockets.adapter.rooms.get(prevRoom)?.size || 0;
@@ -43,6 +55,11 @@ io.on('connection', (socket) => {
         socket.currentRoom = streamId;
         console.log(`Socket ${socket.id} (${socket.username || 'unknown'}) joined stream ${streamId}`);
 
+        // If the user is the host, mark stream as active
+        if (socket.username === streamId) {
+          activeStreams.add(streamId);
+        }
+
         // Broadcast updated participant count to the room
         const count = io.sockets.adapter.rooms.get(streamId)?.size || 0;
         io.to(streamId).emit('room-users-update', count);
@@ -55,6 +72,15 @@ io.on('connection', (socket) => {
   socket.on('leave-stream', () => {
     if (socket.currentRoom) {
        const room = socket.currentRoom;
+
+       // activeStreams logic: If host leaves, redirect viewers
+       if (socket.username === room && activeStreams.has(room)) {
+          activeStreams.delete(room);
+          const otherStreams = Array.from(activeStreams);
+          const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
+          socket.to(room).emit('stream-ended', { redirect });
+       }
+
        socket.leave(room);
        const count = io.sockets.adapter.rooms.get(room)?.size || 0;
        io.to(room).emit('room-users-update', count);
@@ -129,6 +155,14 @@ io.on('connection', (socket) => {
     const streamId = socket.currentRoom;
 
     if (streamId) {
+      // activeStreams logic: If host leaves, redirect viewers
+      if (socket.username === streamId && activeStreams.has(streamId)) {
+          activeStreams.delete(streamId);
+          const otherStreams = Array.from(activeStreams);
+          const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
+          socket.to(streamId).emit('stream-ended', { redirect });
+      }
+
       // Socket is automatically removed from rooms on disconnect
       const count = io.sockets.adapter.rooms.get(streamId)?.size || 0;
       io.to(streamId).emit('room-users-update', count);
