@@ -47,7 +47,7 @@ try {
 
   // 5. Install Backend Production Dependencies
   console.log('Installing Backend dependencies...');
-  run('pnpm install --prod', backendDest);
+  run('npm install --omit=dev --no-bin-links', backendDest);
 
   console.log('Build Preparation Complete.');
 } catch (error) {
