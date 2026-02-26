@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSocket } from './useSocket';
+import { useP2PMesh } from './useP2PMesh';
 
 export function useRealP2PStats(isSharing, settings, streamId, username) {
   const { socket, isConnected } = useSocket();
+  const meshStats = useP2PMesh(); // Use the real mesh stats
+
   const [stats, setStats] = useState({
     uploadSpeed: 0,
     downloadSpeed: 0,
@@ -12,17 +15,9 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
     bufferHealth: 5.0,
   });
 
-  const isBroadcasting = streamId === username;
-
+  // Manage room joining/leaving
   useEffect(() => {
     if (!socket || !isConnected) return;
-
-    const handleUserCount = (count) => {
-      // Subtract 1 to exclude self, but show 0 if negative
-      setStats(prev => ({ ...prev, peersConnected: Math.max(0, count - 1) }));
-    };
-
-    socket.on('room-users-update', handleUserCount);
 
     if (streamId) {
       socket.emit('join-stream', { streamId, username });
@@ -30,13 +25,12 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
       socket.emit('leave-stream');
     }
 
-    return () => {
-      socket.off('room-users-update', handleUserCount);
-      // Reset peers when streamId changes or we disconnect to avoid stale stats
-      setStats(prev => ({ ...prev, peersConnected: 0 }));
-    };
+    // No return cleanup for socket emit, but we handle state reset below
   }, [socket, isConnected, streamId, username]);
 
+  // Sync mesh stats to exposed stats state
+  // We use a separate useEffect to synchronize meshStats changes to the local stats state.
+  // Although this updates state inside an effect (derived state), it's necessary because 'credits' and 'totalUploaded' are accumulators.
   useEffect(() => {
     if (!streamId) return;
 
