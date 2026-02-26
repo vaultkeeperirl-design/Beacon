@@ -84,12 +84,16 @@ export default function VideoPlayer({ streamUrl = "https://commondatastorage.goo
             <button
               className="text-white hover:text-beacon-500 transition-colors"
               onClick={() => setIsPlaying(!isPlaying)}
+              aria-label={isPlaying ? "Pause stream" : "Play stream"}
+              title={isPlaying ? "Pause" : "Play"}
             >
               {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
             </button>
             <button
               className="text-white hover:text-beacon-500 transition-colors group/vol"
               onClick={() => setIsMuted(!isMuted)}
+              aria-label={isMuted ? "Unmute audio" : "Mute audio"}
+              title={isMuted ? "Unmute" : "Mute"}
             >
               {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
             </button>
@@ -106,6 +110,8 @@ export default function VideoPlayer({ streamUrl = "https://commondatastorage.goo
             <button
               className="text-white hover:text-beacon-500 transition-colors"
               onClick={() => setIsSettingsOpen(true)}
+              aria-label="Open stream settings"
+              title="Settings"
             >
               <Settings className="w-5 h-5" />
             </button>
@@ -113,6 +119,7 @@ export default function VideoPlayer({ streamUrl = "https://commondatastorage.goo
               className="text-white hover:text-beacon-500 transition-colors"
               onClick={toggleFullscreen}
               aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+              title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
             >
               {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
             </button>
