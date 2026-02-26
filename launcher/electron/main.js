@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
 const path = require('path');
 const { fork } = require('child_process');
 const isDev = require('electron-is-dev');
@@ -11,6 +11,8 @@ let mainWindow;
 let backendProcess;
 let backendPort;
 let appWindow;
+let tray = null;
+let isQuitting = false;
 
 const installPath = path.join(app.getPath('userData'), 'beacon-backend');
 
@@ -25,6 +27,61 @@ function getFreePort() {
         resolve(port);
       });
     });
+  });
+}
+
+function createTray() {
+  const iconPath = path.join(__dirname, '../public/icon.png');
+  tray = new Tray(iconPath);
+  tray.setToolTip('Beacon Launcher');
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Open Launcher',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    },
+    {
+      label: 'Launch Beacon Streaming',
+      click: () => {
+        if (mainWindow) {
+          launchStreamingApp(mainWindow.webContents);
+        }
+      }
+    },
+    {
+      label: 'Quit',
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setContextMenu(contextMenu);
+
+  tray.on('click', () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.focus();
+      } else {
+        mainWindow.show();
+      }
+    }
+  });
+
+  tray.on('double-click', () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.focus();
+      } else {
+        mainWindow.show();
+      }
+    }
   });
 }
 
@@ -54,9 +111,21 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  mainWindow.on('minimize', (event) => {
+    event.preventDefault();
+    mainWindow.hide();
+  });
+
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+      return false;
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
-    app.quit();
   });
 }
 
@@ -193,6 +262,7 @@ async function performInstall(event) {
 
 app.whenReady().then(() => {
   createWindow();
+  createTray();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -200,12 +270,22 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  // On Windows/Linux, we now minimize to tray instead of quitting on close.
+  // The 'close' handler on mainWindow prevents the window from actually closing unless quitting.
+  // But if all windows ARE somehow closed (e.g. via code), we normally quit.
+  // However, with tray, we want the app to stay alive.
+  // We only quit if isQuitting is true or on macOS (where window-all-closed is standard app behavior diff).
+  // Actually, the requirement says "launcher closes to tray".
+  // The window close event handler handles the minimizing.
+  // If we reach here, it means windows are actually gone.
+  // If we are quitting, we proceed.
+  if (isQuitting && process.platform !== 'darwin') {
     app.quit();
   }
 });
 
 app.on('before-quit', () => {
+  isQuitting = true;
   if (backendProcess) {
     backendProcess.kill();
   }
@@ -265,7 +345,7 @@ ipcMain.on('uninstall-app', async (event) => {
   }
 });
 
-ipcMain.on('launch-app', async (event) => {
+async function launchStreamingApp(eventSender) {
   if (appWindow) {
     appWindow.focus();
     return;
@@ -300,7 +380,9 @@ ipcMain.on('launch-app', async (event) => {
       }
     });
 
-    event.sender.send('app-launched');
+    if (eventSender) {
+      eventSender.send('app-launched');
+    }
   } catch (error) {
     console.error('Launch failed:', error);
     if (backendProcess) {
@@ -308,6 +390,12 @@ ipcMain.on('launch-app', async (event) => {
       backendProcess = null;
       backendPort = null;
     }
-    event.sender.send('launch-error', error.message);
+    if (eventSender) {
+      eventSender.send('launch-error', error.message);
+    }
   }
+}
+
+ipcMain.on('launch-app', async (event) => {
+  await launchStreamingApp(event.sender);
 });
