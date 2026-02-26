@@ -35,6 +35,7 @@ io.on('connection', (socket) => {
        const prevCount = io.sockets.adapter.rooms.get(prevRoom)?.size || 0;
        io.to(prevRoom).emit('room-users-update', prevCount);
        socket.to(prevRoom).emit('user-disconnected', { id: socket.id, username: socket.username });
+       socket.currentRoom = null;
     }
 
     if (streamId && socket.currentRoom !== streamId) {
