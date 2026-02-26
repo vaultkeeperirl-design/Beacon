@@ -45,17 +45,29 @@ function createWindow() {
 }
 
 function waitForServer(port) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    const maxAttempts = 20; // 10 seconds total
+
     const check = () => {
+      attempts++;
       const req = http.get(`http://localhost:${port}`, (res) => {
         if (res.statusCode === 200) {
           resolve();
         } else {
           res.resume();
-          setTimeout(check, 500);
+          if (attempts >= maxAttempts) {
+            reject(new Error('Timeout waiting for backend server'));
+          } else {
+            setTimeout(check, 500);
+          }
         }
       }).on('error', () => {
-        setTimeout(check, 500);
+        if (attempts >= maxAttempts) {
+          reject(new Error('Timeout waiting for backend server'));
+        } else {
+          setTimeout(check, 500);
+        }
       });
       req.end();
     };
@@ -211,32 +223,41 @@ ipcMain.on('launch-app', async (event) => {
     return;
   }
 
-  await startBackend();
+  try {
+    await startBackend();
 
-  appWindow = new BrowserWindow({
-    width: 1280,
-    height: 720,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true
-    },
-    autoHideMenuBar: true,
-    title: 'Beacon Streaming',
-    icon: path.join(__dirname, '../public/icon.png')
-  });
+    appWindow = new BrowserWindow({
+      width: 1280,
+      height: 720,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true
+      },
+      autoHideMenuBar: true,
+      title: 'Beacon Streaming',
+      icon: path.join(__dirname, '../public/icon.png')
+    });
 
-  appWindow.loadURL('http://localhost:3000');
+    appWindow.loadURL('http://localhost:3000');
 
-  appWindow.on('closed', () => {
-    appWindow = null;
+    appWindow.on('closed', () => {
+      appWindow = null;
+      if (backendProcess) {
+        backendProcess.kill();
+        backendProcess = null;
+      }
+      if (mainWindow) {
+        mainWindow.webContents.send('app-closed');
+      }
+    });
+
+    event.sender.send('app-launched');
+  } catch (error) {
+    console.error('Launch failed:', error);
     if (backendProcess) {
       backendProcess.kill();
       backendProcess = null;
     }
-    if (mainWindow) {
-      mainWindow.webContents.send('app-closed');
-    }
-  });
-
-  event.sender.send('app-launched');
+    event.sender.send('launch-error', error.message);
+  }
 });
