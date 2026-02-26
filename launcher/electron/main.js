@@ -5,12 +5,28 @@ const isDev = require('electron-is-dev');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const http = require('http');
+const net = require('net');
 
 let mainWindow;
 let backendProcess;
+let backendPort;
 let appWindow;
 
 const installPath = path.join(app.getPath('userData'), 'beacon-backend');
+
+function getFreePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, () => {
+      const port = server.address().port;
+      server.close(() => {
+        resolve(port);
+      });
+    });
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -77,22 +93,25 @@ function waitForServer(port) {
 }
 
 async function startBackend() {
-  if (backendProcess) return;
+  if (backendProcess && backendPort) return backendPort;
 
   const scriptPath = path.join(installPath, 'server.js');
 
   if (!fs.existsSync(scriptPath)) {
     console.error('Backend not found at:', scriptPath);
-    return;
+    throw new Error('Backend script not found. Please (re)install the app.');
   }
 
-  console.log('Starting backend from:', scriptPath);
+  const port = await getFreePort();
+  console.log(`Starting backend from: ${scriptPath} on port ${port}`);
 
   backendProcess = fork(scriptPath, [], {
     cwd: installPath,
-    env: { ...process.env, PORT: 3000, SERVE_STATIC: 'true' },
+    env: { ...process.env, PORT: port, SERVE_STATIC: 'true' },
     stdio: 'pipe'
   });
+
+  backendPort = port;
 
   backendProcess.stdout.on('data', (data) => {
     console.log(`Backend: ${data}`);
@@ -102,7 +121,7 @@ async function startBackend() {
     console.error(`Backend Error: ${data}`);
   });
 
-  const serverPromise = waitForServer(3000);
+  const serverPromise = waitForServer(port);
 
   const exitPromise = new Promise((_, reject) => {
     // Only listen for 'close' if the process is still running
@@ -110,12 +129,14 @@ async function startBackend() {
       backendProcess.once('close', (code) => {
         console.log(`Backend exited prematurely with code ${code}`);
         backendProcess = null;
+        backendPort = null;
         reject(new Error(`Backend exited with code ${code}`));
       });
     }
   });
 
   await Promise.race([serverPromise, exitPromise]);
+  return port;
 }
 
 async function performInstall(event) {
@@ -138,14 +159,17 @@ async function performInstall(event) {
 
     // Report initial progress
     event.sender.send('install-progress', 10);
+    event.sender.send('install-status', 'Preparing installation...');
 
     // Stop backend if running before updating/installing
     if (backendProcess) {
       backendProcess.kill();
       backendProcess = null;
+      backendPort = null;
     }
 
     console.log(`Copying from ${sourcePath} to ${installPath}`);
+    event.sender.send('install-status', 'Copying application files...');
 
     // In dev mode, we copy everything including node_modules to ensure functionality.
     // In production, resources/backend should already contain necessary files (including bundled modules).
@@ -158,6 +182,7 @@ async function performInstall(event) {
     await fsPromises.cp(sourcePath, installPath, { recursive: true, filter });
 
     event.sender.send('install-progress', 100);
+    event.sender.send('install-status', 'Installation complete!');
     event.sender.send('install-complete');
 
   } catch (error) {
@@ -197,6 +222,19 @@ ipcMain.handle('check-install', () => {
   return fs.existsSync(scriptPath);
 });
 
+ipcMain.handle('get-backend-version', async () => {
+    try {
+        const pkgPath = path.join(installPath, 'package.json');
+        if (fs.existsSync(pkgPath)) {
+            const pkg = JSON.parse(await fsPromises.readFile(pkgPath, 'utf8'));
+            return pkg.version;
+        }
+    } catch (e) {
+        console.error('Failed to read backend version', e);
+    }
+    return null;
+});
+
 ipcMain.on('install-app', async (event) => {
   await performInstall(event);
 });
@@ -210,6 +248,7 @@ ipcMain.on('uninstall-app', async (event) => {
     if (backendProcess) {
       backendProcess.kill();
       backendProcess = null;
+      backendPort = null;
     }
 
     if (appWindow) {
@@ -233,7 +272,7 @@ ipcMain.on('launch-app', async (event) => {
   }
 
   try {
-    await startBackend();
+    const port = await startBackend();
 
     appWindow = new BrowserWindow({
       width: 1280,
@@ -247,13 +286,14 @@ ipcMain.on('launch-app', async (event) => {
       icon: path.join(__dirname, '../public/icon.png')
     });
 
-    appWindow.loadURL('http://127.0.0.1:3000');
+    appWindow.loadURL(`http://127.0.0.1:${port}`);
 
     appWindow.on('closed', () => {
       appWindow = null;
       if (backendProcess) {
         backendProcess.kill();
         backendProcess = null;
+        backendPort = null;
       }
       if (mainWindow) {
         mainWindow.webContents.send('app-closed');
@@ -266,6 +306,7 @@ ipcMain.on('launch-app', async (event) => {
     if (backendProcess) {
       backendProcess.kill();
       backendProcess = null;
+      backendPort = null;
     }
     event.sender.send('launch-error', error.message);
   }
