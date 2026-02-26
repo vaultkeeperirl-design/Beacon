@@ -101,6 +101,10 @@ app.on('before-quit', () => {
 
 // IPC Handlers
 
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
+
 ipcMain.on('install-app', (event) => {
   // Simulate installation
   let progress = 0;
