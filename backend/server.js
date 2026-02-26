@@ -65,15 +65,37 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat-message', ({ streamId, user, text, color }) => {
-    if (streamId) {
-        io.to(streamId).emit('chat-message', {
-          id: Date.now(),
-          user,
-          text,
-          color,
-          senderId: socket.id
-        });
+    // Validate streamId and ensure user is in the room
+    if (!streamId || socket.currentRoom !== streamId) {
+      return;
     }
+
+    // Rate limiting: 1 message per 500ms
+    const now = Date.now();
+    if (socket.lastMessageTime && now - socket.lastMessageTime < 500) {
+      return;
+    }
+    socket.lastMessageTime = now;
+
+    // Input validation
+    if (typeof text !== 'string' || text.trim().length === 0 || text.length > 500) {
+      return;
+    }
+
+    // Sanitize color (basic check to allow only alphanumeric and dashes for tailwind classes)
+    // If invalid or missing, let the frontend handle default or use a safe fallback here
+    const safeColor = (typeof color === 'string' && /^[a-zA-Z0-9-]+$/.test(color)) ? color : null;
+
+    // Use server-side username to prevent spoofing
+    const safeUser = socket.username || 'Anonymous';
+
+    io.to(streamId).emit('chat-message', {
+      id: Date.now(),
+      user: safeUser,
+      text,
+      color: safeColor,
+      senderId: socket.id
+    });
   });
 
   // WebRTC Signaling
