@@ -1,6 +1,6 @@
 {
   "name": "backend",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "Signaling server for Beacon P2P streaming",
   "main": "server.js",
   "scripts": {
