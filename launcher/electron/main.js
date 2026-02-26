@@ -31,58 +31,94 @@ function getFreePort() {
 }
 
 function createTray() {
-  const iconPath = path.join(__dirname, '../public/icon.png');
-  tray = new Tray(iconPath);
-  tray.setToolTip('Beacon Launcher');
+  try {
+    const iconPath = isDev
+      ? path.join(__dirname, '../public/icon.png')
+      : path.join(process.resourcesPath, 'public/icon.png');
 
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: 'Open Launcher',
-      click: () => {
-        if (mainWindow) {
-          mainWindow.show();
+    // Fallback if the first path doesn't exist, try the other one just in case
+    // This is a safety measure to ensure we can load the icon.
+    let finalIconPath = iconPath;
+    if (!fs.existsSync(finalIconPath)) {
+      console.warn(`Tray icon not found at ${finalIconPath}, trying fallback...`);
+      // Try the alternative path
+      const altPath = isDev
+        ? path.join(process.resourcesPath, 'public/icon.png')
+        : path.join(__dirname, '../public/icon.png');
+
+      if (fs.existsSync(altPath)) {
+        finalIconPath = altPath;
+      } else {
+         // Last resort: try to find it relative to app path
+         const appPath = app.getAppPath();
+         const relativePath = path.join(appPath, 'public/icon.png');
+         if (fs.existsSync(relativePath)) {
+            finalIconPath = relativePath;
+         } else {
+            console.error('Tray icon could not be found in any expected location.');
+            // If we can't find the icon, we shouldn't create the tray to avoid crashing
+            // or we should create it with a default if possible, but Electron needs an image.
+            // We will proceed but if it fails, the catch block will handle it.
+         }
+      }
+    }
+
+    console.log(`Creating tray with icon at: ${finalIconPath}`);
+    tray = new Tray(finalIconPath);
+    tray.setToolTip('Beacon Launcher');
+
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Open Launcher',
+        click: () => {
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        }
+      },
+      {
+        label: 'Launch Beacon Streaming',
+        click: () => {
+          if (mainWindow) {
+            launchStreamingApp(mainWindow.webContents);
+          }
+        }
+      },
+      {
+        label: 'Quit',
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        }
+      }
+    ]);
+
+    tray.setContextMenu(contextMenu);
+
+    tray.on('click', () => {
+      if (mainWindow) {
+        if (mainWindow.isVisible()) {
           mainWindow.focus();
+        } else {
+          mainWindow.show();
         }
       }
-    },
-    {
-      label: 'Launch Beacon Streaming',
-      click: () => {
-        if (mainWindow) {
-          launchStreamingApp(mainWindow.webContents);
+    });
+
+    tray.on('double-click', () => {
+      if (mainWindow) {
+        if (mainWindow.isVisible()) {
+          mainWindow.focus();
+        } else {
+          mainWindow.show();
         }
       }
-    },
-    {
-      label: 'Quit',
-      click: () => {
-        isQuitting = true;
-        app.quit();
-      }
-    }
-  ]);
-
-  tray.setContextMenu(contextMenu);
-
-  tray.on('click', () => {
-    if (mainWindow) {
-      if (mainWindow.isVisible()) {
-        mainWindow.focus();
-      } else {
-        mainWindow.show();
-      }
-    }
-  });
-
-  tray.on('double-click', () => {
-    if (mainWindow) {
-      if (mainWindow.isVisible()) {
-        mainWindow.focus();
-      } else {
-        mainWindow.show();
-      }
-    }
-  });
+    });
+  } catch (error) {
+    console.error('Failed to create system tray:', error);
+    tray = null;
+  }
 }
 
 function createWindow() {
@@ -112,15 +148,23 @@ function createWindow() {
   }
 
   mainWindow.on('minimize', (event) => {
-    event.preventDefault();
-    mainWindow.hide();
+    // Only hide to tray if the tray was successfully created
+    if (tray) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+    // Otherwise, default minimize behavior (taskbar) applies
   });
 
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
-      event.preventDefault();
-      mainWindow.hide();
-      return false;
+      // Only hide to tray if the tray was successfully created
+      if (tray) {
+        event.preventDefault();
+        mainWindow.hide();
+        return false;
+      }
+      // If tray failed, we allow normal close (which might quit the app depending on window-all-closed)
     }
   });
 
@@ -260,14 +304,29 @@ async function performInstall(event) {
   }
 }
 
-app.whenReady().then(() => {
-  createWindow();
-  createTray();
+const gotTheLock = app.requestSingleInstanceLock();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Someone tried to run a second instance, we should focus our window.
+    if (mainWindow) {
+      if (!mainWindow.isVisible()) mainWindow.show();
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
   });
-});
+
+  app.whenReady().then(() => {
+    createWindow();
+    createTray();
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  });
+}
 
 app.on('window-all-closed', () => {
   // On Windows/Linux, we now minimize to tray instead of quitting on close.
