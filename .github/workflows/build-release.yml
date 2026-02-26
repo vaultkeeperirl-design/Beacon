@@ -80,8 +80,10 @@ jobs:
   release:
     needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download Linux Artifacts
         uses: actions/download-artifact@v4
         with:
@@ -94,9 +96,31 @@ jobs:
           name: windows-build
           path: launcher/dist
 
+      - name: Update Nightly Tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git tag -f nightly
+          git push -f origin nightly
+
       - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
+          files: |
+            launcher/dist/*.AppImage
+            launcher/dist/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Nightly Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Nightly Build
+          tag_name: nightly
+          prerelease: true
           files: |
             launcher/dist/*.AppImage
             launcher/dist/*.exe
