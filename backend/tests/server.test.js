@@ -6,7 +6,7 @@ const { server, io } = require("../server");
 describe("Beacon Backend", () => {
   let clientSocket;
   let clientSocket2;
-  const port = 3002;
+  let port;
 
   // Helper to wait for an event
   const waitFor = (socket, event) => {
@@ -16,14 +16,17 @@ describe("Beacon Backend", () => {
   };
 
   beforeAll((done) => {
-    server.listen(port, () => {
+    server.listen(0, () => {
+      port = server.address().port;
       done();
     });
   });
 
   afterAll((done) => {
     io.close();
-    server.close(done);
+    server.close(() => {
+      done();
+    });
   });
 
   beforeEach((done) => {

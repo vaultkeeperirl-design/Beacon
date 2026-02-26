@@ -6,7 +6,7 @@ const { server, io } = require("../server");
 describe("Backend Security", () => {
   let clientSocket;
   let clientSocket2;
-  const port = 3003;
+  let port;
 
   // Helper to wait for an event
   const waitFor = (socket, event) => {
@@ -16,14 +16,17 @@ describe("Backend Security", () => {
   };
 
   beforeAll((done) => {
-    server.listen(port, () => {
+    server.listen(0, () => {
+      port = server.address().port;
       done();
     });
   });
 
   afterAll((done) => {
     io.close();
-    server.close(done);
+    server.close(() => {
+      done();
+    });
   });
 
   beforeEach((done) => {
@@ -163,5 +166,47 @@ describe("Backend Security", () => {
 
       // Expect the first message (Hack) to be ignored, so we receive "Valid"
       expect(message.text).toBe("Valid");
+  });
+
+  test("should prevent cross-room signaling", async () => {
+    const streamA = "stream-A";
+    const streamB = "stream-B";
+
+    // Client 1 joins Stream A
+    clientSocket.emit("join-stream", streamA);
+    await waitFor(clientSocket, "room-users-update");
+
+    // Client 2 joins Stream B
+    clientSocket2.emit("join-stream", streamB);
+    await waitFor(clientSocket2, "room-users-update");
+
+    let receivedSignal = false;
+    clientSocket2.on("offer", () => {
+        receivedSignal = true;
+    });
+
+    // Client 1 attempts to signal Client 2 across rooms
+    clientSocket.emit("offer", {
+        target: clientSocket2.id,
+        sdp: "malicious-sdp"
+    });
+
+    // Wait a bit to see if signal arrives
+    await new Promise(r => setTimeout(r, 200));
+
+    expect(receivedSignal).toBe(false);
+
+    // Now move Client 1 to Stream B
+    clientSocket.emit("join-stream", streamB);
+    await waitFor(clientSocket, "room-users-update");
+
+    const offerPromise = waitFor(clientSocket2, "offer");
+    clientSocket.emit("offer", {
+        target: clientSocket2.id,
+        sdp: "valid-sdp"
+    });
+
+    const received = await offerPromise;
+    expect(received.sdp).toBe("valid-sdp");
   });
 });

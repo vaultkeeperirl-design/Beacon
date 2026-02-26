@@ -23,7 +23,7 @@ io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
   socket.on('join-stream', (data) => {
-    const streamId = typeof data === 'string' ? data : data?.streamId;
+    const streamId = (typeof data === 'string' ? data : data?.streamId) || null;
     const username = typeof data === 'object' ? data?.username : null;
 
     if (username) {
@@ -50,22 +50,24 @@ io.on('connection', (socket) => {
        socket.currentRoom = null;
     }
 
-    if (streamId && socket.currentRoom !== streamId) {
-        socket.join(streamId);
-        socket.currentRoom = streamId;
-        console.log(`Socket ${socket.id} (${socket.username || 'unknown'}) joined stream ${streamId}`);
+    if (streamId) {
+        if (socket.currentRoom !== streamId) {
+            socket.join(streamId);
+            socket.currentRoom = streamId;
+            console.log(`Socket ${socket.id} (${socket.username || 'unknown'}) joined stream ${streamId}`);
+
+            // Notify others for potential P2P connection
+            socket.to(streamId).emit('user-connected', { id: socket.id, username: socket.username });
+        }
 
         // If the user is the host, mark stream as active
         if (socket.username === streamId) {
           activeStreams.add(streamId);
         }
 
-        // Broadcast updated participant count to the room
+        // Broadcast updated participant count to the room (and acknowledged requester)
         const count = io.sockets.adapter.rooms.get(streamId)?.size || 0;
         io.to(streamId).emit('room-users-update', count);
-
-        // Notify others for potential P2P connection
-        socket.to(streamId).emit('user-connected', { id: socket.id, username: socket.username });
     }
   });
 
@@ -134,19 +136,28 @@ io.on('connection', (socket) => {
 
   socket.on('offer', (payload) => {
     if (payload && payload.target) {
-      io.to(payload.target).emit('offer', { ...payload, sender: socket.id });
+      const targetSocket = io.sockets.sockets.get(payload.target);
+      if (targetSocket && targetSocket.currentRoom === socket.currentRoom) {
+        io.to(payload.target).emit('offer', { ...payload, sender: socket.id });
+      }
     }
   });
 
   socket.on('answer', (payload) => {
     if (payload && payload.target) {
-      io.to(payload.target).emit('answer', { ...payload, sender: socket.id });
+      const targetSocket = io.sockets.sockets.get(payload.target);
+      if (targetSocket && targetSocket.currentRoom === socket.currentRoom) {
+        io.to(payload.target).emit('answer', { ...payload, sender: socket.id });
+      }
     }
   });
 
   socket.on('ice-candidate', (payload) => {
     if (payload && payload.target) {
-      io.to(payload.target).emit('ice-candidate', { ...payload, sender: socket.id });
+      const targetSocket = io.sockets.sockets.get(payload.target);
+      if (targetSocket && targetSocket.currentRoom === socket.currentRoom) {
+        io.to(payload.target).emit('ice-candidate', { ...payload, sender: socket.id });
+      }
     }
   });
 
