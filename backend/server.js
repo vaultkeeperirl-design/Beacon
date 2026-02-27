@@ -26,9 +26,15 @@ io.on('connection', (socket) => {
 
   socket.on('join-stream', (data) => {
     const streamId = (typeof data === 'string' ? data : data?.streamId) || null;
-    const username = typeof data === 'object' ? data?.username : null;
+    let username = typeof data === 'object' ? data?.username : null;
 
     if (username) {
+      // Security: Prevent users from impersonating the host
+      // If the stream is active, the real host is already connected.
+      // Anyone else claiming to be the host gets a fallback name.
+      if (username === streamId && activeStreams.has(streamId)) {
+        username = `${username}-viewer`;
+      }
       socket.username = username;
     }
 
