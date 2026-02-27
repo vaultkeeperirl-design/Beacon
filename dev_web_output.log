@@ -2,31 +2,65 @@
 > beacon-monorepo@ dev:web /app
 > concurrently "cd backend && pnpm dev" "cd frontend && pnpm dev"
 
-[1]
-[1] > frontend@1.0.4 dev /app/frontend
-[1] > vite
-[1]
 [0]
 [0] > backend@1.0.5 dev /app/backend
 [0] > nodemon server.js
 [0]
+[1]
+[1] > frontend@1.0.4 dev /app/frontend
+[1] > vite
+[1]
 [0] [33m[nodemon] 3.1.14[39m
 [0] [33m[nodemon] to restart at any time, enter `rs`[39m
 [0] [33m[nodemon] watching path(s): *.*[39m
 [0] [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
 [0] [32m[nodemon] starting `node server.js`[39m
+[0] Server running on port 3000
 [1]
-[1]   VITE v7.3.1  ready in 457 ms
+[1]   VITE v7.3.1  ready in 349 ms
 [1]
 [1]   ➜  Local:   http://localhost:5173/
 [1]   ➜  Network: use --host to expose
-[0] Server running on port 3000
-[0] New client connected: JwW3aWi3ocyVMrV1AAAB
-[0] Socket JwW3aWi3ocyVMrV1AAAB (User_11475) joined stream test-stream
-[0] Client disconnected: JwW3aWi3ocyVMrV1AAAB
-[0] New client connected: 4u-sjWirJannbLK9AAAD
-[0] Socket 4u-sjWirJannbLK9AAAD (User_14983) joined stream test-stream
-[0] Client disconnected: 4u-sjWirJannbLK9AAAD
-[0] New client connected: yOwn7qNlYcb162Q_AAAF
-[0] Socket yOwn7qNlYcb162Q_AAAF (User_67261) joined stream test-stream
-[0] Client disconnected: yOwn7qNlYcb162Q_AAAF
+[0] New client connected: 8_11OtSxOiZWJHBSAAAB
+[0] Client disconnected: 8_11OtSxOiZWJHBSAAAB
+[0] New client connected: 6DeLmpeDnfuICUOJAAAD
+[0] Client disconnected: 6DeLmpeDnfuICUOJAAAD
+[0] New client connected: fixwiXUx1hkjgq2NAAAF
+[0] Client disconnected: fixwiXUx1hkjgq2NAAAF
+[0] New client connected: SbmvZqoBJvU1J5tRAAAH
+[0] Socket SbmvZqoBJvU1J5tRAAAH (User_63191) joined stream 1
+[0] Client disconnected: SbmvZqoBJvU1J5tRAAAH
+[0] New client connected: Qu5NCX6smkp2PrGOAAAJ
+[0] Client disconnected: Qu5NCX6smkp2PrGOAAAJ
+[0] New client connected: Nb4MwMNLH8fqO4ybAAAL
+[0] Client disconnected: Nb4MwMNLH8fqO4ybAAAL
+[0] New client connected: SC8mB22_iq2QA9uPAAAN
+[0] Client disconnected: SC8mB22_iq2QA9uPAAAN
+[0] New client connected: y3vXqFvj-4ZXO5nVAAAP
+[0] Client disconnected: y3vXqFvj-4ZXO5nVAAAP
+[0] New client connected: Sw-5CPT3WJGd5HauAAAR
+[0] Client disconnected: Sw-5CPT3WJGd5HauAAAR
+[0] New client connected: YH-OGwv2eTzMhH9SAAAT
+[0] Socket YH-OGwv2eTzMhH9SAAAT (User_46521) joined stream 1
+[0] Client disconnected: YH-OGwv2eTzMhH9SAAAT
+[0] New client connected: 9OpQ8ZUEOUR9P_gVAAAV
+[0] Client disconnected: 9OpQ8ZUEOUR9P_gVAAAV
+[0] New client connected: K6jcgmcVSmmXgSy2AAAX
+[0] Client disconnected: K6jcgmcVSmmXgSy2AAAX
+[0] New client connected: aF46JKcdJ8oeqT9tAAAZ
+[0] Client disconnected: aF46JKcdJ8oeqT9tAAAZ
+[0] New client connected: 0OaIiC56YDoJjY8vAAAb
+[0] Client disconnected: 0OaIiC56YDoJjY8vAAAb
+[0] New client connected: DOClWim0nZxCwc-4AAAd
+[0] Client disconnected: DOClWim0nZxCwc-4AAAd
+[0] New client connected: JXoyYRFIjh-CEsblAAAf
+[0] Socket JXoyYRFIjh-CEsblAAAf (User_84079) joined stream 1
+[0] Client disconnected: JXoyYRFIjh-CEsblAAAf
+[0] New client connected: 3-Bi4gkZ-1GsmCVzAAAh
+[0] Client disconnected: 3-Bi4gkZ-1GsmCVzAAAh
+[0] New client connected: KFjnRtHl9hxzxaHrAAAj
+[0] Client disconnected: KFjnRtHl9hxzxaHrAAAj
+[0] New client connected: zQDvm4Kv2cLF--VfAAAl
+[0] Client disconnected: zQDvm4Kv2cLF--VfAAAl
+[0] New client connected: Cn91SePceww6XgpXAAAn
+[0] Client disconnected: Cn91SePceww6XgpXAAAn

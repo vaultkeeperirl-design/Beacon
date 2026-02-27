@@ -105,6 +105,9 @@ cd frontend && pnpm test:watch
 ### Following Page
 ![Following Page](screenshots/following_page.png)
 
+### Browse & Discovery
+![Browse Page](screenshots/browse_page.png)
+
 ### Watch Page (Mock Player & Chat)
 ![Watch Page](screenshots/watch_page.png)
 
