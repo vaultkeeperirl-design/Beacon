@@ -34,9 +34,9 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
   useEffect(() => {
     // Use a timeout to ensure state updates happen in the next tick, avoiding synchronous setState warnings in effects.
     const timer = setTimeout(() => {
-        if (!streamId) {
+        if (!streamId || !isSharing) { // Respect isSharing flag
             setStats(prev => {
-                if (prev.peersConnected === 0 && prev.uploadSpeed === 0) return prev;
+                if (prev.peersConnected === 0 && prev.uploadSpeed === 0 && prev.downloadSpeed === 0) return prev;
                 return {
                     ...prev,
                     uploadSpeed: 0,
@@ -67,7 +67,7 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [meshStats, streamId]);
+  }, [meshStats, streamId, isSharing]); // Added isSharing to dependencies
 
   return stats;
 }
