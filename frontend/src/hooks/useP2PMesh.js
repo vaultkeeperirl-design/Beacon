@@ -97,7 +97,7 @@ export function useP2PMesh() {
                         ? rtt
                         : Math.round((latencyRef.current * 0.7) + (rtt * 0.3));
                 }
-            } catch (e) {
+            } catch {
                 // Ignore non-JSON data (if any raw buffers are sent)
             }
         });

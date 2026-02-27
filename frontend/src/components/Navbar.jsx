@@ -47,17 +47,21 @@ const Navbar = memo(function Navbar() {
       <div className="flex items-center gap-3">
         <WalletBalance />
 
-        <Link to="/broadcast">
-            <button className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors border border-neutral-700 hover:border-neutral-600">
-              <Radio className="w-4 h-4 text-beacon-500" />
-              <span>Go Live</span>
-            </button>
+        <Link
+          to="/broadcast"
+          className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors border border-neutral-700 hover:border-neutral-600"
+        >
+          <Radio className="w-4 h-4 text-beacon-500" />
+          <span>Go Live</span>
         </Link>
 
-        <Link to={`/channel/${username}`}>
-          <button className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 hover:border-beacon-500 transition-colors">
-            <User className="w-4 h-4 text-neutral-400" />
-          </button>
+        <Link
+          to={`/channel/${username}`}
+          className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 hover:border-beacon-500 transition-colors"
+          aria-label="Profile"
+          title="Profile"
+        >
+          <User className="w-4 h-4 text-neutral-400" />
         </Link>
       </div>
     </nav>

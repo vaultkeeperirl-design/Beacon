@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { usePoll } from '../hooks/usePoll';
 
 export default function PollWidget({ streamId }) {
@@ -34,7 +34,6 @@ export default function PollWidget({ streamId }) {
         <div className="space-y-2">
           {activePoll.options.map((option, idx) => {
             const percent = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
-            const isWinner = totalVotes > 0 && option.votes === Math.max(...activePoll.options.map(o => o.votes));
 
             return (
               <button
