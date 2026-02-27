@@ -101,13 +101,25 @@ export default function Watch() {
                   {isFollowed ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
                   <span>{isFollowed ? 'Following' : 'Follow'}</span>
                 </button>
-                <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700">
+                <button
+                  className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700"
+                  aria-label="Like stream"
+                  title="Like stream"
+                >
                   <ThumbsUp className="w-5 h-5" />
                 </button>
-                <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700">
+                <button
+                  className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700"
+                  aria-label="Share stream"
+                  title="Share stream"
+                >
                   <Share2 className="w-5 h-5" />
                 </button>
-                <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700">
+                <button
+                  className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700"
+                  aria-label="More options"
+                  title="More options"
+                >
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
              </div>
