@@ -16,42 +16,42 @@ describe('VideoControls', () => {
 
   it('renders correctly with default props', () => {
     render(<VideoControls {...defaultProps} />);
-    expect(screen.getByLabelText('Pause stream')).toBeInTheDocument();
-    expect(screen.getByLabelText('Mute audio')).toBeInTheDocument();
-    expect(screen.getByLabelText('Enter Fullscreen')).toBeInTheDocument();
+    expect(screen.getByLabelText('Pause stream (Space/k)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Mute audio (m)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Enter Fullscreen (f)')).toBeInTheDocument();
     expect(screen.getByText('P2P: 1080p60')).toBeInTheDocument();
   });
 
   it('renders Play button when not playing', () => {
     render(<VideoControls {...defaultProps} isPlaying={false} />);
-    expect(screen.getByLabelText('Play stream')).toBeInTheDocument();
+    expect(screen.getByLabelText('Play stream (Space/k)')).toBeInTheDocument();
   });
 
   it('renders Unmute button when muted', () => {
     render(<VideoControls {...defaultProps} isMuted={true} />);
-    expect(screen.getByLabelText('Unmute audio')).toBeInTheDocument();
+    expect(screen.getByLabelText('Unmute audio (m)')).toBeInTheDocument();
   });
 
   it('renders Exit Fullscreen button when in fullscreen', () => {
     render(<VideoControls {...defaultProps} isFullscreen={true} />);
-    expect(screen.getByLabelText('Exit Fullscreen')).toBeInTheDocument();
+    expect(screen.getByLabelText('Exit Fullscreen (f)')).toBeInTheDocument();
   });
 
   it('calls onPlayToggle when play/pause button is clicked', () => {
     render(<VideoControls {...defaultProps} />);
-    fireEvent.click(screen.getByLabelText('Pause stream'));
+    fireEvent.click(screen.getByLabelText('Pause stream (Space/k)'));
     expect(defaultProps.onPlayToggle).toHaveBeenCalledTimes(1);
   });
 
   it('calls onMuteToggle when volume button is clicked', () => {
     render(<VideoControls {...defaultProps} />);
-    fireEvent.click(screen.getByLabelText('Mute audio'));
+    fireEvent.click(screen.getByLabelText('Mute audio (m)'));
     expect(defaultProps.onMuteToggle).toHaveBeenCalledTimes(1);
   });
 
   it('calls onFullscreenToggle when fullscreen button is clicked', () => {
     render(<VideoControls {...defaultProps} />);
-    fireEvent.click(screen.getByLabelText('Enter Fullscreen'));
+    fireEvent.click(screen.getByLabelText('Enter Fullscreen (f)'));
     expect(defaultProps.onFullscreenToggle).toHaveBeenCalledTimes(1);
   });
 
