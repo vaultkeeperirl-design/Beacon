@@ -5,3 +5,7 @@
 ## 2025-01-24 - [React] Shielding Layout from High-Frequency Pulse States
 **Learning:** Components that don't depend on high-frequency state (like a 1s ad-break timer or P2P stats) still re-render if their parent does, even if they are logically "static" during that phase.
 **Action:** Use `React.memo` to wrap complex sub-components in views with active timers (e.g., `Broadcast Studio`). This prevents the entire UI tree from reconciling every second, significantly reducing CPU usage during live sessions.
+
+## 2025-05-24 - [React] Isolating High-Frequency Leaf State
+**Learning:** Even with `React.memo`, if a high-frequency state (like a 1s timer) lives in a large parent component, the entire parent layout reconciles every second. `React.memo` only helps children.
+**Action:** Isolate high-frequency "pulse" states into their own leaf components (e.g., `AdBreakButton`). This keeps the reconciliation scope limited to the smallest possible part of the DOM tree.
