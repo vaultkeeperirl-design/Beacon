@@ -70,6 +70,30 @@ pnpm dev:web
 
 Detailed setup instructions can be found in [Documentation/Installation.md](Documentation/Installation.md).
 
+## 🧪 Testing
+
+We use standardized commands to run tests across the codebase.
+
+```bash
+# Run all tests (Frontend + Backend)
+pnpm test
+
+# Run Backend tests (Silent mode by default)
+pnpm test:backend
+
+# Run Backend tests with verbose logging
+cd backend && pnpm test:verbose
+
+# Run Backend tests in watch mode
+cd backend && pnpm test:watch
+
+# Run Frontend tests (Single run)
+pnpm test:frontend
+
+# Run Frontend tests in watch mode
+cd frontend && pnpm test:watch
+```
+
 ## Progress Screenshots
 
 ### Launcher / Installer
