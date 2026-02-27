@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePoll } from '../hooks/usePoll';
 import { Clock } from 'lucide-react';
 
