@@ -6,6 +6,8 @@ const VideoControls = memo(({
   onPlayToggle,
   isMuted,
   onMuteToggle,
+  volume = 1,
+  onVolumeChange = () => {},
   isFullscreen,
   onFullscreenToggle,
   onSettingsToggle,
@@ -23,14 +25,29 @@ const VideoControls = memo(({
           >
             {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
           </button>
-          <button
-            className="text-white hover:text-beacon-500 transition-colors group/vol"
-            onClick={onMuteToggle}
-            aria-label={isMuted ? "Unmute audio" : "Mute audio"}
-            title={isMuted ? "Unmute" : "Mute"}
-          >
-            {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-          </button>
+
+          <div className="flex items-center gap-2 group/vol-control">
+             <button
+               className="text-white hover:text-beacon-500 transition-colors"
+               onClick={onMuteToggle}
+               aria-label={isMuted ? "Unmute audio" : "Mute audio"}
+               title={isMuted ? "Unmute" : "Mute"}
+             >
+               {isMuted || volume === 0 ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+             </button>
+
+             <input
+               type="range"
+               min="0"
+               max="1"
+               step="0.01"
+               value={isMuted ? 0 : volume}
+               onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+               className="w-24 h-1.5 bg-neutral-600 rounded-lg appearance-none cursor-pointer accent-beacon-500 hover:accent-beacon-400 transition-all opacity-0 group-hover/vol-control:opacity-100 duration-200"
+               aria-label="Volume"
+             />
+          </div>
+
           <div className="flex items-center gap-2 text-sm font-bold text-red-500 uppercase tracking-widest bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
              LIVE

@@ -7,6 +7,7 @@ import VideoControls from './VideoControls';
 const VideoPlayer = memo(function VideoPlayer({ streamUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
+  const [volume, setVolume] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const videoRef = useRef(null);
@@ -56,6 +57,29 @@ const VideoPlayer = memo(function VideoPlayer({ streamUrl = "https://commondatas
     videoRef.current.muted = isMuted;
   }, [isMuted]);
 
+  // Synchronize volume state
+  useEffect(() => {
+    if (!videoRef.current) return;
+    videoRef.current.volume = volume;
+  }, [volume]);
+
+  const handleVolumeChange = (newVolume) => {
+      setVolume(newVolume);
+      if (newVolume > 0 && isMuted) {
+          setIsMuted(false);
+      } else if (newVolume === 0 && !isMuted) {
+          setIsMuted(true);
+      }
+  };
+
+  const handleMuteToggle = () => {
+      const newMutedState = !isMuted;
+      setIsMuted(newMutedState);
+      if (!newMutedState && volume === 0) {
+          setVolume(0.5); // Default to 50% if unmuting from 0
+      }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -82,7 +106,9 @@ const VideoPlayer = memo(function VideoPlayer({ streamUrl = "https://commondatas
         isPlaying={isPlaying}
         onPlayToggle={() => setIsPlaying(!isPlaying)}
         isMuted={isMuted}
-        onMuteToggle={() => setIsMuted(!isMuted)}
+        onMuteToggle={handleMuteToggle}
+        volume={volume}
+        onVolumeChange={handleVolumeChange}
         isFullscreen={isFullscreen}
         onFullscreenToggle={toggleFullscreen}
         onSettingsToggle={() => setIsSettingsOpen(true)}

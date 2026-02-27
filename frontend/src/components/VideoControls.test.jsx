@@ -8,6 +8,8 @@ describe('VideoControls', () => {
     onPlayToggle: vi.fn(),
     isMuted: false,
     onMuteToggle: vi.fn(),
+    volume: 1,
+    onVolumeChange: vi.fn(),
     isFullscreen: false,
     onFullscreenToggle: vi.fn(),
     onSettingsToggle: vi.fn(),
@@ -20,6 +22,7 @@ describe('VideoControls', () => {
     expect(screen.getByLabelText('Mute audio')).toBeInTheDocument();
     expect(screen.getByLabelText('Enter Fullscreen')).toBeInTheDocument();
     expect(screen.getByText('P2P: 1080p60')).toBeInTheDocument();
+    expect(screen.getByLabelText('Volume')).toBeInTheDocument();
   });
 
   it('renders Play button when not playing', () => {
@@ -47,6 +50,13 @@ describe('VideoControls', () => {
     render(<VideoControls {...defaultProps} />);
     fireEvent.click(screen.getByLabelText('Mute audio'));
     expect(defaultProps.onMuteToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onVolumeChange when volume slider is changed', () => {
+    render(<VideoControls {...defaultProps} />);
+    const slider = screen.getByLabelText('Volume');
+    fireEvent.change(slider, { target: { value: '0.5' } });
+    expect(defaultProps.onVolumeChange).toHaveBeenCalledWith(0.5);
   });
 
   it('calls onFullscreenToggle when fullscreen button is clicked', () => {
