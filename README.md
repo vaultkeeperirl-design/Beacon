@@ -59,7 +59,7 @@ We are building a robust, scalable P2P architecture:
 ```bash
 # 1. Install dependencies for all packages
 pnpm install
-pnpm run bootstrap
+pnpm bootstrap
 
 # 2. Run the Desktop Launcher (Main App)
 pnpm dev
