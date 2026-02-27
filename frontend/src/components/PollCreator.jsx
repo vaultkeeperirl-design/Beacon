@@ -48,6 +48,8 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-neutral-400 hover:text-white transition-colors"
+          aria-label="Close"
+          title="Close"
         >
           <X className="w-5 h-5" />
         </button>
@@ -59,8 +61,9 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-neutral-300 mb-2">Question</label>
+            <label htmlFor="poll-question" className="block text-sm font-semibold text-neutral-300 mb-2">Question</label>
             <input
+              id="poll-question"
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
@@ -72,10 +75,11 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
           </div>
 
           <div className="space-y-3">
-            <label className="block text-sm font-semibold text-neutral-300">Options</label>
+            <label htmlFor="poll-option-0" className="block text-sm font-semibold text-neutral-300">Options</label>
             {options.map((opt, idx) => (
               <div key={idx} className="flex gap-2">
                 <input
+                  id={`poll-option-${idx}`}
                   type="text"
                   value={opt}
                   onChange={(e) => handleOptionChange(idx, e.target.value)}
@@ -88,6 +92,8 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
                     type="button"
                     onClick={() => handleRemoveOption(idx)}
                     className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                    aria-label="Remove option"
+                    title="Remove option"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>

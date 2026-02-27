@@ -58,7 +58,7 @@ describe('StreamCard Component', () => {
     renderComponent();
 
     // Check stream link
-    const streamLinks = screen.getAllByRole('link', { name: /Awesome Stream/i });
+    screen.getAllByRole('link', { name: /Awesome Stream/i });
     // There might be multiple links pointing to the stream (thumbnail + title)
     // The component has one link for thumbnail and one for title.
     // Let's be more specific or check all relevant links.

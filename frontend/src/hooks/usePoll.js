@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSocket } from './useSocket';
-import { useP2PSettings } from '../context/P2PContext';
 
 export function usePoll(streamId) {
   const { socket } = useSocket();
-  const { username } = useP2PSettings();
   const [activePoll, setActivePoll] = useState(null);
   const [hasVoted, setHasVoted] = useState(false);
 
