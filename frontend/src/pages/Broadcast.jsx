@@ -192,8 +192,8 @@ export default function Broadcast() {
     setAdBreakTimer(60);
   };
 
-  const handleStartPoll = (question, options) => {
-    startPoll(question, options);
+  const handleStartPoll = (question, options, duration) => {
+    startPoll(question, options, duration);
   };
 
   const handlePollClick = () => {

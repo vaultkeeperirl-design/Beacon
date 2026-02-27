@@ -41,9 +41,9 @@ export function usePoll(streamId) {
     };
   }, [socket, streamId, activePoll]);
 
-  const startPoll = useCallback((question, options) => {
+  const startPoll = useCallback((question, options, duration) => {
     if (!socket || !streamId) return;
-    socket.emit('create-poll', { streamId, question, options });
+    socket.emit('create-poll', { streamId, question, options, duration });
   }, [socket, streamId]);
 
   const submitVote = useCallback((optionIndex) => {
