@@ -43,6 +43,6 @@ A core architectural principle is **Mandatory Bandwidth Sharing**.
     -   `src/hooks`: Custom hooks for P2P logic and Socket.IO.
 -   **backend/**: Contains the signaling server code.
     -   `server.js`: Main entry point handling Socket.IO events.
--   **Documentation/**: Project documentation (you are here).
+-   **docs/**: Project documentation (you are here).
 
 For more details on specific features, see [Features](Features.md).
