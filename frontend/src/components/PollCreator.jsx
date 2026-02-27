@@ -4,6 +4,7 @@ import { X, Plus, Trash2, PieChart } from 'lucide-react';
 export default function PollCreator({ isOpen, onClose, onStartPoll }) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
+  const [duration, setDuration] = useState(null);
 
   if (!isOpen) return null;
 
@@ -33,11 +34,12 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
     const validOptions = options.filter(opt => opt.trim());
     if (validOptions.length < 2) return;
 
-    onStartPoll(question, validOptions);
+    onStartPoll(question, validOptions, duration);
     onClose();
     // Reset form
     setQuestion('');
     setOptions(['', '']);
+    setDuration(null);
   };
 
   return (
@@ -104,6 +106,31 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
               Add Option
             </button>
           )}
+
+          <div className="space-y-3 pt-4 border-t border-neutral-800">
+            <label className="block text-sm font-semibold text-neutral-300">Duration</label>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { label: 'None', value: null },
+                { label: '1m', value: 60 },
+                { label: '2m', value: 120 },
+                { label: '5m', value: 300 }
+              ].map((d) => (
+                <button
+                  key={d.label}
+                  type="button"
+                  onClick={() => setDuration(d.value)}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all border ${
+                    duration === d.value
+                      ? 'bg-beacon-600 text-white border-beacon-500 shadow-lg shadow-beacon-600/20'
+                      : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700 hover:text-white'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="pt-6 border-t border-neutral-800 flex justify-end gap-3">
             <button

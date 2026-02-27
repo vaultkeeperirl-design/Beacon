@@ -1,14 +1,36 @@
 import { useState, useEffect } from 'react';
 import { usePoll } from '../hooks/usePoll';
+import { Clock } from 'lucide-react';
 
 export default function PollWidget({ streamId }) {
   const { activePoll, hasVoted, submitVote } = usePoll(streamId);
   const [localVote, setLocalVote] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(null);
+
+  useEffect(() => {
+    if (!activePoll || !activePoll.duration) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const calculateTimeLeft = () => {
+      const start = activePoll.id; // activePoll.id is Date.now() from server
+      const durationMs = activePoll.duration * 1000;
+      const end = start + durationMs;
+      const remaining = Math.max(0, Math.floor((end - Date.now()) / 1000));
+      setTimeLeft(remaining);
+    };
+
+    calculateTimeLeft();
+    const interval = setInterval(calculateTimeLeft, 1000);
+
+    return () => clearInterval(interval);
+  }, [activePoll]);
 
   if (!activePoll) return null;
 
   const handleVote = (index) => {
-    if (!hasVoted) {
+    if (!hasVoted && activePoll.isActive && (timeLeft === null || timeLeft > 0)) {
       setLocalVote(index);
       submitVote(index);
     }
@@ -27,8 +49,16 @@ export default function PollWidget({ streamId }) {
 
       <div className="relative z-10">
         <h3 className="font-bold text-white text-sm mb-3 flex items-center justify-between">
-          <span>{activePoll.question}</span>
-          <span className="text-[10px] font-mono text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded">{totalVotes} VOTES</span>
+          <div className="flex flex-col">
+            <span>{activePoll.question}</span>
+            {timeLeft !== null && (
+              <span className="text-[10px] text-beacon-400 flex items-center gap-1 mt-0.5">
+                <Clock className="w-3 h-3" />
+                {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')} remaining
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] font-mono text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded self-start">{totalVotes} VOTES</span>
         </h3>
 
         <div className="space-y-2">
@@ -36,13 +66,15 @@ export default function PollWidget({ streamId }) {
             const percent = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
             const isWinner = totalVotes > 0 && option.votes === Math.max(...activePoll.options.map(o => o.votes));
 
+            const isDisabled = hasVoted || !activePoll.isActive || (timeLeft !== null && timeLeft === 0);
+
             return (
               <button
                 key={idx}
                 onClick={() => handleVote(idx)}
-                disabled={hasVoted}
+                disabled={isDisabled}
                 className={`w-full relative h-9 rounded-lg overflow-hidden group/opt transition-all ${
-                  hasVoted ? 'cursor-default' : 'hover:ring-1 hover:ring-beacon-500/50 cursor-pointer'
+                  isDisabled ? 'cursor-default' : 'hover:ring-1 hover:ring-beacon-500/50 cursor-pointer'
                 }`}
               >
                 {/* Background Bar */}
