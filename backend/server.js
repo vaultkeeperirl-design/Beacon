@@ -39,6 +39,7 @@ io.on('connection', (socket) => {
        // activeStreams logic: If host leaves, redirect viewers
        if (socket.username === prevRoom && activeStreams.has(prevRoom)) {
           activeStreams.delete(prevRoom);
+          activePolls.delete(prevRoom);
           const otherStreams = Array.from(activeStreams);
           const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
           socket.to(prevRoom).emit('stream-ended', { redirect });
@@ -85,6 +86,7 @@ io.on('connection', (socket) => {
        // activeStreams logic: If host leaves, redirect viewers
        if (socket.username === room && activeStreams.has(room)) {
           activeStreams.delete(room);
+          activePolls.delete(room);
           const otherStreams = Array.from(activeStreams);
           const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
           socket.to(room).emit('stream-ended', { redirect });
@@ -238,6 +240,7 @@ io.on('connection', (socket) => {
       // activeStreams logic: If host leaves, redirect viewers
       if (socket.username === streamId && activeStreams.has(streamId)) {
           activeStreams.delete(streamId);
+          activePolls.delete(streamId);
           const otherStreams = Array.from(activeStreams);
           const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
           socket.to(streamId).emit('stream-ended', { redirect });
