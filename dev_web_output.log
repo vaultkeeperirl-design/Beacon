@@ -1,0 +1,26 @@
+
+> beacon-monorepo@ dev:web /app
+> concurrently "cd backend && pnpm dev" "cd frontend && pnpm dev"
+
+[0]
+[0] > backend@1.0.5 dev /app/backend
+[0] > nodemon server.js
+[0]
+[1]
+[1] > frontend@1.0.4 dev /app/frontend
+[1] > vite
+[1]
+[0] [33m[nodemon] 3.1.14[39m
+[0] [33m[nodemon] to restart at any time, enter `rs`[39m
+[0] [33m[nodemon] watching path(s): *.*[39m
+[0] [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[0] [32m[nodemon] starting `node server.js`[39m
+[0] Server running on port 3000
+[1]
+[1]   VITE v7.3.1  ready in 367 ms
+[1]
+[1]   ➜  Local:   http://localhost:5173/
+[1]   ➜  Network: use --host to expose
+[0] New client connected: XY6O4cMVEdyY5jaJAAAB
+[0] Socket XY6O4cMVEdyY5jaJAAAB (User_5873) joined stream test-stream
+[0] Client disconnected: XY6O4cMVEdyY5jaJAAAB
