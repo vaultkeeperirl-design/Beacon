@@ -68,7 +68,7 @@ pnpm dev
 pnpm dev:web
 ```
 
-Detailed setup instructions can be found in [Documentation/Installation.md](Documentation/Installation.md).
+Detailed setup instructions can be found in [docs/Installation.md](docs/Installation.md).
 
 ## 🧪 Testing
 
