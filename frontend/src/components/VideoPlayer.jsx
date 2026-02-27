@@ -57,6 +57,34 @@ const VideoPlayer = memo(function VideoPlayer({ streamUrl = "https://commondatas
     videoRef.current.muted = isMuted;
   }, [isMuted]);
 
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore shortcuts if the user is typing in an input or textarea
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
+        case ' ':
+        case 'k':
+          e.preventDefault(); // Prevent scrolling for space
+          setIsPlaying((prev) => !prev);
+          break;
+        case 'm':
+          setIsMuted((prev) => !prev);
+          break;
+        case 'f':
+          toggleFullscreen();
+          break;
+        default:
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
   // Synchronize volume state
   useEffect(() => {
     if (!videoRef.current) return;

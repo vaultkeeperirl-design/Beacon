@@ -20,10 +20,18 @@ const VideoControls = memo(({
           <button
             className="text-white hover:text-beacon-500 transition-colors"
             onClick={onPlayToggle}
-            aria-label={isPlaying ? "Pause stream" : "Play stream"}
-            title={isPlaying ? "Pause" : "Play"}
+            aria-label={isPlaying ? "Pause stream (Space/k)" : "Play stream (Space/k)"}
+            title={isPlaying ? "Pause (Space/k)" : "Play (Space/k)"}
           >
             {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
+          </button>
+          <button
+            className="text-white hover:text-beacon-500 transition-colors group/vol"
+            onClick={onMuteToggle}
+            aria-label={isMuted ? "Unmute audio (m)" : "Mute audio (m)"}
+            title={isMuted ? "Unmute (m)" : "Mute (m)"}
+          >
+            {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
           </button>
 
           <div className="flex items-center gap-2 group/vol-control">
@@ -69,8 +77,8 @@ const VideoControls = memo(({
           <button
             className="text-white hover:text-beacon-500 transition-colors"
             onClick={onFullscreenToggle}
-            aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+            aria-label={isFullscreen ? "Exit Fullscreen (f)" : "Enter Fullscreen (f)"}
+            title={isFullscreen ? "Exit Fullscreen (f)" : "Enter Fullscreen (f)"}
           >
             {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
           </button>
