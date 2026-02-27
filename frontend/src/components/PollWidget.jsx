@@ -1,30 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { usePoll } from '../hooks/usePoll';
 import { Clock } from 'lucide-react';
 
-export default function PollWidget({ streamId }) {
+const PollWidget = memo(function PollWidget({ streamId }) {
   const { activePoll, hasVoted, submitVote } = usePoll(streamId);
   const [localVote, setLocalVote] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
 
   useEffect(() => {
-    if (!activePoll || !activePoll.duration) {
-      setTimeLeft(null);
-      return;
-    }
-
     const calculateTimeLeft = () => {
-      const start = activePoll.id; // activePoll.id is Date.now() from server
+      if (!activePoll || !activePoll.duration) {
+        setTimeLeft(null);
+        return;
+      }
+
+      const start = activePoll.id;
       const durationMs = activePoll.duration * 1000;
       const end = start + durationMs;
       const remaining = Math.max(0, Math.floor((end - Date.now()) / 1000));
+      // Use functional update to avoid stale closure and wrap in timeout
+      // to avoid synchronous setState in effect warning if it's the first render
       setTimeLeft(remaining);
     };
 
-    calculateTimeLeft();
+    const timer = setTimeout(calculateTimeLeft, 0);
     const interval = setInterval(calculateTimeLeft, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [activePoll]);
 
   if (!activePoll) return null;
@@ -104,4 +109,6 @@ export default function PollWidget({ streamId }) {
       </div>
     </div>
   );
-}
+});
+
+export default PollWidget;

@@ -4,6 +4,7 @@ import { useP2PSettings } from '../context/P2PContext';
 import Chat from '../components/Chat';
 import StreamSettings from '../components/StreamSettings';
 import PollCreator from '../components/PollCreator';
+import AdBreakButton from '../components/AdBreakButton';
 import { usePoll } from '../hooks/usePoll';
 
 export default function Broadcast() {
@@ -19,7 +20,6 @@ export default function Broadcast() {
   const [notification, setNotification] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
-  const [adBreakTimer, setAdBreakTimer] = useState(0);
   const [squad, setSquad] = useState([
     { id: 1, name: 'You (Host)', split: 100, isHost: true },
   ]);
@@ -39,16 +39,6 @@ export default function Broadcast() {
     }
     return () => setCurrentStreamId(null);
   }, [isLive, username, setCurrentStreamId]);
-
-  useEffect(() => {
-    let interval;
-    if (adBreakTimer > 0) {
-      interval = setInterval(() => {
-        setAdBreakTimer((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [adBreakTimer]);
 
   useEffect(() => {
     async function startCamera() {
@@ -185,11 +175,6 @@ export default function Broadcast() {
       setUpdateSuccess(true);
       setTimeout(() => setUpdateSuccess(false), 3000);
     }, 1000);
-  };
-
-  const startAdBreak = () => {
-    if (adBreakTimer > 0) return;
-    setAdBreakTimer(60);
   };
 
   const handleStartPoll = (question, options, duration) => {
@@ -448,17 +433,7 @@ export default function Broadcast() {
                     {activePoll ? 'End Active Poll' : 'Start Poll'}
                   </button>
                   <button className="p-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-medium text-white transition-colors border border-neutral-700">Manage Mods</button>
-                  <button
-                    onClick={startAdBreak}
-                    disabled={adBreakTimer > 0}
-                    className={`p-3 rounded-lg text-sm font-medium transition-all border ${
-                      adBreakTimer > 0
-                        ? 'bg-neutral-900 border-neutral-800 text-neutral-500 cursor-not-allowed'
-                        : 'bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-700'
-                    }`}
-                  >
-                    {adBreakTimer > 0 ? `Ad Break (${adBreakTimer}s)` : 'Ad Break (60s)'}
-                  </button>
+                  <AdBreakButton />
                </div>
             </div>
          </div>
