@@ -151,17 +151,47 @@ describe("Poll Feature", () => {
       });
 
       viewerSocket.once("poll-started", () => {
+        // Wait for the poll started event to be processed
+        setTimeout(() => {
+            viewerSocket.on("poll-ended", (poll) => {
+              try {
+                expect(poll.isActive).toBe(false);
+                done();
+              } catch (error) {
+                done(error);
+              }
+            });
 
+            hostSocket.emit("end-poll", { streamId });
+        }, 50);
+      });
+    }, 50);
+  });
+
+  test("should automatically end poll after duration", (done) => {
+    const streamId = "poll-stream-5";
+
+    hostSocket.emit("join-stream", { streamId, username: streamId });
+    viewerSocket.emit("join-stream", { streamId, username: "viewer" });
+
+    setTimeout(() => {
+      hostSocket.emit("create-poll", {
+        streamId,
+        question: "Auto End?",
+        options: ["Yes", "No"],
+        duration: 0.1 // 100ms
+      });
+
+      viewerSocket.once("poll-started", () => {
         viewerSocket.on("poll-ended", (poll) => {
           try {
             expect(poll.isActive).toBe(false);
+            expect(poll.question).toBe("Auto End?");
             done();
           } catch (error) {
             done(error);
           }
         });
-
-        hostSocket.emit("end-poll", { streamId });
       });
     }, 50);
   });

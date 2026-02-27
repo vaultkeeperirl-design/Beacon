@@ -39,7 +39,14 @@ io.on('connection', (socket) => {
        // activeStreams logic: If host leaves, redirect viewers
        if (socket.username === prevRoom && activeStreams.has(prevRoom)) {
           activeStreams.delete(prevRoom);
-          activePolls.delete(prevRoom);
+          // Check for active poll and clear its timeout
+          if (activePolls.has(prevRoom)) {
+              const poll = activePolls.get(prevRoom);
+              if (poll.timeoutId) {
+                  clearTimeout(poll.timeoutId);
+              }
+              activePolls.delete(prevRoom);
+          }
           const otherStreams = Array.from(activeStreams);
           const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
           socket.to(prevRoom).emit('stream-ended', { redirect });
@@ -86,7 +93,14 @@ io.on('connection', (socket) => {
        // activeStreams logic: If host leaves, redirect viewers
        if (socket.username === room && activeStreams.has(room)) {
           activeStreams.delete(room);
-          activePolls.delete(room);
+          // Check for active poll and clear its timeout
+          if (activePolls.has(room)) {
+              const poll = activePolls.get(room);
+              if (poll.timeoutId) {
+                  clearTimeout(poll.timeoutId);
+              }
+              activePolls.delete(room);
+          }
           const otherStreams = Array.from(activeStreams);
           const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
           socket.to(room).emit('stream-ended', { redirect });
@@ -137,7 +151,7 @@ io.on('connection', (socket) => {
 
   // --- Poll Logic ---
 
-  socket.on('create-poll', ({ streamId, question, options }) => {
+  socket.on('create-poll', ({ streamId, question, options, duration }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
     // Only host can create polls (simple check: username matches streamId)
@@ -152,13 +166,25 @@ io.on('connection', (socket) => {
       options: options.map(opt => ({ text: opt, votes: 0 })),
       totalVotes: 0,
       isActive: true,
-      voters: new Set() // Track who voted
+      voters: new Set(), // Track who voted
+      duration: typeof duration === 'number' && duration > 0 ? duration : null
     };
+
+    if (poll.duration) {
+        poll.timeoutId = setTimeout(() => {
+            if (activePolls.has(streamId) && activePolls.get(streamId).id === poll.id) {
+                const currentPoll = activePolls.get(streamId);
+                currentPoll.isActive = false;
+                io.to(streamId).emit('poll-ended', { ...currentPoll, voters: undefined, timeoutId: undefined });
+                activePolls.delete(streamId);
+            }
+        }, poll.duration * 1000);
+    }
 
     activePolls.set(streamId, poll);
     // Note: We don't send 'voters' Set to client, we should probably strip it or rely on JSON.stringify behavior
     // (Sets are serialized as {} in JSON.stringify unless handled, which is fine for hiding data but we should be clean)
-    const { voters, ...pollData } = poll;
+    const { voters, timeoutId, ...pollData } = poll;
     io.to(streamId).emit('poll-started', pollData);
   });
 
@@ -189,8 +215,15 @@ io.on('connection', (socket) => {
 
     if (activePolls.has(streamId)) {
       const poll = activePolls.get(streamId);
+
+      if (poll.timeoutId) {
+          clearTimeout(poll.timeoutId);
+      }
+
       poll.isActive = false;
-      io.to(streamId).emit('poll-ended', poll);
+      // strip internal fields
+      const { voters, timeoutId, ...pollData } = poll;
+      io.to(streamId).emit('poll-ended', pollData);
       activePolls.delete(streamId);
     }
   });
@@ -240,7 +273,15 @@ io.on('connection', (socket) => {
       // activeStreams logic: If host leaves, redirect viewers
       if (socket.username === streamId && activeStreams.has(streamId)) {
           activeStreams.delete(streamId);
-          activePolls.delete(streamId);
+
+          if (activePolls.has(streamId)) {
+              const poll = activePolls.get(streamId);
+              if (poll.timeoutId) {
+                  clearTimeout(poll.timeoutId);
+              }
+              activePolls.delete(streamId);
+          }
+
           const otherStreams = Array.from(activeStreams);
           const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
           socket.to(streamId).emit('stream-ended', { redirect });
