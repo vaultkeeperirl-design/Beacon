@@ -1,11 +1,20 @@
-import { memo } from 'react';
-import { Link } from 'react-router-dom';
+import { memo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, User, Radio } from 'lucide-react';
 import WalletBalance from './WalletBalance';
 import { useP2PSettings } from '../context/P2PContext';
 
 const Navbar = memo(function Navbar() {
   const { username } = useP2PSettings();
+  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/browse?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-neutral-900 border-b border-neutral-800 flex items-center px-4 justify-between">
@@ -21,16 +30,18 @@ const Navbar = memo(function Navbar() {
       </div>
 
       <div className="flex-1 max-w-md mx-4 hidden sm:block">
-        <div className="relative group">
+        <form onSubmit={handleSearch} className="relative group">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-neutral-500 group-focus-within:text-beacon-500 transition-colors" />
           </div>
           <input
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="block w-full pl-10 pr-3 py-2 border border-neutral-800 rounded-full leading-5 bg-neutral-950 text-neutral-300 placeholder-neutral-600 focus:outline-none focus:border-beacon-500/50 focus:ring-1 focus:ring-beacon-500/50 sm:text-sm transition-colors"
             placeholder="Search streams..."
           />
-        </div>
+        </form>
       </div>
 
       <div className="flex items-center gap-3">
