@@ -232,10 +232,15 @@ io.on('connection', (socket) => {
 
   // WebRTC Signaling
   socket.on('signal', ({ to, signal }) => {
-    io.to(to).emit('signal', {
-      from: socket.id,
-      signal
-    });
+    if (to) {
+      const targetSocket = io.sockets.sockets.get(to);
+      if (targetSocket && targetSocket.currentRoom === socket.currentRoom) {
+        io.to(to).emit('signal', {
+          from: socket.id,
+          signal
+        });
+      }
+    }
   });
 
   socket.on('offer', (payload) => {
