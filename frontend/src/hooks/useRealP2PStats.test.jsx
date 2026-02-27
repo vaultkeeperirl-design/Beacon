@@ -2,9 +2,14 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useRealP2PStats } from './useRealP2PStats';
 import * as useSocketModule from './useSocket';
+import * as useP2PMeshModule from './useP2PMesh';
 
 vi.mock('./useSocket', () => ({
   useSocket: vi.fn(),
+}));
+
+vi.mock('./useP2PMesh', () => ({
+  useP2PMesh: vi.fn(),
 }));
 
 describe('useRealP2PStats', () => {
@@ -22,6 +27,14 @@ describe('useRealP2PStats', () => {
       socket: mockSocket,
       isConnected: true,
     });
+
+    // Mock the underlying mesh stats return value
+    useP2PMeshModule.useP2PMesh.mockReturnValue({
+      connectedPeers: 5,
+      latency: 50,
+      uploadSpeed: 2.5,
+      downloadSpeed: 5.0,
+    });
   });
 
   afterEach(() => {
@@ -29,47 +42,47 @@ describe('useRealP2PStats', () => {
     vi.clearAllMocks();
   });
 
-  it('calculates download speed based on quality', () => {
-    const settings = { quality: '480p', maxUploadSpeed: 50, lowLatency: false };
+  it('updates stats when connected to a stream', async () => {
+    const settings = { quality: '1080p60', maxUploadSpeed: 50, lowLatency: false };
     const { result } = renderHook(() => useRealP2PStats(true, settings, 'test-stream', 'viewer'));
 
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(1000);
     });
 
-    // 480p is 1.5Mbps, jitter is 10%, so range is 1.35 to 1.65
-    expect(result.current.downloadSpeed).toBeGreaterThanOrEqual(1.3);
-    expect(result.current.downloadSpeed).toBeLessThanOrEqual(1.7);
+    // Verify it picked up the mesh stats
+    expect(result.current.peersConnected).toBe(5);
+    expect(result.current.latency).toBe(50);
+    expect(result.current.uploadSpeed).toBe(2.5);
+    expect(result.current.downloadSpeed).toBe(5.0);
+
+    // Verify credits accrue (uploadSpeed * 0.01)
+    // 2450.0 initial + (2.5 * 0.01) = 2450.025
+    expect(result.current.credits).toBeCloseTo(2450.025);
   });
 
-  it('caps upload speed based on maxUploadSpeed', () => {
-    const settings = { quality: '1080p60', maxUploadSpeed: 2, lowLatency: false };
-    const { result } = renderHook(() => useRealP2PStats(true, settings, 'test-stream', 'viewer'));
+  it('resets stats when streamId is null', async () => {
+    const settings = { quality: '1080p60', maxUploadSpeed: 50, lowLatency: false };
+    const { result, rerender } = renderHook(({ streamId }) =>
+        useRealP2PStats(true, settings, streamId, 'viewer'), {
+        initialProps: { streamId: 'test-stream' }
+    });
 
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(1000);
     });
 
-    // 1080p60 is 8.0Mbps. Ideal upload is 40% (3.2Mbps), but capped at 2Mbps
-    expect(result.current.uploadSpeed).toBeLessThanOrEqual(2.5); // some room for jitter if any, but should be close to 2
-    expect(result.current.uploadSpeed).toBeGreaterThan(0);
-  });
+    expect(result.current.peersConnected).toBe(5);
 
-  it('adjusts buffer health based on lowLatency setting', () => {
-    const settingsLow = { quality: '1080p60', maxUploadSpeed: 50, lowLatency: true };
-    const { result: resultLow } = renderHook(() => useRealP2PStats(true, settingsLow, 'test-stream', 'viewer'));
+    // Change streamId to null
+    rerender({ streamId: null });
 
-    const settingsStandard = { quality: '1080p60', maxUploadSpeed: 50, lowLatency: false };
-    const { result: resultStandard } = renderHook(() => useRealP2PStats(true, settingsStandard, 'test-stream', 'viewer'));
-
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(1000);
     });
 
-    expect(resultLow.current.bufferHealth).toBeGreaterThanOrEqual(1.5);
-    expect(resultLow.current.bufferHealth).toBeLessThanOrEqual(2.5);
-
-    expect(resultStandard.current.bufferHealth).toBeGreaterThanOrEqual(7.5);
-    expect(resultStandard.current.bufferHealth).toBeLessThanOrEqual(8.5);
+    // Should reset to 0
+    expect(result.current.peersConnected).toBe(0);
+    expect(result.current.uploadSpeed).toBe(0);
   });
 });

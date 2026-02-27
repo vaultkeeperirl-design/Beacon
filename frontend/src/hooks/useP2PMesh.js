@@ -15,6 +15,9 @@ export function useP2PMesh() {
   // Refs for calculating speed
   const bytesSentRef = useRef(0);
   const bytesReceivedRef = useRef(0);
+  // Ref for latency to avoid re-renders on every pong
+  const latencyRef = useRef(0);
+
   // Initialize with null and set in effect to avoid purity error
   const lastSpeedCheckRef = useRef(null);
 
@@ -86,11 +89,13 @@ export function useP2PMesh() {
                 } else if (message.type === 'pong') {
                     // Calculate RTT
                     const rtt = Date.now() - message.timestamp;
-                    // Update latency (simple moving average)
-                    setMeshStats(prev => ({
-                        ...prev,
-                        latency: prev.latency === 0 ? rtt : Math.round((prev.latency * 0.7) + (rtt * 0.3))
-                    }));
+
+                    // Update latency ref (simple moving average)
+                    // We DO NOT set state here to avoid high-frequency re-renders.
+                    // The main interval loop will pick this up every 2 seconds.
+                    latencyRef.current = latencyRef.current === 0
+                        ? rtt
+                        : Math.round((latencyRef.current * 0.7) + (rtt * 0.3));
                 }
             } catch (e) {
                 // Ignore non-JSON data (if any raw buffers are sent)
@@ -166,7 +171,8 @@ export function useP2PMesh() {
             setMeshStats(prev => ({
                 ...prev,
                 uploadSpeed: parseFloat(uploadSpeed.toFixed(4)), // higher precision for low traffic
-                downloadSpeed: parseFloat(downloadSpeed.toFixed(4))
+                downloadSpeed: parseFloat(downloadSpeed.toFixed(4)),
+                latency: latencyRef.current // Sync the batched latency updates to state here
             }));
 
             // Reset counters
