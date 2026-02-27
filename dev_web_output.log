@@ -2,25 +2,31 @@
 > beacon-monorepo@ dev:web /app
 > concurrently "cd backend && pnpm dev" "cd frontend && pnpm dev"
 
-[0]
-[0] > backend@1.0.5 dev /app/backend
-[0] > nodemon server.js
-[0]
 [1]
 [1] > frontend@1.0.4 dev /app/frontend
 [1] > vite
 [1]
+[0]
+[0] > backend@1.0.5 dev /app/backend
+[0] > nodemon server.js
+[0]
 [0] [33m[nodemon] 3.1.14[39m
 [0] [33m[nodemon] to restart at any time, enter `rs`[39m
 [0] [33m[nodemon] watching path(s): *.*[39m
 [0] [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
 [0] [32m[nodemon] starting `node server.js`[39m
-[0] Server running on port 3000
 [1]
-[1]   VITE v7.3.1  ready in 367 ms
+[1]   VITE v7.3.1  ready in 457 ms
 [1]
 [1]   ➜  Local:   http://localhost:5173/
 [1]   ➜  Network: use --host to expose
-[0] New client connected: XY6O4cMVEdyY5jaJAAAB
-[0] Socket XY6O4cMVEdyY5jaJAAAB (User_5873) joined stream test-stream
-[0] Client disconnected: XY6O4cMVEdyY5jaJAAAB
+[0] Server running on port 3000
+[0] New client connected: JwW3aWi3ocyVMrV1AAAB
+[0] Socket JwW3aWi3ocyVMrV1AAAB (User_11475) joined stream test-stream
+[0] Client disconnected: JwW3aWi3ocyVMrV1AAAB
+[0] New client connected: 4u-sjWirJannbLK9AAAD
+[0] Socket 4u-sjWirJannbLK9AAAD (User_14983) joined stream test-stream
+[0] Client disconnected: 4u-sjWirJannbLK9AAAD
+[0] New client connected: yOwn7qNlYcb162Q_AAAF
+[0] Socket yOwn7qNlYcb162Q_AAAF (User_67261) joined stream test-stream
+[0] Client disconnected: yOwn7qNlYcb162Q_AAAF
