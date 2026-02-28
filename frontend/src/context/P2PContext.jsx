@@ -25,6 +25,13 @@ export function P2PProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('beacon_token') || null);
   const [username, setUsername] = useState('Guest'); // Fallback for backward compatibility
 
+  const logout = () => {
+    localStorage.removeItem('beacon_token');
+    setToken(null);
+    setUser(null);
+    setUsername('Guest');
+  };
+
   // Load user profile on mount if token exists
   useEffect(() => {
     if (token) {
@@ -35,25 +42,25 @@ export function P2PProvider({ children }) {
         const decoded = JSON.parse(decodedJson);
         const storedUsername = decoded.username;
 
-        setUsername(storedUsername);
-
         // Fetch full profile
         axios.get(`${API_URL}/users/${storedUsername}`)
           .then(res => {
             setUser(res.data);
+            setUsername(res.data.username);
           })
           .catch(err => {
             console.error('Error fetching user profile:', err);
             // If token is invalid/expired, log out
             if (err.response && err.response.status === 401) {
-              logout();
+              setTimeout(() => logout(), 0);
             }
           });
       } catch (e) {
-        console.error('Invalid token format');
-        logout();
+        console.error('Invalid token format:', e);
+        setTimeout(() => logout(), 0);
       }
     }
+
   }, [token]);
 
   const login = async (loginUsername, password) => {
@@ -82,13 +89,6 @@ export function P2PProvider({ children }) {
     } catch (err) {
       return { success: false, error: err.response?.data?.error || 'Registration failed' };
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('beacon_token');
-    setToken(null);
-    setUser(null);
-    setUsername('Guest');
   };
 
   // Keep for backwards compatibility for now, but it won't persist to DB
