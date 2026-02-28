@@ -2,14 +2,14 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useRealP2PStats } from './useRealP2PStats';
 import * as useSocketModule from './useSocket';
-import * as useP2PMeshModule from './useP2PMesh';
+import * as useP2PStreamModule from './useP2PStream';
 
 vi.mock('./useSocket', () => ({
   useSocket: vi.fn(),
 }));
 
-vi.mock('./useP2PMesh', () => ({
-  useP2PMesh: vi.fn(),
+vi.mock('./useP2PStream', () => ({
+  subscribeToMeshStats: vi.fn(),
 }));
 
 describe('useRealP2PStats', () => {
@@ -29,11 +29,14 @@ describe('useRealP2PStats', () => {
     });
 
     // Mock the underlying mesh stats return value
-    useP2PMeshModule.useP2PMesh.mockReturnValue({
-      connectedPeers: 5,
-      latency: 50,
-      uploadSpeed: 2.5,
-      downloadSpeed: 5.0,
+    useP2PStreamModule.subscribeToMeshStats.mockImplementation((callback) => {
+      callback({
+        connectedPeers: 5,
+        latency: 50,
+        uploadSpeed: 2.5,
+        downloadSpeed: 5.0,
+      });
+      return vi.fn(); // return mock unsubscribe function
     });
   });
 

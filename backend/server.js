@@ -35,48 +35,44 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   }
 
   const mesh = streamMeshTopology.get(streamId);
-  mesh.set(socketId, { children: new Set(), parent: null, isBroadcaster });
+  mesh.set(socketId, { children: new Set(), parent: null, isBroadcaster, metrics: { latency: 0, uploadMbps: 0 } });
 
   if (isBroadcaster) {
     return; // Broadcaster has no parent
   }
 
-  // Find a parent for the new viewer using Breadth-First Search to keep tree balanced
+  // Find a parent for the new viewer
+  // Advanced Routing: Prefer nodes with lower latency and higher upload capacity
   let assignedParent = null;
-  const queue = [];
 
-  // Find the broadcaster to start the search
-  let broadcasterId = null;
+  // Get all potential parent nodes that can still accept children
+  const potentialParents = [];
   for (const [id, node] of mesh.entries()) {
-    if (node.isBroadcaster) {
-      broadcasterId = id;
-      break;
+    if (id !== socketId && node.children.size < MAX_CHILDREN_PER_NODE) {
+      // Prioritize broadcaster, then use metrics
+      let score = 0;
+      if (node.isBroadcaster) {
+        score = 10000; // Extremely high score to prefer direct connection
+      } else {
+        // Higher score is better: High upload speed and low latency
+        const uploadScore = (node.metrics && node.metrics.uploadMbps > 0) ? node.metrics.uploadMbps * 10 : 5;
+        const latencyPenalty = (node.metrics && node.metrics.latency > 0) ? node.metrics.latency : 100;
+        score = (uploadScore / latencyPenalty) * 100;
+      }
+      potentialParents.push({ id, score, childrenCount: node.children.size });
     }
   }
 
-  if (broadcasterId) {
-    queue.push(broadcasterId);
-  } else {
-    // Fallback: Just grab the first available node if broadcaster isn't explicitly marked yet
-    queue.push(mesh.keys().next().value);
-  }
-
-  while (queue.length > 0) {
-    const currentId = queue.shift();
-    if (!currentId || currentId === socketId) continue;
-
-    const currentNode = mesh.get(currentId);
-    if (!currentNode) continue;
-
-    if (currentNode.children.size < MAX_CHILDREN_PER_NODE) {
-      assignedParent = currentId;
-      break;
+  // Sort by score (descending), then by fewest children to balance the tree
+  potentialParents.sort((a, b) => {
+    if (b.score !== a.score) {
+      return b.score - a.score;
     }
+    return a.childrenCount - b.childrenCount;
+  });
 
-    // Add children to queue
-    for (const childId of currentNode.children) {
-      queue.push(childId);
-    }
+  if (potentialParents.length > 0) {
+    assignedParent = potentialParents[0].id;
   }
 
   if (assignedParent) {
@@ -259,6 +255,42 @@ io.on('connection', (socket) => {
       color: safeColor,
       senderId: socket.id
     });
+  });
+
+  // --- Metrics Reporting ---
+  socket.on('metrics-report', ({ streamId, latency, uploadMbps }) => {
+    if (!streamId || socket.currentRoom !== streamId) return;
+
+    if (streamMeshTopology.has(streamId)) {
+      const mesh = streamMeshTopology.get(streamId);
+      const node = mesh.get(socket.id);
+
+      if (node) {
+        node.metrics = { latency, uploadMbps };
+
+        // Advanced Mesh Routing: Handling "Bad" Nodes
+        // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
+        if ((uploadMbps > 0 && uploadMbps < 0.5) || latency > 1000) {
+           if (node.children.size > 0) {
+             console.log(`[Mesh] Node ${socket.id} in stream ${streamId} identified as poor performing (upload: ${uploadMbps}Mbps, lat: ${latency}ms). Re-parenting children...`);
+             const orphans = Array.from(node.children);
+             for (const orphanId of orphans) {
+                // Remove from parent
+                node.children.delete(orphanId);
+                const orphanNode = mesh.get(orphanId);
+                if (orphanNode) orphanNode.parent = null;
+
+                // Disconnect their P2P connection
+                io.to(orphanId).emit('user-disconnected', { id: socket.id });
+                io.to(socket.id).emit('user-disconnected', { id: orphanId });
+
+                // Find a new parent
+                addNodeToMesh(streamId, orphanId, false);
+             }
+           }
+        }
+      }
+    }
   });
 
   // --- Poll Logic ---
