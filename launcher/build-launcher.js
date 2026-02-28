@@ -47,7 +47,14 @@ try {
 
   // 5. Install Backend Production Dependencies
   console.log('Installing Backend dependencies...');
-  run('npm install --omit=dev --no-bin-links', backendDest);
+  // Use pnpm to install production dependencies within the backend directory.
+  // We remove the workspace link for pnpm to avoid issues.
+  if (fs.existsSync(path.join(backendDest, 'pnpm-workspace.yaml'))) {
+    fs.unlinkSync(path.join(backendDest, 'pnpm-workspace.yaml'));
+  }
+
+  // Use pnpm to install since the root uses pnpm. Ignore workspace root.
+  run('pnpm install --prod --ignore-workspace', backendDest);
 
   console.log('Build Preparation Complete.');
 } catch (error) {

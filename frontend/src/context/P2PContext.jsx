@@ -25,6 +25,13 @@ export function P2PProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('beacon_token') || null);
   const [username, setUsername] = useState('Guest'); // Fallback for backward compatibility
 
+  const logout = () => {
+    localStorage.removeItem('beacon_token');
+    setToken(null);
+    setUser(null);
+    setUsername('Guest');
+  };
+
   // Load user profile on mount if token exists
   useEffect(() => {
     if (token) {
@@ -48,6 +55,7 @@ export function P2PProvider({ children }) {
         axios.get(`${API_URL}/users/${storedUsername}`)
           .then(res => {
             setUser(res.data);
+            setUsername(res.data.username);
           })
           .catch(err => {
             console.error('Error fetching user profile:', err);
@@ -67,6 +75,7 @@ export function P2PProvider({ children }) {
         setUsername('Guest');
       }
     }
+
   }, [token]);
 
   const login = async (loginUsername, password) => {
@@ -95,13 +104,6 @@ export function P2PProvider({ children }) {
     } catch (err) {
       return { success: false, error: err.response?.data?.error || 'Registration failed' };
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('beacon_token');
-    setToken(null);
-    setUser(null);
-    setUsername('Guest');
   };
 
   // Keep for backwards compatibility for now, but it won't persist to DB

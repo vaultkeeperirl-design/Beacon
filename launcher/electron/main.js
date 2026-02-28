@@ -107,7 +107,7 @@ async function startBackend() {
 
   backendProcess = fork(scriptPath, [], {
     cwd: installPath,
-    env: { ...process.env, PORT: port, SERVE_STATIC: 'true' },
+    env: { ...process.env, PORT: port, SERVE_STATIC: 'true', BEACON_USER_DATA: app.getPath('userData') },
     stdio: 'pipe'
   });
 
@@ -266,6 +266,10 @@ ipcMain.on('start-background-node', async () => {
        console.error("Failed to start background node:", e);
      }
   }
+});
+
+ipcMain.handle('get-backend-port', () => {
+  return backendPort;
 });
 
 ipcMain.handle('get-app-version', () => {

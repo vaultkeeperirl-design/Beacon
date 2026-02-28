@@ -207,6 +207,7 @@ export default function Broadcast() {
     if (isLive && socket) {
        socket.emit('update-squad', { streamId: username, squad: squad });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLive, socket, username]); // Intentional omission of squad to only run on live state change
 
   const handleUpdateInfo = () => {

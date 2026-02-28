@@ -2,7 +2,7 @@ import VideoPlayer from '../components/VideoPlayer';
 import Chat from '../components/Chat';
 import { Share2, ThumbsUp, MoreHorizontal, UserPlus, UserCheck } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import { useFollowing } from '../context/FollowingContext';
 import { useSocket } from '../hooks/useSocket';
@@ -47,8 +47,6 @@ export default function Watch() {
   }, [id, setCurrentStreamId]);
 
   const isFollowed = isFollowing(id);
-  const [hasStarted, setHasStarted] = useState(false);
-
   // Use the P2P hook as a viewer
   // Note: meshStats was removed from the returned hook state to prevent 2s polling re-renders
   const { remoteStream, peers } = useP2PStream(false, null, id);
