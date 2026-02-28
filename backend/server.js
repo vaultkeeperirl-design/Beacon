@@ -512,6 +512,12 @@ io.on('connection', (socket) => {
        return;
     }
 
+    // Security: Prevent negative splits which could generate infinite money or drain tipper
+    if (squad.some(m => Number(m.split) < 0 || Number(m.split) > 100)) {
+       console.log(`[Squad] Invalid split bounds for stream ${streamId}`);
+       return;
+    }
+
     // Map frontend 'name' to 'username' for backend tracking
     const backendSquad = squad.map(m => ({ username: m.name, split: Number(m.split) }));
     streamSquads.set(streamId, backendSquad);
