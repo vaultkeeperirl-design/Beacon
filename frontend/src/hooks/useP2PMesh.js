@@ -2,6 +2,20 @@ import { useState, useEffect, useRef } from 'react';
 import SimplePeer from 'simple-peer';
 import { useSocket } from './useSocket';
 
+/**
+ * Custom hook to manage the P2P Mesh network connections via WebRTC.
+ *
+ * Automatically establishes connections with other peers when they join the network,
+ * exchanges signaling data via the Socket.IO server, and tracks network performance metrics
+ * such as latency and throughput.
+ *
+ * @returns {{
+ *   connectedPeers: number,
+ *   latency: number,
+ *   uploadSpeed: number,
+ *   downloadSpeed: number
+ * }} An object containing the current P2P mesh statistics.
+ */
 export function useP2PMesh() {
   const { socket, isConnected } = useSocket();
   const peersRef = useRef({}); // Store peer instances: { socketId: SimplePeer }
