@@ -31,6 +31,33 @@ const streamSquads = new Map();
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_beacon_key_123';
 
+// Prepared SQL Statements for Performance
+const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
+const deductCreditsStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ?');
+const getCreditsStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
+
+/**
+ * Distributes credits to a list of squad members and emits wallet updates.
+ * @param {Array<{username: string, split: number}>} squad - List of members and their percentage splits.
+ * @param {number} totalAmount - Total amount to be distributed.
+ */
+const distributeCredits = (squad, totalAmount) => {
+  for (const member of squad) {
+    const cut = totalAmount * (member.split / 100);
+    if (cut > 0) {
+      try {
+        updateCreditsStmt.run(cut, member.username);
+        const row = getCreditsStmt.get(member.username);
+        if (row) {
+          io.to(`user:${member.username}`).emit('wallet-update', { balance: row.credits });
+        }
+      } catch (err) {
+        console.error(`[Credits] Failed to distribute to ${member.username}:`, err);
+      }
+    }
+  }
+};
+
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -133,35 +160,26 @@ app.post('/api/tip', authenticateToken, (req, res) => {
   }
 
   try {
-    const getTipperStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
-    const tipperRow = getTipperStmt.get(tipper);
+    const tipperRow = getCreditsStmt.get(tipper);
 
     if (!tipperRow || tipperRow.credits < amount) {
        return res.status(400).json({ error: 'Insufficient funds' });
     }
 
-    // Begin transaction
-    const updateCredits = db.transaction(() => {
-       // Deduct from tipper
-       const deductStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ?');
-       deductStmt.run(amount, tipper);
-
-       // Distribute to squad
+    // Distribute within a transaction for atomicity
+    const transaction = db.transaction(() => {
+       deductCreditsStmt.run(amount, tipper);
        const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
-
-       for (const member of squad) {
-         const cut = amount * (member.split / 100);
-         if (cut > 0) {
-            // Only update if the user exists
-            const addStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
-            addStmt.run(cut, member.username);
-
-            // Note: In a real app we'd fetch the new balance and emit a socket event here to update their UI
-         }
-       }
+       distributeCredits(squad, amount);
     });
 
-    updateCredits();
+    transaction();
+
+    // Notify all of tipper's devices about the new balance
+    const updatedTipper = getCreditsStmt.get(tipper);
+    if (updatedTipper) {
+      io.to(`user:${tipper}`).emit('wallet-update', { balance: updatedTipper.credits });
+    }
 
     // Emit event to the room so chat can show the tip
     io.to(streamId).emit('chat-message', {
@@ -289,6 +307,8 @@ io.on('connection', (socket) => {
         username = `${username}-viewer`;
       }
       socket.username = username;
+      // Join user-specific room for real-time wallet updates across devices/tabs
+      socket.join(`user:${username}`);
     }
 
     // Leave previous room if any to prevent double counting or stale state
@@ -422,22 +442,8 @@ io.on('connection', (socket) => {
     // Credit Economy Calculation
     if (socket.username && uploadMbps > 0) {
       const earnedCredits = uploadMbps * 0.01; // Match frontend logic
-
-      try {
-        // Increment user credits in DB
-        const stmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
-        stmt.run(earnedCredits, socket.username);
-
-        // Fetch new balance to broadcast back
-        const getStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
-        const row = getStmt.get(socket.username);
-
-        if (row) {
-          socket.emit('wallet-update', { balance: row.credits });
-        }
-      } catch (err) {
-        console.error('Error updating credits:', err);
-      }
+      const squad = [{ username: socket.username, split: 100 }];
+      distributeCredits(squad, earnedCredits);
     }
 
     if (streamMeshTopology.has(streamId)) {
