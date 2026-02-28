@@ -9,9 +9,12 @@ import { useSocket } from '../hooks/useSocket';
 import { useP2PStream } from '../hooks/useP2PStream';
 import StreamHealthIndicator from '../components/StreamHealthIndicator';
 
+import { useState } from 'react';
+
 export default function Watch() {
   const { id } = useParams();
   const { username } = useP2PSettings();
+  const [hasStarted, setHasStarted] = useState(false);
   const navigate = useNavigate();
   // Using useP2PSettings to avoid re-rendering the whole page every second when stats update
   const { setCurrentStreamId } = useP2PSettings();

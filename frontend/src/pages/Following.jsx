@@ -1,5 +1,5 @@
 import StreamCard from '../components/StreamCard';
-import { Filter, ChevronDown, Heart, Activity } from 'lucide-react';
+import { Filter, ChevronDown, Heart, Activity, User } from 'lucide-react';
 import { useFollowing } from '../context/FollowingContext';
 
 // Keep mocks for offline or if needed, but primarily use context
