@@ -4,7 +4,7 @@ import StreamSettings from './StreamSettings';
 import VideoStatsOverlay from './VideoStatsOverlay';
 import VideoControls from './VideoControls';
 
-const VideoPlayer = memo(function VideoPlayer({ streamUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }) {
+const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(1);
@@ -15,6 +15,12 @@ const VideoPlayer = memo(function VideoPlayer({ streamUrl = "https://commondatas
 
   // Using useP2PSettings instead of useP2P to avoid unnecessary re-renders when stats update
   const { settings } = useP2PSettings();
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -115,11 +121,11 @@ const VideoPlayer = memo(function VideoPlayer({ streamUrl = "https://commondatas
     >
       <video
         ref={videoRef}
-        src={streamUrl}
+        src={!stream ? streamUrl : undefined}
         className="w-full h-full object-cover"
         autoPlay
         muted
-        loop
+        loop={!stream}
         playsInline
       />
 

@@ -45,6 +45,7 @@ describe('Watch Page Accessibility', () => {
       socket: {
         on: vi.fn(),
         off: vi.fn(),
+        emit: vi.fn(),
       },
     });
   });
