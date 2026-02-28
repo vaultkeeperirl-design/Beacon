@@ -18,6 +18,7 @@ vi.mock('../components/Chat', () => ({
 // Mock hooks - correct mocking pattern
 vi.mock('../context/P2PContext', () => ({
   useP2PSettings: vi.fn(),
+  useP2PStats: vi.fn(),
 }));
 
 vi.mock('../context/FollowingContext', () => ({
@@ -33,6 +34,10 @@ describe('Watch Page Accessibility', () => {
     // Setup default mock return values
     P2PContext.useP2PSettings.mockReturnValue({
       setCurrentStreamId: vi.fn(),
+    });
+
+    P2PContext.useP2PStats.mockReturnValue({
+      latency: 50,
     });
 
     FollowingContext.useFollowing.mockReturnValue({

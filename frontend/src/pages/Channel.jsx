@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { UserPlus, UserCheck, MessageSquare, Share2, MoreHorizontal, Video, Calendar, Info, Clock, Heart } from 'lucide-react';
 import { useP2PSettings } from '../context/P2PContext';
 import StreamCard from '../components/StreamCard';
+import axios from 'axios';
 
 export default function Channel() {
   const { username } = useParams();

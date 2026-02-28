@@ -9,3 +9,7 @@
 ## 2025-05-24 - [React] Isolating High-Frequency Leaf State
 **Learning:** Even with `React.memo`, if a high-frequency state (like a 1s timer) lives in a large parent component, the entire parent layout reconciles every second. `React.memo` only helps children.
 **Action:** Isolate high-frequency "pulse" states into their own leaf components (e.g., `AdBreakButton`). This keeps the reconciliation scope limited to the smallest possible part of the DOM tree.
+
+## 2025-02-28 - [React] Decoupling State from Custom Hooks used in Layouts
+**Learning:** Custom hooks that encapsulate logic (like WebRTC connections in `useP2PStream`) often manage internal state (like real-time stats) and return it. If a large layout component uses that hook *just for the connection*, the internal state updates (e.g., every 2s) will force the entire layout component to re-render, causing massive DOM thrashing.
+**Action:** Remove high-frequency state from the custom hook's returned values. Instead, have the hook update a global store or context, and create small, isolated leaf components (like `StreamHealthIndicator`) that subscribe to that context directly. This shields the large layout from the high-frequency pulse.
