@@ -1,4 +1,6 @@
 import React, { useState, useEffect, memo } from 'react';
+import axios from 'axios';
+import { useP2PSettings } from '../context/P2PContext';
 
 /**
  * ⚡ Performance Optimization: Isolated Ad Break Timer
@@ -7,6 +9,7 @@ import React, { useState, useEffect, memo } from 'react';
  */
 const AdBreakButton = memo(function AdBreakButton() {
   const [adBreakTimer, setAdBreakTimer] = useState(0);
+  const { username, token } = useP2PSettings();
 
   useEffect(() => {
     let interval;
@@ -18,9 +21,21 @@ const AdBreakButton = memo(function AdBreakButton() {
     return () => clearInterval(interval);
   }, [adBreakTimer]);
 
-  const startAdBreak = () => {
-    if (adBreakTimer > 0) return;
-    setAdBreakTimer(60);
+  const startAdBreak = async () => {
+    if (adBreakTimer > 0 || !username || !token) return;
+
+    try {
+      // Trigger ad revenue distribution on backend
+      const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      await axios.post(
+        `${API_URL}/api/ads/trigger`,
+        { streamId: username },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setAdBreakTimer(60);
+    } catch (err) {
+      console.error('Failed to trigger ad break:', err);
+    }
   };
 
   return (

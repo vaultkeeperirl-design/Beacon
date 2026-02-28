@@ -45,6 +45,49 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// Prepare statements once for performance
+const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
+const getCreditsStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
+
+// Helper to distribute credits to a stream's squad and notify online members
+const distributeCredits = (streamId, amount) => {
+  const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
+
+  // Optimization: Pre-calculate active sockets per username
+  const usernameToSockets = new Map();
+  for (const [id, socket] of io.sockets.sockets) {
+    if (socket.username) {
+      if (!usernameToSockets.has(socket.username)) {
+        usernameToSockets.set(socket.username, []);
+      }
+      usernameToSockets.get(socket.username).push(socket);
+    }
+  }
+
+  // Use a transaction for the entire distribution
+  const distributionTx = db.transaction((squadMembers, totalAmount) => {
+    for (const member of squadMembers) {
+      const cut = totalAmount * (member.split / 100);
+      if (cut > 0) {
+        updateCreditsStmt.run(cut, member.username);
+        const row = getCreditsStmt.get(member.username);
+        if (row && usernameToSockets.has(member.username)) {
+          for (const socket of usernameToSockets.get(member.username)) {
+            socket.emit('wallet-update', { balance: row.credits });
+          }
+        }
+      }
+    }
+  });
+
+  try {
+    distributionTx(squad, amount);
+  } catch (err) {
+    console.error(`Failed to distribute credits for stream ${streamId}:`, err);
+    throw err; // Re-throw to allow caller to handle failure
+  }
+};
+
 // REST API Endpoints
 
 // Register
@@ -133,22 +176,27 @@ app.post('/api/tip', authenticateToken, (req, res) => {
   }
 
   try {
-    const getTipperStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
-    const tipperRow = getTipperStmt.get(tipper);
+    const tipTransaction = db.transaction(() => {
+      const tipperRow = getCreditsStmt.get(tipper);
 
-    if (!tipperRow || tipperRow.credits < amount) {
-       return res.status(400).json({ error: 'Insufficient funds' });
-    }
+      if (!tipperRow || tipperRow.credits < amount) {
+        throw new Error('INSUFFICIENT_FUNDS');
+      }
 
-    // Begin transaction
-    const updateCredits = db.transaction(() => {
-       // Deduct from tipper
-       const deductStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ?');
-       deductStmt.run(amount, tipper);
+      // Deduct from tipper
+      updateCreditsStmt.run(-amount, tipper);
 
-       // Distribute to squad
-       const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
+      // Distribute to squad
+      distributeCredits(streamId, amount);
+    });
 
+    tipTransaction();
+
+    // Notify tipper of their new balance
+    const updatedTipperRow = getCreditsStmt.get(tipper);
+    for (const [id, socket] of io.sockets.sockets) {
+      if (socket.username === tipper) {
+        socket.emit('wallet-update', { balance: updatedTipperRow.credits });
        for (const member of squad) {
          const cut = amount * (member.split / 100);
          if (cut > 0) {
@@ -178,17 +226,53 @@ app.post('/api/tip', authenticateToken, (req, res) => {
 
     // Emit event to the room so chat can show the tip
     io.to(streamId).emit('chat-message', {
-       id: Date.now(),
-       user: 'System',
-       text: `${tipper} just tipped ${amount} credits!`,
-       color: 'text-beacon-400 font-bold',
-       senderId: 'system'
+      id: Date.now(),
+      user: 'System',
+      text: `${tipper} just tipped ${amount} credits!`,
+      color: 'text-beacon-400 font-bold',
+      senderId: 'system',
     });
 
     res.json({ success: true, message: 'Tip distributed successfully' });
   } catch (err) {
+    if (err.message === 'INSUFFICIENT_FUNDS') {
+      return res.status(400).json({ error: 'Insufficient funds' });
+    }
     console.error('Tip transaction failed:', err);
     res.status(500).json({ error: 'Database transaction failed' });
+  }
+});
+
+// Trigger Ad Break (Distribute Ad Revenue)
+app.post('/api/ads/trigger', authenticateToken, (req, res) => {
+  const { streamId } = req.body;
+  const broadcaster = req.user.username;
+
+  if (broadcaster !== streamId) {
+    return res.status(403).json({ error: 'Only the broadcaster can trigger an ad break' });
+  }
+
+  try {
+    const viewersCount = io.sockets.adapter.rooms.get(streamId)?.size || 0;
+    // Ad revenue formula: 0.5 CR per viewer during the break
+    const adRevenue = viewersCount * 0.5;
+
+    if (adRevenue > 0) {
+      distributeCredits(streamId, adRevenue);
+
+      io.to(streamId).emit('chat-message', {
+        id: Date.now(),
+        user: 'System',
+        text: `Ad break started! Broadcaster earned ${adRevenue.toFixed(2)} CR from ${viewersCount} viewers.`,
+        color: 'text-green-400 italic',
+        senderId: 'system',
+      });
+    }
+
+    res.json({ success: true, revenue: adRevenue });
+  } catch (err) {
+    console.error('Ad revenue distribution failed:', err);
+    res.status(500).json({ error: 'Failed to distribute ad revenue' });
   }
 });
 
