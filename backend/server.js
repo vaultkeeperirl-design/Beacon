@@ -26,9 +26,26 @@ io.on('connection', (socket) => {
 
   socket.on('join-stream', (data) => {
     const streamId = (typeof data === 'string' ? data : data?.streamId) || null;
-    const username = typeof data === 'object' ? data?.username : null;
+    let username = typeof data === 'object' ? data?.username : null;
 
     if (username) {
+      if (streamId && username === streamId) {
+        // Check if a socket in the stream already has the host username
+        const roomSockets = io.sockets.adapter.rooms.get(streamId);
+        let hostExists = false;
+        if (roomSockets) {
+          for (const socketId of roomSockets) {
+            const s = io.sockets.sockets.get(socketId);
+            if (s && s.username === username) {
+              hostExists = true;
+              break;
+            }
+          }
+        }
+        if (hostExists) {
+          username = `${username}-viewer`;
+        }
+      }
       socket.username = username;
     }
 
