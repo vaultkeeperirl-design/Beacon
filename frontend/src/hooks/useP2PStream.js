@@ -8,13 +8,48 @@ const ICE_SERVERS = {
   ]
 };
 
+// Global state to store the latest mesh stats so other hooks (like useRealP2PStats) can read it without instantiating WebRTC.
+let globalMeshStats = {
+  latency: 0,
+  uploadSpeed: 0,
+  downloadSpeed: 0,
+  connectedPeers: 0
+};
+let globalMeshStatsSubscribers = new Set();
+
+export const subscribeToMeshStats = (callback) => {
+  globalMeshStatsSubscribers.add(callback);
+  callback(globalMeshStats); // send initial
+  return () => globalMeshStatsSubscribers.delete(callback);
+};
+
+const updateGlobalMeshStats = (newStats) => {
+  globalMeshStats = newStats;
+  globalMeshStatsSubscribers.forEach(cb => cb(globalMeshStats));
+};
+
 export const useP2PStream = (isBroadcaster = false, localStream = null, streamId = null) => {
   const { socket, isConnected } = useSocket();
   const [remoteStream, setRemoteStream] = useState(null);
   const [peers, setPeers] = useState({}); // Keep track of peer connections (mainly for broadcaster)
+  const [parentPeerId, setParentPeerId] = useState(null); // Track the parent node we are receiving from
 
   // Use a ref to store peers so we can access them inside socket event callbacks without stale closures
   const peersRef = useRef({});
+  const parentPeerIdRef = useRef(null);
+  const [meshStats, setMeshStats] = useState({
+    latency: 0,
+    uploadSpeed: 0,
+    downloadSpeed: 0,
+    connectedPeers: 0
+  });
+
+  // Track previously recorded bytes to calculate speed
+  const prevBytesRef = useRef({ sent: 0, received: 0, timestamp: Date.now() });
+
+  useEffect(() => {
+    parentPeerIdRef.current = parentPeerId;
+  }, [parentPeerId]);
 
   const addPeer = useCallback((id, peerConnection) => {
     peersRef.current[id] = peerConnection;
@@ -28,6 +63,12 @@ export const useP2PStream = (isBroadcaster = false, localStream = null, streamId
       delete newPeers[id];
       peersRef.current = newPeers;
       setPeers(newPeers);
+
+      if (id === parentPeerIdRef.current) {
+        console.log(`[Mesh] Parent ${id} disconnected. We are now an orphan.`);
+        setParentPeerId(null);
+        setRemoteStream(null);
+      }
     }
   }, []);
 
@@ -111,6 +152,7 @@ export const useP2PStream = (isBroadcaster = false, localStream = null, streamId
       console.log(`[Mesh] Received offer from parent ${sender}`);
       const pc = createPeerConnection(sender, null);
       addPeer(sender, pc);
+      setParentPeerId(sender);
 
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -166,6 +208,94 @@ export const useP2PStream = (isBroadcaster = false, localStream = null, streamId
     };
   }, [socket, isConnected, isBroadcaster, localStream, streamId, createPeerConnection, addPeer, removePeer]);
 
+  // Poll RTCPeerConnection stats periodically
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const pcs = Object.values(peersRef.current);
+      if (pcs.length === 0) {
+        setMeshStats(prev => ({
+          ...prev,
+          uploadSpeed: 0,
+          downloadSpeed: 0,
+          latency: 0,
+          connectedPeers: 0
+        }));
+        return;
+      }
+
+      let totalBytesSent = 0;
+      let totalBytesReceived = 0;
+      let currentLatency = 0;
+      let latencyCount = 0;
+
+      for (const pc of pcs) {
+        if (pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') continue;
+
+        try {
+          const stats = await pc.getStats();
+          stats.forEach(report => {
+            if (report.type === 'transport') {
+              totalBytesSent += report.bytesSent || 0;
+              totalBytesReceived += report.bytesReceived || 0;
+            }
+            if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+              if (report.currentRoundTripTime) {
+                currentLatency += (report.currentRoundTripTime * 1000);
+                latencyCount++;
+              }
+            }
+          });
+        } catch (err) {
+          console.error("Error getting stats:", err);
+        }
+      }
+
+      const now = Date.now();
+      const timeDiffSeconds = (now - prevBytesRef.current.timestamp) / 1000;
+
+      let uploadMbps = 0;
+      let downloadMbps = 0;
+
+      if (timeDiffSeconds > 0) {
+        const sentDiff = totalBytesSent - prevBytesRef.current.sent;
+        const recDiff = totalBytesReceived - prevBytesRef.current.received;
+
+        if (sentDiff > 0) uploadMbps = (sentDiff * 8) / 1000000 / timeDiffSeconds;
+        if (recDiff > 0) downloadMbps = (recDiff * 8) / 1000000 / timeDiffSeconds;
+      }
+
+      prevBytesRef.current = {
+        sent: totalBytesSent,
+        received: totalBytesReceived,
+        timestamp: now
+      };
+
+      const avgLatency = latencyCount > 0 ? Math.round(currentLatency / latencyCount) : 0;
+
+      // If we are a client and have metrics, emit them to backend for advanced routing
+      if (!isBroadcaster && socket && isConnected) {
+         socket.emit('metrics-report', {
+            streamId,
+            latency: avgLatency,
+            uploadMbps
+         });
+      }
+
+      const newStats = {
+        uploadSpeed: uploadMbps,
+        downloadSpeed: downloadMbps,
+        latency: avgLatency,
+        connectedPeers: pcs.length
+      };
+
+      setMeshStats(newStats);
+      updateGlobalMeshStats(newStats);
+
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [socket, isConnected, isBroadcaster, streamId]);
+
   // Clean up all peer connections when the component unmounts
   useEffect(() => {
     return () => {
@@ -175,5 +305,5 @@ export const useP2PStream = (isBroadcaster = false, localStream = null, streamId
     };
   }, []);
 
-  return { remoteStream, peers };
+  return { remoteStream, peers, meshStats };
 };

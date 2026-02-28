@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useMemo } from 'react';
 import { useRealP2PStats } from '../hooks/useRealP2PStats';
-
 // Performance Optimization:
 // We split the context into two providers:
 // 1. P2PStatsContext: For frequently changing P2P metrics (updates every 1s)

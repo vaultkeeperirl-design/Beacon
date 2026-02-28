@@ -2,7 +2,7 @@ import VideoPlayer from '../components/VideoPlayer';
 import Chat from '../components/Chat';
 import { Share2, ThumbsUp, MoreHorizontal, UserPlus, UserCheck } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import { useFollowing } from '../context/FollowingContext';
 import { useSocket } from '../hooks/useSocket';
@@ -46,9 +46,34 @@ export default function Watch() {
   }, [id, setCurrentStreamId]);
 
   const isFollowed = isFollowing(id);
+  const [hasStarted, setHasStarted] = useState(false);
 
   // Use the P2P hook as a viewer
-  const { remoteStream } = useP2PStream(false, null, id);
+  const { remoteStream, peers, meshStats } = useP2PStream(false, null, id);
+
+  useEffect(() => {
+    if (remoteStream) {
+      setHasStarted(true);
+    }
+  }, [remoteStream]);
+
+  // Compute a health indicator based on stats/connections
+  const getStreamHealth = () => {
+    const pcArray = Object.values(peers);
+    if (!remoteStream && !hasStarted) return { text: 'Offline', color: 'text-neutral-500' };
+    if (!remoteStream && hasStarted) return { text: 'Reconnecting...', color: 'text-yellow-500' };
+
+    if (pcArray.length > 0) {
+      // Check if any peer has bad connection state
+      const badPeers = pcArray.filter(pc => ['disconnected', 'failed', 'closed'].includes(pc.iceConnectionState));
+      if (badPeers.length > pcArray.length / 2) return { text: 'Poor', color: 'text-red-500' };
+      if (badPeers.length > 0) return { text: 'Fair', color: 'text-yellow-500' };
+      if (meshStats?.latency > 300) return { text: 'Fair (High Latency)', color: 'text-yellow-500' };
+    }
+    return { text: 'Excellent', color: 'text-green-500' };
+  };
+
+  const streamHealth = getStreamHealth();
 
   useEffect(() => {
     if (socket && id && username) {
@@ -85,7 +110,9 @@ export default function Watch() {
            {!remoteStream && (
              <div className="absolute top-0 left-0 w-full h-full bg-black flex items-center justify-center flex-col z-10 aspect-video rounded-lg ring-1 ring-neutral-800">
                 <div className="w-10 h-10 border-4 border-beacon-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="text-white font-medium animate-pulse">Waiting for host to go live...</p>
+                <p className="text-white font-medium animate-pulse">
+                  {hasStarted ? "Reconnecting to Mesh..." : "Waiting for host to go live..."}
+                </p>
              </div>
            )}
          </div>
@@ -107,6 +134,11 @@ export default function Watch() {
                  <span className="flex items-center gap-1 text-red-500 font-semibold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                     LIVE
+                 </span>
+                 <span className="hidden md:inline">•</span>
+                 <span className="flex items-center gap-1 text-neutral-400 font-semibold px-2 py-0.5 rounded border border-neutral-700 bg-neutral-800">
+                    <span className={`w-2 h-2 rounded-full animate-pulse ${streamHealth.color.replace('text-', 'bg-')}`}></span>
+                    {streamHealth.text}
                  </span>
                </div>
              </div>

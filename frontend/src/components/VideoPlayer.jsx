@@ -10,6 +10,7 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
   const [volume, setVolume] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const videoRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -49,8 +50,14 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
 
     if (isPlaying) {
       videoRef.current.play().catch(err => {
-        console.warn("Autoplay/Play blocked:", err);
-        setIsPlaying(false);
+        if (err.name === 'NotAllowedError') {
+          console.warn("Autoplay/Play blocked:", err);
+          setAutoplayBlocked(true);
+          setIsPlaying(false);
+        } else {
+          console.warn("Play error:", err);
+          setIsPlaying(false);
+        }
       });
     } else {
       videoRef.current.pause();
@@ -114,6 +121,15 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
       }
   };
 
+  const handleUnmuteAndPlay = () => {
+    setAutoplayBlocked(false);
+    setIsMuted(false);
+    if (volume === 0) {
+      setVolume(0.5);
+    }
+    setIsPlaying(true);
+  };
+
   return (
     <div
       ref={containerRef}
@@ -128,6 +144,18 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
         loop={!stream}
         playsInline
       />
+
+      {autoplayBlocked && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20 backdrop-blur-sm">
+          <button
+            onClick={handleUnmuteAndPlay}
+            className="flex flex-col items-center justify-center p-6 bg-beacon-600 hover:bg-beacon-500 rounded-xl text-white font-bold transition-all shadow-xl transform hover:-translate-y-1 hover:scale-105"
+          >
+            <span className="text-xl mb-2">▶ Click to Unmute & Play</span>
+            <span className="text-sm font-normal opacity-80 text-center max-w-xs">Your browser blocked audio. Click here to enable sound and start watching.</span>
+          </button>
+        </div>
+      )}
 
       {/* Stats Overlay */}
       {settings.showStats && <VideoStatsOverlay />}
