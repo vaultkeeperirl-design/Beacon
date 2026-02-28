@@ -6,9 +6,11 @@ import { useEffect } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import { useFollowing } from '../context/FollowingContext';
 import { useSocket } from '../hooks/useSocket';
+import { useP2PStream } from '../hooks/useP2PStream';
 
 export default function Watch() {
   const { id } = useParams();
+  const { username } = useP2PSettings();
   const navigate = useNavigate();
   // Using useP2PSettings to avoid re-rendering the whole page every second when stats update
   const { setCurrentStreamId } = useP2PSettings();
@@ -45,6 +47,20 @@ export default function Watch() {
 
   const isFollowed = isFollowing(id);
 
+  // Use the P2P hook as a viewer
+  const { remoteStream } = useP2PStream(false, null, id);
+
+  useEffect(() => {
+    if (socket && id && username) {
+      socket.emit('join-stream', { streamId: id, username: username });
+    }
+    return () => {
+      if (socket) {
+        socket.emit('leave-stream');
+      }
+    };
+  }, [id, username, socket]);
+
   const handleFollowToggle = () => {
     if (isFollowed) {
       unfollow(id);
@@ -64,8 +80,14 @@ export default function Watch() {
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-64px)] overflow-hidden">
       <div className="flex-1 flex flex-col h-full overflow-y-auto lg:overflow-hidden pb-20 lg:pb-0 pr-0 lg:pr-80">
-         <div className="w-full">
-           <VideoPlayer />
+         <div className="w-full relative">
+           <VideoPlayer stream={remoteStream} />
+           {!remoteStream && (
+             <div className="absolute top-0 left-0 w-full h-full bg-black flex items-center justify-center flex-col z-10 aspect-video rounded-lg ring-1 ring-neutral-800">
+                <div className="w-10 h-10 border-4 border-beacon-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-white font-medium animate-pulse">Waiting for host to go live...</p>
+             </div>
+           )}
          </div>
 
          <div className="py-6 px-4 lg:px-0">

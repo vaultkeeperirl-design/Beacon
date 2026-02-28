@@ -6,6 +6,8 @@ import StreamSettings from '../components/StreamSettings';
 import PollCreator from '../components/PollCreator';
 import AdBreakButton from '../components/AdBreakButton';
 import { usePoll } from '../hooks/usePoll';
+import { useP2PStream } from '../hooks/useP2PStream';
+import { useSocket } from '../hooks/useSocket';
 
 export default function Broadcast() {
   const { username, setCurrentStreamId } = useP2PSettings();
@@ -30,15 +32,38 @@ export default function Broadcast() {
 
   // Poll hook
   const { startPoll, activePoll, endPoll } = usePoll(username);
+  const { socket } = useSocket();
+
+  // Store the active local stream in state so it can be passed to the WebRTC hook
+  const [activeStream, setActiveStream] = useState(null);
+
+  useEffect(() => {
+    if (isLive) {
+      setActiveStream(streamRef.current);
+    } else {
+      setActiveStream(null);
+    }
+  }, [isLive]);
+
+  // Manage WebRTC Broadcaster stream connection
+  const { peers } = useP2PStream(true, activeStream, username);
 
   useEffect(() => {
     if (isLive) {
       setCurrentStreamId(username);
+      if (socket) {
+        socket.emit('join-stream', { streamId: username, username: username });
+      }
     } else {
       setCurrentStreamId(null);
+      if (socket) {
+        socket.emit('leave-stream');
+      }
     }
-    return () => setCurrentStreamId(null);
-  }, [isLive, username, setCurrentStreamId]);
+    return () => {
+      setCurrentStreamId(null);
+    };
+  }, [isLive, username, setCurrentStreamId, socket]);
 
   useEffect(() => {
     async function startCamera() {
@@ -198,8 +223,14 @@ export default function Broadcast() {
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
+           {isLive && (
+             <div className="flex-1 md:flex-none px-4 py-2 bg-neutral-900 rounded-lg text-sm font-mono text-neutral-400 border border-neutral-800 flex items-center justify-center gap-2" title="Connected Peers">
+               <Users className="w-4 h-4 text-beacon-500" />
+               <span className="font-bold text-white">{Object.keys(peers).length}</span> viewers
+             </div>
+           )}
            <div className="flex-1 md:flex-none px-4 py-2 bg-neutral-900 rounded-lg text-sm font-mono text-neutral-400 border border-neutral-800 flex items-center justify-center gap-2">
-             <span className="text-green-500 animate-pulse">●</span> Stream Health: Excellent
+             <span className={`animate-pulse ${isLive ? 'text-green-500' : 'text-neutral-500'}`}>●</span> Stream Health: {isLive ? 'Excellent' : 'Offline'}
            </div>
            <button
              onClick={() => setIsLive(!isLive)}

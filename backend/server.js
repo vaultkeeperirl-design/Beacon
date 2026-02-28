@@ -21,6 +21,105 @@ const activeStreams = new Set();
 // Track active polls per stream
 const activePolls = new Map();
 
+// --- P2P Mesh Tracker ---
+// Track the topology of peers in each stream
+// Map<streamId, Map<socketId, { children: Set<socketId>, parent: socketId | null }>>
+const streamMeshTopology = new Map();
+
+// Configuration
+const MAX_CHILDREN_PER_NODE = 2; // Keep it low for browser WebRTC stability
+
+function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
+  if (!streamMeshTopology.has(streamId)) {
+    streamMeshTopology.set(streamId, new Map());
+  }
+
+  const mesh = streamMeshTopology.get(streamId);
+  mesh.set(socketId, { children: new Set(), parent: null, isBroadcaster });
+
+  if (isBroadcaster) {
+    return; // Broadcaster has no parent
+  }
+
+  // Find a parent for the new viewer using Breadth-First Search to keep tree balanced
+  let assignedParent = null;
+  const queue = [];
+
+  // Find the broadcaster to start the search
+  let broadcasterId = null;
+  for (const [id, node] of mesh.entries()) {
+    if (node.isBroadcaster) {
+      broadcasterId = id;
+      break;
+    }
+  }
+
+  if (broadcasterId) {
+    queue.push(broadcasterId);
+  } else {
+    // Fallback: Just grab the first available node if broadcaster isn't explicitly marked yet
+    queue.push(mesh.keys().next().value);
+  }
+
+  while (queue.length > 0) {
+    const currentId = queue.shift();
+    if (!currentId || currentId === socketId) continue;
+
+    const currentNode = mesh.get(currentId);
+    if (!currentNode) continue;
+
+    if (currentNode.children.size < MAX_CHILDREN_PER_NODE) {
+      assignedParent = currentId;
+      break;
+    }
+
+    // Add children to queue
+    for (const childId of currentNode.children) {
+      queue.push(childId);
+    }
+  }
+
+  if (assignedParent) {
+    const parentNode = mesh.get(assignedParent);
+    parentNode.children.add(socketId);
+    mesh.get(socketId).parent = assignedParent;
+
+    // Notify the parent to initiate a connection with the new child
+    io.to(assignedParent).emit('p2p-initiate-connection', { childId: socketId });
+    console.log(`[Mesh] Assigned ${socketId} as child of ${assignedParent} in stream ${streamId}`);
+  } else {
+    console.log(`[Mesh] Warning: Could not find parent for ${socketId} in stream ${streamId}`);
+  }
+}
+
+function removeNodeFromMesh(streamId, socketId) {
+  if (!streamMeshTopology.has(streamId)) return;
+
+  const mesh = streamMeshTopology.get(streamId);
+  const node = mesh.get(socketId);
+  if (!node) return;
+
+  // If node had a parent, remove from parent's children
+  if (node.parent) {
+    const parentNode = mesh.get(node.parent);
+    if (parentNode) {
+      parentNode.children.delete(socketId);
+    }
+  }
+
+  // If node had children, they are orphaned. Re-add them to the mesh.
+  const orphans = Array.from(node.children);
+  mesh.delete(socketId);
+
+  for (const orphanId of orphans) {
+    if (mesh.has(orphanId)) {
+      mesh.get(orphanId).parent = null;
+      // Re-add to find a new parent
+      addNodeToMesh(streamId, orphanId, false);
+    }
+  }
+}
+
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
@@ -81,6 +180,9 @@ io.on('connection', (socket) => {
           activeStreams.add(streamId);
         }
 
+        // Add to Mesh Tracker
+        addNodeToMesh(streamId, socket.id, socket.username === streamId);
+
         // Broadcast updated participant count to the room (and acknowledged requester)
         const count = io.sockets.adapter.rooms.get(streamId)?.size || 0;
         io.to(streamId).emit('room-users-update', count);
@@ -113,6 +215,10 @@ io.on('connection', (socket) => {
        }
 
        socket.leave(room);
+
+       // Remove from Mesh Tracker
+       removeNodeFromMesh(room, socket.id);
+
        const count = io.sockets.adapter.rooms.get(room)?.size || 0;
        io.to(room).emit('room-users-update', count);
        socket.to(room).emit('user-disconnected', { id: socket.id, username: socket.username });
@@ -297,6 +403,9 @@ io.on('connection', (socket) => {
           const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
           socket.to(streamId).emit('stream-ended', { redirect });
       }
+
+      // Remove from Mesh Tracker
+      removeNodeFromMesh(streamId, socket.id);
 
       // Socket is automatically removed from rooms on disconnect
       const count = io.sockets.adapter.rooms.get(streamId)?.size || 0;
