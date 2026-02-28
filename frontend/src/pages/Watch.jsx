@@ -52,10 +52,10 @@ export default function Watch() {
   const { remoteStream, peers, meshStats } = useP2PStream(false, null, id);
 
   useEffect(() => {
-    if (remoteStream) {
+    if (remoteStream && !hasStarted) {
       setHasStarted(true);
     }
-  }, [remoteStream]);
+  }, [remoteStream, hasStarted]);
 
   // Compute a health indicator based on stats/connections
   const getStreamHealth = () => {

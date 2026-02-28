@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { UserPlus, UserCheck, MessageSquare, Share2, MoreHorizontal, Video, Calendar, Info, Clock, Heart } from 'lucide-react';
 import { useP2PSettings } from '../context/P2PContext';
 import StreamCard from '../components/StreamCard';
+import axios from 'axios';
 
 export default function Channel() {
   const { username } = useParams();
@@ -112,10 +113,10 @@ export default function Channel() {
                 </button>
              )}
 
-             <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700">
+             <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700" aria-label="Share">
                <Share2 className="w-5 h-5" />
              </button>
-             <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700">
+             <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700" aria-label="More Options">
                <MoreHorizontal className="w-5 h-5" />
              </button>
           </div>

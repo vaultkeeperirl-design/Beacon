@@ -46,13 +46,20 @@ export function P2PProvider({ children }) {
             console.error('Error fetching user profile:', err);
             // If token is invalid/expired, log out
             if (err.response && err.response.status === 401) {
-              logout();
+              handleLogout();
             }
           });
       } catch (e) {
-        console.error('Invalid token format');
-        logout();
+        console.error('Invalid token format', e);
+        handleLogout();
       }
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('beacon_token');
+      setToken(null);
+      setUser(null);
+      setUsername('Guest');
     }
   }, [token]);
 

@@ -18,7 +18,7 @@ const VideoControls = memo(({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
           <button
-            className="text-white hover:text-beacon-500 transition-colors"
+            className="text-white hover:text-beacon-500 focus-visible:ring-2 focus-visible:ring-beacon-500 focus-visible:outline-none rounded transition-colors"
             onClick={onPlayToggle}
             aria-label={isPlaying ? "Pause stream (Space/k)" : "Play stream (Space/k)"}
             title={isPlaying ? "Pause (Space/k)" : "Play (Space/k)"}
@@ -26,7 +26,7 @@ const VideoControls = memo(({
             {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
           </button>
           <button
-            className="text-white hover:text-beacon-500 transition-colors group/vol"
+            className="text-white hover:text-beacon-500 focus-visible:ring-2 focus-visible:ring-beacon-500 focus-visible:outline-none rounded transition-colors group/vol"
             onClick={onMuteToggle}
             aria-label={isMuted ? "Unmute audio (m)" : "Mute audio (m)"}
             title={isMuted ? "Unmute (m)" : "Mute (m)"}
@@ -36,7 +36,7 @@ const VideoControls = memo(({
 
           <div className="flex items-center gap-2 group/vol-control">
              <button
-               className="text-white hover:text-beacon-500 transition-colors"
+               className="text-white hover:text-beacon-500 focus-visible:ring-2 focus-visible:ring-beacon-500 focus-visible:outline-none rounded transition-colors"
                onClick={onMuteToggle}
                aria-label={isMuted ? "Unmute audio" : "Mute audio"}
                title={isMuted ? "Unmute" : "Mute"}
@@ -51,7 +51,7 @@ const VideoControls = memo(({
                step="0.01"
                value={isMuted ? 0 : volume}
                onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-               className="w-24 h-1.5 bg-neutral-600 rounded-lg appearance-none cursor-pointer accent-beacon-500 hover:accent-beacon-400 transition-all opacity-0 group-hover/vol-control:opacity-100 duration-200"
+               className="w-24 h-1.5 bg-neutral-600 rounded-lg appearance-none cursor-pointer accent-beacon-500 hover:accent-beacon-400 focus-visible:ring-2 focus-visible:ring-beacon-500 focus-visible:outline-none transition-all opacity-0 group-hover/vol-control:opacity-100 duration-200"
                aria-label="Volume"
              />
           </div>
@@ -67,7 +67,7 @@ const VideoControls = memo(({
             P2P: {quality}
           </span>
           <button
-            className="text-white hover:text-beacon-500 transition-colors"
+            className="text-white hover:text-beacon-500 focus-visible:ring-2 focus-visible:ring-beacon-500 focus-visible:outline-none rounded transition-colors"
             onClick={onSettingsToggle}
             aria-label="Open stream settings"
             title="Settings"
@@ -75,7 +75,7 @@ const VideoControls = memo(({
             <Settings className="w-5 h-5" />
           </button>
           <button
-            className="text-white hover:text-beacon-500 transition-colors"
+            className="text-white hover:text-beacon-500 focus-visible:ring-2 focus-visible:ring-beacon-500 focus-visible:outline-none rounded transition-colors"
             onClick={onFullscreenToggle}
             aria-label={isFullscreen ? "Exit Fullscreen (f)" : "Enter Fullscreen (f)"}
             title={isFullscreen ? "Exit Fullscreen (f)" : "Enter Fullscreen (f)"}
