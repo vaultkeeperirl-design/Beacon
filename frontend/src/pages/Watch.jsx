@@ -7,6 +7,7 @@ import { useP2PSettings } from '../context/P2PContext';
 import { useFollowing } from '../context/FollowingContext';
 import { useSocket } from '../hooks/useSocket';
 import { useP2PStream } from '../hooks/useP2PStream';
+import StreamHealthIndicator from '../components/StreamHealthIndicator';
 
 export default function Watch() {
   const { id } = useParams();
@@ -47,27 +48,15 @@ export default function Watch() {
 
   const isFollowed = isFollowing(id);
   // Use the P2P hook as a viewer
-  const { remoteStream, peers, meshStats } = useP2PStream(false, null, id);
+  // Note: meshStats was removed from the returned hook state to prevent 2s polling re-renders
+  const { remoteStream, peers } = useP2PStream(false, null, id);
 
-  const hasStarted = !!remoteStream;
-
-  // Compute a health indicator based on stats/connections
-  const getStreamHealth = () => {
-    const pcArray = Object.values(peers);
-    if (!remoteStream && !hasStarted) return { text: 'Offline', color: 'text-neutral-500' };
-    if (!remoteStream && hasStarted) return { text: 'Reconnecting...', color: 'text-yellow-500' };
-
-    if (pcArray.length > 0) {
-      // Check if any peer has bad connection state
-      const badPeers = pcArray.filter(pc => ['disconnected', 'failed', 'closed'].includes(pc.iceConnectionState));
-      if (badPeers.length > pcArray.length / 2) return { text: 'Poor', color: 'text-red-500' };
-      if (badPeers.length > 0) return { text: 'Fair', color: 'text-yellow-500' };
-      if (meshStats?.latency > 300) return { text: 'Fair (High Latency)', color: 'text-yellow-500' };
+  useEffect(() => {
+    if (remoteStream) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHasStarted(true);
     }
-    return { text: 'Excellent', color: 'text-green-500' };
-  };
-
-  const streamHealth = getStreamHealth();
+  }, [remoteStream]);
 
   useEffect(() => {
     if (socket && id && username) {
@@ -130,10 +119,7 @@ export default function Watch() {
                     LIVE
                  </span>
                  <span className="hidden md:inline">•</span>
-                 <span className="flex items-center gap-1 text-neutral-400 font-semibold px-2 py-0.5 rounded border border-neutral-700 bg-neutral-800">
-                    <span className={`w-2 h-2 rounded-full animate-pulse ${streamHealth.color.replace('text-', 'bg-')}`}></span>
-                    {streamHealth.text}
-                 </span>
+                 <StreamHealthIndicator peers={peers} isViewer={true} hasStarted={hasStarted} remoteStream={remoteStream} />
                </div>
              </div>
 

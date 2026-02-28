@@ -37,12 +37,13 @@ export const useP2PStream = (isBroadcaster = false, localStream = null, streamId
   // Use a ref to store peers so we can access them inside socket event callbacks without stale closures
   const peersRef = useRef({});
   const parentPeerIdRef = useRef(null);
-  const [meshStats, setMeshStats] = useState({
-    latency: 0,
-    uploadSpeed: 0,
-    downloadSpeed: 0,
-    connectedPeers: 0
-  });
+
+  // ⚡ Performance Optimization:
+  // We remove `meshStats` from React state here.
+  // Previously, `setMeshStats` was called every 2 seconds by the polling interval,
+  // causing any component using this hook (like the entire Watch or Broadcast page)
+  // to re-render constantly. Now, we only update the global subscribers.
+  // Components that need the stats can use `useRealP2PStats` or `subscribeToMeshStats` directly.
 
   // Track previously recorded bytes to calculate speed
   const prevBytesRef = useRef({ sent: 0, received: 0, timestamp: Date.now() });
@@ -213,13 +214,12 @@ export const useP2PStream = (isBroadcaster = false, localStream = null, streamId
     const interval = setInterval(async () => {
       const pcs = Object.values(peersRef.current);
       if (pcs.length === 0) {
-        setMeshStats(prev => ({
-          ...prev,
+        updateGlobalMeshStats({
           uploadSpeed: 0,
           downloadSpeed: 0,
           latency: 0,
           connectedPeers: 0
-        }));
+        });
         return;
       }
 
@@ -288,7 +288,6 @@ export const useP2PStream = (isBroadcaster = false, localStream = null, streamId
         connectedPeers: pcs.length
       };
 
-      setMeshStats(newStats);
       updateGlobalMeshStats(newStats);
 
     }, 2000);
@@ -305,5 +304,6 @@ export const useP2PStream = (isBroadcaster = false, localStream = null, streamId
     };
   }, []);
 
-  return { remoteStream, peers, meshStats };
+  // Note: meshStats is no longer returned as state from this hook
+  return { remoteStream, peers };
 };

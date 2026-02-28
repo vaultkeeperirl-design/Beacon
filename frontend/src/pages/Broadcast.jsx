@@ -5,6 +5,7 @@ import Chat from '../components/Chat';
 import StreamSettings from '../components/StreamSettings';
 import PollCreator from '../components/PollCreator';
 import AdBreakButton from '../components/AdBreakButton';
+import StreamHealthIndicator from '../components/StreamHealthIndicator';
 import { usePoll } from '../hooks/usePoll';
 import { useP2PStream } from '../hooks/useP2PStream';
 import { useSocket } from '../hooks/useSocket';
@@ -46,23 +47,8 @@ export default function Broadcast() {
   }, [isLive]);
 
   // Manage WebRTC Broadcaster stream connection
-  const { peers, meshStats } = useP2PStream(true, activeStream, username);
-
-  // Compute a health indicator based on stats/connections
-  const getStreamHealth = () => {
-    if (!isLive) return { text: 'Offline', color: 'text-neutral-500' };
-    const pcArray = Object.values(peers);
-    if (pcArray.length > 0) {
-      // Check if any peer has bad connection state
-      const badPeers = pcArray.filter(pc => ['disconnected', 'failed', 'closed'].includes(pc.iceConnectionState));
-      if (badPeers.length > pcArray.length / 2) return { text: 'Poor', color: 'text-red-500' };
-      if (badPeers.length > 0) return { text: 'Fair', color: 'text-yellow-500' };
-      if (meshStats?.latency > 300) return { text: 'Fair (High Latency)', color: 'text-yellow-500' };
-    }
-    return { text: 'Excellent', color: 'text-green-500' };
-  };
-
-  const streamHealth = getStreamHealth();
+  // Note: meshStats was removed from the returned hook state to prevent 2s polling re-renders
+  const { peers } = useP2PStream(true, activeStream, username);
 
   useEffect(() => {
     if (isLive) {
@@ -262,7 +248,7 @@ export default function Broadcast() {
              </div>
            )}
            <div className="flex-1 md:flex-none px-4 py-2 bg-neutral-900 rounded-lg text-sm font-mono text-neutral-400 border border-neutral-800 flex items-center justify-center gap-2">
-             <span className={`animate-pulse ${streamHealth.color}`}>●</span> Stream Health: {streamHealth.text}
+             <StreamHealthIndicator peers={peers} isViewer={false} isBroadcastView={true} hasStarted={isLive} />
            </div>
            <button
              onClick={() => setIsLive(!isLive)}
