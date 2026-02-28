@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye } from 'lucide-react';
+import { Eye, User } from 'lucide-react';
 
 const StreamCard = memo(function StreamCard({ id, title, streamer, viewers, thumbnail, tags, isLive = true }) {
   return (
@@ -19,8 +19,8 @@ const StreamCard = memo(function StreamCard({ id, title, streamer, viewers, thum
       </Link>
 
       <div className="flex gap-3">
-        <Link to={`/channel/${streamer}`} className="block w-10 h-10 rounded-full bg-neutral-700 flex-shrink-0 overflow-hidden border border-neutral-800 hover:ring-2 hover:ring-beacon-500 transition-all">
-          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${streamer}`} alt={streamer} className="w-full h-full object-cover" loading="lazy" />
+        <Link to={`/channel/${streamer}`} className="block w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center flex-shrink-0 overflow-hidden border border-neutral-800 hover:ring-2 hover:ring-beacon-500 transition-all text-neutral-400">
+          <User className="w-5 h-5 opacity-50" />
         </Link>
 
         <div className="min-w-0 flex-1">

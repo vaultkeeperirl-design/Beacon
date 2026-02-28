@@ -4,10 +4,10 @@ import { useFollowing } from '../context/FollowingContext';
 
 // Keep mocks for offline or if needed, but primarily use context
 const MOCK_OFFLINE_CHANNELS = [
-    { id: 101, name: 'TechTalks', lastStream: '2 hours ago', category: 'Talk Shows', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=TechTalks' },
-    { id: 102, name: 'AdventureTime', lastStream: 'Yesterday', category: 'Travel', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AdventureTime' },
-    { id: 103, name: 'CodeWarrior', lastStream: '3 days ago', category: 'Programming', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=CodeWarrior' },
-    { id: 104, name: 'YogaDaily', lastStream: '5 days ago', category: 'Fitness', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=YogaDaily' },
+    { id: 101, name: 'TechTalks', lastStream: '2 hours ago', category: 'Talk Shows', avatar: null },
+    { id: 102, name: 'AdventureTime', lastStream: 'Yesterday', category: 'Travel', avatar: null },
+    { id: 103, name: 'CodeWarrior', lastStream: '3 days ago', category: 'Programming', avatar: null },
+    { id: 104, name: 'YogaDaily', lastStream: '5 days ago', category: 'Fitness', avatar: null },
 ];
 
 export default function Following() {
@@ -72,8 +72,12 @@ export default function Following() {
            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                {MOCK_OFFLINE_CHANNELS.map(channel => (
                    <div key={channel.id} className="flex items-center gap-4 p-4 bg-neutral-900/50 border border-neutral-800 rounded-xl hover:bg-neutral-800/80 hover:border-neutral-700 transition-all cursor-pointer group">
-                       <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-neutral-700 group-hover:border-beacon-500/50 transition-colors relative grayscale group-hover:grayscale-0">
-                           <img src={channel.avatar} alt={channel.name} className="w-full h-full object-cover" />
+                       <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-neutral-700 group-hover:border-beacon-500/50 transition-colors relative flex items-center justify-center text-neutral-400">
+                           {channel.avatar ? (
+                               <img src={channel.avatar} alt={channel.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" />
+                           ) : (
+                               <User className="w-6 h-6 opacity-50 grayscale group-hover:grayscale-0 transition-all" />
+                           )}
                        </div>
                        <div>
                            <h3 className="font-bold text-white group-hover:text-beacon-400 transition-colors">{channel.name}</h3>

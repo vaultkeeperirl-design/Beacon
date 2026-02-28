@@ -3,9 +3,13 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const db = require('./db');
 require('dotenv').config();
 
 const app = express();
+app.use(express.json());
 app.use(cors());
 
 const server = http.createServer(app);
@@ -20,6 +24,160 @@ const io = new Server(server, {
 const activeStreams = new Set();
 // Track active polls per stream
 const activePolls = new Map();
+// Track stream squads for revenue splits
+// Map<streamId, Array<{ username: string, split: number }>>
+const streamSquads = new Map();
+
+// JWT Secret
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_beacon_key_123';
+
+// Auth Middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Access denied' });
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Invalid token' });
+    req.user = user;
+    next();
+  });
+};
+
+// REST API Endpoints
+
+// Register
+app.post('/api/auth/register', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(password, salt);
+    // Provide a default avatar (null)
+    const defaultAvatar = null;
+
+    try {
+      const stmt = db.prepare('INSERT INTO Users (username, password_hash, avatar_url, bio, credits) VALUES (?, ?, ?, ?, ?)');
+      const info = stmt.run(username, password_hash, defaultAvatar, 'I love streaming on Beacon!', 0.0);
+
+      const token = jwt.sign({ id: info.lastInsertRowid, username }, JWT_SECRET, { expiresIn: '24h' });
+      res.status(201).json({ token, user: { id: info.lastInsertRowid, username, avatar_url: defaultAvatar, bio: 'I love streaming on Beacon!', follower_count: 0, credits: 0.0 } });
+    } catch (err) {
+        if (err.message.includes('UNIQUE constraint failed')) {
+          return res.status(409).json({ error: 'Username already exists' });
+        }
+        return res.status(500).json({ error: 'Database error' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Login
+app.post('/api/auth/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+
+  try {
+    const stmt = db.prepare('SELECT * FROM Users WHERE username = ?');
+    const user = stmt.get(username);
+
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    if (!validPassword) return res.status(401).json({ error: 'Invalid credentials' });
+
+    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
+
+    // Don't send password hash back
+    const { password_hash, ...safeUser } = user;
+    res.json({ token, user: safeUser });
+  } catch (err) {
+      res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Get User Profile
+app.get('/api/users/:username', (req, res) => {
+  try {
+    const stmt = db.prepare('SELECT id, username, avatar_url, bio, follower_count FROM Users WHERE username = ?');
+    const user = stmt.get(req.params.username);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  } catch (err) {
+      res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Get Wallet Balance
+app.get('/api/wallet', authenticateToken, (req, res) => {
+  try {
+    const stmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
+    const row = stmt.get(req.user.username);
+    if (!row) return res.status(404).json({ error: 'User not found' });
+    res.json({ balance: row.credits });
+  } catch (err) {
+      res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Tip Stream (Revenue Split Logic)
+app.post('/api/tip', authenticateToken, (req, res) => {
+  const { streamId, amount } = req.body;
+  const tipper = req.user.username;
+
+  if (!streamId || !amount || amount <= 0) {
+    return res.status(400).json({ error: 'Invalid tip parameters' });
+  }
+
+  try {
+    const getTipperStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
+    const tipperRow = getTipperStmt.get(tipper);
+
+    if (!tipperRow || tipperRow.credits < amount) {
+       return res.status(400).json({ error: 'Insufficient funds' });
+    }
+
+    // Begin transaction
+    const updateCredits = db.transaction(() => {
+       // Deduct from tipper
+       const deductStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ?');
+       deductStmt.run(amount, tipper);
+
+       // Distribute to squad
+       const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
+
+       for (const member of squad) {
+         const cut = amount * (member.split / 100);
+         if (cut > 0) {
+            // Only update if the user exists
+            const addStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
+            addStmt.run(cut, member.username);
+
+            // Note: In a real app we'd fetch the new balance and emit a socket event here to update their UI
+         }
+       }
+    });
+
+    updateCredits();
+
+    // Emit event to the room so chat can show the tip
+    io.to(streamId).emit('chat-message', {
+       id: Date.now(),
+       user: 'System',
+       text: `${tipper} just tipped ${amount} credits!`,
+       color: 'text-beacon-400 font-bold',
+       senderId: 'system'
+    });
+
+    res.json({ success: true, message: 'Tip distributed successfully' });
+  } catch (err) {
+    console.error('Tip transaction failed:', err);
+    res.status(500).json({ error: 'Database transaction failed' });
+  }
+});
 
 // --- P2P Mesh Tracker ---
 // Track the topology of peers in each stream
@@ -261,6 +419,27 @@ io.on('connection', (socket) => {
   socket.on('metrics-report', ({ streamId, latency, uploadMbps }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
+    // Credit Economy Calculation
+    if (socket.username && uploadMbps > 0) {
+      const earnedCredits = uploadMbps * 0.01; // Match frontend logic
+
+      try {
+        // Increment user credits in DB
+        const stmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
+        stmt.run(earnedCredits, socket.username);
+
+        // Fetch new balance to broadcast back
+        const getStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
+        const row = getStmt.get(socket.username);
+
+        if (row) {
+          socket.emit('wallet-update', { balance: row.credits });
+        }
+      } catch (err) {
+        console.error('Error updating credits:', err);
+      }
+    }
+
     if (streamMeshTopology.has(streamId)) {
       const mesh = streamMeshTopology.get(streamId);
       const node = mesh.get(socket.id);
@@ -291,6 +470,28 @@ io.on('connection', (socket) => {
         }
       }
     }
+  });
+
+  // --- Co-Streaming Squad Logic ---
+  socket.on('update-squad', ({ streamId, squad }) => {
+    if (!streamId || socket.currentRoom !== streamId) return;
+
+    // Only host can update squad
+    if (socket.username !== streamId) return;
+
+    if (!Array.isArray(squad)) return;
+
+    // Validate split percentages equal 100
+    const totalSplit = squad.reduce((sum, member) => sum + (Number(member.split) || 0), 0);
+    if (Math.abs(totalSplit - 100) > 0.01) {
+       console.log(`[Squad] Invalid split percentage total: ${totalSplit} for stream ${streamId}`);
+       return;
+    }
+
+    // Map frontend 'name' to 'username' for backend tracking
+    const backendSquad = squad.map(m => ({ username: m.name, split: Number(m.split) }));
+    streamSquads.set(streamId, backendSquad);
+    console.log(`[Squad] Updated for stream ${streamId}`, backendSquad);
   });
 
   // --- Poll Logic ---

@@ -9,6 +9,8 @@ import Following from './pages/Following';
 import Channel from './pages/Channel';
 import TermsOfService from './pages/TermsOfService';
 import CommunityGuidelines from './pages/CommunityGuidelines';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import { P2PProvider } from './context/P2PContext';
 import { FollowingProvider } from './context/FollowingContext';
 
@@ -28,6 +30,8 @@ function App() {
               <Route path="following" element={<Following />} />
               <Route path="terms" element={<TermsOfService />} />
               <Route path="guidelines" element={<CommunityGuidelines />} />
+              <Route path="login" element={<Login />} />
+              <Route path="register" element={<Register />} />
             </Route>
           </Routes>
         </BrowserRouter>
