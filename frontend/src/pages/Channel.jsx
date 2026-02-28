@@ -9,24 +9,46 @@ export default function Channel() {
   const { username: currentUsername } = useP2PSettings();
   const [isFollowing, setIsFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
+  const [channelData, setChannelData] = useState(null);
 
   const isOwnProfile = currentUsername === username;
 
-  // Mock Data
-  const channelData = {
-    username: username,
-    displayName: username, // In a real app, this might differ
-    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-    banner: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=1920',
-    bio: 'Tech enthusiast, coder, and gamer. Streaming development of open source projects and occasional gaming sessions. Join the community!',
-    followers: 12500,
-    following: 150,
-    socials: {
-      twitter: '@' + username,
-      github: 'github.com/' + username,
-      website: 'example.com'
-    }
-  };
+  useEffect(() => {
+    // Fetch real channel data
+    axios.get(`http://localhost:3000/api/users/${username}`)
+      .then(res => {
+        setChannelData({
+          username: res.data.username,
+          displayName: res.data.username,
+          avatar: res.data.avatar_url,
+          banner: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=1920', // Keep mock banner
+          bio: res.data.bio || "Tech enthusiast, coder, and gamer.",
+          followers: res.data.follower_count || 0,
+          following: 150,
+          socials: { twitter: "@" + res.data.username, github: 'github.com/' + res.data.username, website: 'example.com' }
+        });
+      })
+      .catch(err => {
+        console.error('Failed to fetch channel data', err);
+        // Fallback for missing/mock users
+        setChannelData({
+          username: username,
+          displayName: username, // In a real app, this might differ
+          avatar: null,
+          banner: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=1920',
+          bio: 'Tech enthusiast, coder, and gamer. Streaming development of open source projects and occasional gaming sessions. Join the community!',
+          followers: 12500,
+          following: 150,
+          socials: {
+            twitter: '@' + username,
+            github: 'github.com/' + username,
+            website: 'example.com'
+          }
+        });
+      });
+  }, [username]);
+
+  if (!channelData) return <div className="p-8 text-center text-neutral-400 animate-pulse">Loading channel...</div>;
 
   const MOCK_VIDEOS = [
     { id: 101, title: 'Building a P2P App - Part 1', streamer: username, viewers: '5.2k', tags: ['Coding', 'React'], thumbnail: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600', isLive: false, duration: '2:30:15' },

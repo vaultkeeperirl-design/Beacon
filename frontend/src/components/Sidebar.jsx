@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
-import { Home, Users, BarChart2, MessageSquare, Radio, Compass, ShieldCheck, FileText } from 'lucide-react';
+import { Home, Users, BarChart2, MessageSquare, Radio, Compass, ShieldCheck, FileText, User } from 'lucide-react';
 import P2PStats from './P2PStats';
 
 const Sidebar = memo(function Sidebar() {
@@ -43,8 +43,8 @@ const Sidebar = memo(function Sidebar() {
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Link to={`/channel/Streamer_${i}`} key={i} className="flex items-center gap-3 px-3 py-1 cursor-pointer hover:bg-neutral-800/50 rounded-lg group transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-neutral-800 overflow-hidden relative border border-neutral-700 group-hover:border-beacon-500 transition-colors">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`} alt="Avatar" className="w-full h-full object-cover" />
+                  <div className="w-8 h-8 rounded-full bg-neutral-800 overflow-hidden relative border border-neutral-700 group-hover:border-beacon-500 transition-colors flex items-center justify-center text-neutral-400">
+                    <User className="w-4 h-4 opacity-50" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-neutral-300 truncate group-hover:text-white transition-colors">Streamer_{i}</p>

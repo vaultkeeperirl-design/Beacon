@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { useRealP2PStats } from '../hooks/useRealP2PStats';
 // Performance Optimization:
 // We split the context into two providers:
@@ -11,24 +11,89 @@ import { useRealP2PStats } from '../hooks/useRealP2PStats';
 const P2PStatsContext = createContext();
 const P2PSettingsContext = createContext();
 
+import axios from 'axios';
+
+// API base URL
+const API_URL = 'http://localhost:3000/api';
+
 export function P2PProvider({ children }) {
   const [isSharing, setIsSharing] = useState(true);
   const [currentStreamId, setCurrentStreamId] = useState(null);
 
-  // Persist username in localStorage for basic identity
-  const [username, setUsername] = useState(() => {
-    const saved = localStorage.getItem('beacon_username');
-    if (saved) return saved;
-    const newUsername = 'User_' + Math.floor(Math.random() * 100000);
-    localStorage.setItem('beacon_username', newUsername);
-    return newUsername;
-  });
+  // Real Auth State
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem('beacon_token') || null);
+  const [username, setUsername] = useState('Guest'); // Fallback for backward compatibility
 
+  // Load user profile on mount if token exists
+  useEffect(() => {
+    if (token) {
+      // Decode JWT to get username (simple base64 decode for the payload)
+      try {
+        const payloadBase64 = token.split('.')[1];
+        const decodedJson = atob(payloadBase64);
+        const decoded = JSON.parse(decodedJson);
+        const storedUsername = decoded.username;
+
+        setUsername(storedUsername);
+
+        // Fetch full profile
+        axios.get(`${API_URL}/users/${storedUsername}`)
+          .then(res => {
+            setUser(res.data);
+          })
+          .catch(err => {
+            console.error('Error fetching user profile:', err);
+            // If token is invalid/expired, log out
+            if (err.response && err.response.status === 401) {
+              logout();
+            }
+          });
+      } catch (e) {
+        console.error('Invalid token format');
+        logout();
+      }
+    }
+  }, [token]);
+
+  const login = async (loginUsername, password) => {
+    try {
+      const res = await axios.post(`${API_URL}/auth/login`, { username: loginUsername, password });
+      const { token: newToken, user: newUser } = res.data;
+      localStorage.setItem('beacon_token', newToken);
+      setToken(newToken);
+      setUser(newUser);
+      setUsername(newUser.username);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.error || 'Login failed' };
+    }
+  };
+
+  const register = async (registerUsername, password) => {
+    try {
+      const res = await axios.post(`${API_URL}/auth/register`, { username: registerUsername, password });
+      const { token: newToken, user: newUser } = res.data;
+      localStorage.setItem('beacon_token', newToken);
+      setToken(newToken);
+      setUser(newUser);
+      setUsername(newUser.username);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.error || 'Registration failed' };
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('beacon_token');
+    setToken(null);
+    setUser(null);
+    setUsername('Guest');
+  };
+
+  // Keep for backwards compatibility for now, but it won't persist to DB
   const updateUsername = (newName) => {
-    if (!newName || newName.trim() === '') return;
-    const cleanName = newName.trim().substring(0, 20);
-    localStorage.setItem('beacon_username', cleanName);
-    setUsername(cleanName);
+    setUsername(newName);
   };
 
   const [settings, setSettings] = useState({
@@ -54,8 +119,13 @@ export function P2PProvider({ children }) {
     currentStreamId,
     setCurrentStreamId,
     username,
-    updateUsername
-  }), [isSharing, settings, currentStreamId, username]);
+    updateUsername,
+    user,
+    token,
+    login,
+    register,
+    logout
+  }), [isSharing, settings, currentStreamId, username, user, token]);
 
   return (
     <P2PSettingsContext.Provider value={settingsValue}>

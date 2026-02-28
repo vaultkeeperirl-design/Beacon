@@ -23,7 +23,7 @@ export default function Broadcast() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [squad, setSquad] = useState([
-    { id: 1, name: 'You (Host)', split: 100, isHost: true },
+    { id: 1, name: username, split: 100, isHost: true },
   ]);
   const [inviteInput, setInviteInput] = useState('');
   const videoRef = useRef(null);
@@ -190,6 +190,10 @@ export default function Broadcast() {
 
     setSquad(updatedSquad);
     setInviteInput('');
+
+    if (isLive && socket) {
+       socket.emit('update-squad', { streamId: username, squad: updatedSquad });
+    }
   };
 
   const removeSquadMember = (id) => {
@@ -206,7 +210,18 @@ export default function Broadcast() {
      }));
 
      setSquad(updatedSquad);
+
+     if (isLive && socket) {
+        socket.emit('update-squad', { streamId: username, squad: updatedSquad });
+     }
   };
+
+  // Sync initial squad when going live
+  useEffect(() => {
+    if (isLive && socket) {
+       socket.emit('update-squad', { streamId: username, squad: squad });
+    }
+  }, [isLive, socket, username]); // Intentional omission of squad to only run on live state change
 
   const handleUpdateInfo = () => {
     setIsUpdating(true);
