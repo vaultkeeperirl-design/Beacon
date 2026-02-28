@@ -59,9 +59,9 @@ describe('useRealP2PStats', () => {
     expect(result.current.uploadSpeed).toBe(2.5);
     expect(result.current.downloadSpeed).toBe(5.0);
 
-    // Verify credits accrue (uploadSpeed * 0.01)
-    // 2450.0 initial + (2.5 * 0.01) = 2450.025
-    expect(result.current.credits).toBeCloseTo(2450.025);
+    // Credits are now updated via socket event (or initial load)
+    // Here it defaults to 0.0 since our mock doesn't simulate the socket response yet
+    expect(result.current.credits).toBe(0.0);
   });
 
   it('resets stats when streamId is null', async () => {

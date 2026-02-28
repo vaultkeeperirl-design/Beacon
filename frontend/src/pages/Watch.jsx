@@ -93,8 +93,8 @@ export default function Watch() {
       follow({
         id: id,
         name: id,
-        // Mock data since we don't have a backend to fetch channel details
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
+        // Using a generic avatar icon if we don't have real data yet in this context
+        avatar: null,
         title: 'Building a P2P streaming app from scratch', // Mock title for now
         isLive: true,
         category: 'Software Development' // Mock category
@@ -123,8 +123,8 @@ export default function Watch() {
                <h1 className="text-2xl md:text-3xl font-poppins font-extrabold text-brand mb-2 leading-tight">Building a P2P streaming app from scratch</h1>
                <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-400">
                  <div className="flex items-center gap-2">
-                    <Link to={`/channel/${id}`} className="w-10 h-10 rounded-full bg-neutral-800 overflow-hidden border border-neutral-700 hover:ring-2 hover:ring-beacon-500 transition-all">
-                       <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`} alt="Avatar" className="w-full h-full object-cover" />
+                    <Link to={`/channel/${id}`} className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center overflow-hidden border border-neutral-700 hover:ring-2 hover:ring-beacon-500 transition-all text-neutral-400">
+                       <UserPlus className="w-5 h-5 opacity-50" />
                     </Link>
                     <Link to={`/channel/${id}`} className="text-white font-bold hover:text-beacon-400 cursor-pointer transition-colors">{id}</Link>
                  </div>

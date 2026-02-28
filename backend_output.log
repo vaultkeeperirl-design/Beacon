@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS Users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    avatar_url TEXT,
+    bio TEXT,
+    follower_count INTEGER DEFAULT 0,
+    credits REAL DEFAULT 0.0
+  )
+
+Users table ready.
+Server running on port 3000
+INSERT INTO Users (username, password_hash, avatar_url, bio, credits) VALUES ('testuser', '$2b$10$MKY9ohK7n2TcXqn4S8VtxevEE'/*+28 bytes*/, NULL, 'I love streaming on Beacon!', 0.0)
+SELECT * FROM Users WHERE username = 'testuser'
