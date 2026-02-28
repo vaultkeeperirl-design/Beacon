@@ -72,6 +72,49 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// Prepare statements once for performance
+const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
+const getCreditsStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
+
+// Helper to distribute credits to a stream's squad and notify online members
+const distributeCredits = (streamId, amount) => {
+  const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
+
+  // Optimization: Pre-calculate active sockets per username
+  const usernameToSockets = new Map();
+  for (const [id, socket] of io.sockets.sockets) {
+    if (socket.username) {
+      if (!usernameToSockets.has(socket.username)) {
+        usernameToSockets.set(socket.username, []);
+      }
+      usernameToSockets.get(socket.username).push(socket);
+    }
+  }
+
+  // Use a transaction for the entire distribution
+  const distributionTx = db.transaction((squadMembers, totalAmount) => {
+    for (const member of squadMembers) {
+      const cut = totalAmount * (member.split / 100);
+      if (cut > 0) {
+        updateCreditsStmt.run(cut, member.username);
+        const row = getCreditsStmt.get(member.username);
+        if (row && usernameToSockets.has(member.username)) {
+          for (const socket of usernameToSockets.get(member.username)) {
+            socket.emit('wallet-update', { balance: row.credits });
+          }
+        }
+      }
+    }
+  });
+
+  try {
+    distributionTx(squad, amount);
+  } catch (err) {
+    console.error(`Failed to distribute credits for stream ${streamId}:`, err);
+    throw err; // Re-throw to allow caller to handle failure
+  }
+};
+
 // REST API Endpoints
 
 // Register
@@ -161,10 +204,12 @@ app.post('/api/tip', authenticateToken, (req, res) => {
 
   try {
     const tipperRow = getCreditsStmt.get(tipper);
+    const tipTransaction = db.transaction(() => {
+      const tipperRow = getCreditsStmt.get(tipper);
 
-    if (!tipperRow || tipperRow.credits < amount) {
-       return res.status(400).json({ error: 'Insufficient funds' });
-    }
+      if (!tipperRow || tipperRow.credits < amount) {
+        throw new Error('INSUFFICIENT_FUNDS');
+      }
 
     // Distribute within a transaction for atomicity
     const transaction = db.transaction(() => {
@@ -179,21 +224,96 @@ app.post('/api/tip', authenticateToken, (req, res) => {
     const updatedTipper = getCreditsStmt.get(tipper);
     if (updatedTipper) {
       io.to(`user:${tipper}`).emit('wallet-update', { balance: updatedTipper.credits });
+      // Deduct from tipper
+      updateCreditsStmt.run(-amount, tipper);
+
+      // Distribute to squad
+      distributeCredits(streamId, amount);
+    });
+
+    tipTransaction();
+
+    // Notify tipper of their new balance
+    const updatedTipperRow = getCreditsStmt.get(tipper);
+    for (const [id, socket] of io.sockets.sockets) {
+      if (socket.username === tipper) {
+        socket.emit('wallet-update', { balance: updatedTipperRow.credits });
+       for (const member of squad) {
+         const cut = amount * (member.split / 100);
+         if (cut > 0) {
+            // Only update if the user exists
+            const addStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
+            addStmt.run(cut, member.username);
+         }
+       }
+       return squad;
+    });
+
+    const squad = updateCredits();
+
+    // Notify tipper of new balance
+    const tipperRowUpdated = db.prepare('SELECT credits FROM Users WHERE username = ?').get(tipper);
+    if (tipperRowUpdated) {
+      io.to(`user:${tipper}`).emit('wallet-update', { balance: tipperRowUpdated.credits });
+    }
+
+    // Notify squad members of new balance
+    for (const member of squad) {
+      const row = db.prepare('SELECT credits FROM Users WHERE username = ?').get(member.username);
+      if (row) {
+        io.to(`user:${member.username}`).emit('wallet-update', { balance: row.credits });
+      }
     }
 
     // Emit event to the room so chat can show the tip
     io.to(streamId).emit('chat-message', {
-       id: Date.now(),
-       user: 'System',
-       text: `${tipper} just tipped ${amount} credits!`,
-       color: 'text-beacon-400 font-bold',
-       senderId: 'system'
+      id: Date.now(),
+      user: 'System',
+      text: `${tipper} just tipped ${amount} credits!`,
+      color: 'text-beacon-400 font-bold',
+      senderId: 'system',
     });
 
     res.json({ success: true, message: 'Tip distributed successfully' });
   } catch (err) {
+    if (err.message === 'INSUFFICIENT_FUNDS') {
+      return res.status(400).json({ error: 'Insufficient funds' });
+    }
     console.error('Tip transaction failed:', err);
     res.status(500).json({ error: 'Database transaction failed' });
+  }
+});
+
+// Trigger Ad Break (Distribute Ad Revenue)
+app.post('/api/ads/trigger', authenticateToken, (req, res) => {
+  const { streamId } = req.body;
+  const broadcaster = req.user.username;
+
+  if (broadcaster !== streamId) {
+    return res.status(403).json({ error: 'Only the broadcaster can trigger an ad break' });
+  }
+
+  try {
+    const viewersCount = io.sockets.adapter.rooms.get(streamId)?.size || 0;
+    // Ad revenue formula: 0.5 CR per viewer during the break
+    const adRevenue = viewersCount * 0.5;
+
+    if (adRevenue > 0) {
+      distributeCredits(streamId, adRevenue);
+
+      io.to(streamId).emit('chat-message', {
+        id: Date.now(),
+        user: 'System',
+        text: `Ad break started! Broadcaster earned ${adRevenue.toFixed(2)} CR from ${viewersCount} viewers.`,
+        color: 'text-green-400 italic',
+        senderId: 'system',
+      });
+    }
+
+    res.json({ success: true, revenue: adRevenue });
+  } catch (err) {
+    console.error('Ad revenue distribution failed:', err);
+    res.status(500).json({ error: 'Failed to distribute ad revenue' });
   }
 });
 
@@ -297,7 +417,8 @@ io.on('connection', (socket) => {
 
   socket.on('join-stream', (data) => {
     const streamId = (typeof data === 'string' ? data : data?.streamId) || null;
-    let username = typeof data === 'object' ? data?.username : null;
+    const accountName = typeof data === 'object' ? data?.username : null;
+    let username = accountName;
 
     if (username) {
       // Security: Prevent users from impersonating the host
@@ -306,9 +427,17 @@ io.on('connection', (socket) => {
       if (username === streamId && activeStreams.has(streamId)) {
         username = `${username}-viewer`;
       }
+
+      // Leave old user room if identity changed
+      if (socket.accountName && socket.accountName !== accountName) {
+        socket.leave(`user:${socket.accountName}`);
+      }
+
       socket.username = username;
       // Join user-specific room for real-time wallet updates across devices/tabs
       socket.join(`user:${username}`);
+      socket.accountName = accountName;
+      socket.join(`user:${accountName}`);
     }
 
     // Leave previous room if any to prevent double counting or stale state
@@ -318,6 +447,7 @@ io.on('connection', (socket) => {
        // activeStreams logic: If host leaves, redirect viewers
        if (socket.username === prevRoom && activeStreams.has(prevRoom)) {
           activeStreams.delete(prevRoom);
+          streamSquads.delete(prevRoom);
           // Check for active poll and clear its timeout
           if (activePolls.has(prevRoom)) {
               const poll = activePolls.get(prevRoom);
@@ -375,6 +505,7 @@ io.on('connection', (socket) => {
        // activeStreams logic: If host leaves, redirect viewers
        if (socket.username === room && activeStreams.has(room)) {
           activeStreams.delete(room);
+          streamSquads.delete(room);
           // Check for active poll and clear its timeout
           if (activePolls.has(room)) {
               const poll = activePolls.get(room);
@@ -440,10 +571,26 @@ io.on('connection', (socket) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
     // Credit Economy Calculation
-    if (socket.username && uploadMbps > 0) {
+    if (socket.accountName && uploadMbps > 0) {
       const earnedCredits = uploadMbps * 0.01; // Match frontend logic
       const squad = [{ username: socket.username, split: 100 }];
       distributeCredits(squad, earnedCredits);
+
+      try {
+        // Increment user credits in DB
+        const stmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
+        stmt.run(earnedCredits, socket.accountName);
+
+        // Fetch new balance to broadcast back
+        const getStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
+        const row = getStmt.get(socket.accountName);
+
+        if (row) {
+          io.to(`user:${socket.accountName}`).emit('wallet-update', { balance: row.credits });
+        }
+      } catch (err) {
+        console.error('Error updating credits:', err);
+      }
     }
 
     if (streamMeshTopology.has(streamId)) {
@@ -491,6 +638,12 @@ io.on('connection', (socket) => {
     const totalSplit = squad.reduce((sum, member) => sum + (Number(member.split) || 0), 0);
     if (Math.abs(totalSplit - 100) > 0.01) {
        console.log(`[Squad] Invalid split percentage total: ${totalSplit} for stream ${streamId}`);
+       return;
+    }
+
+    // Security: Prevent negative splits which could generate infinite money or drain tipper
+    if (squad.some(m => Number(m.split) < 0 || Number(m.split) > 100)) {
+       console.log(`[Squad] Invalid split bounds for stream ${streamId}`);
        return;
     }
 
@@ -629,6 +782,7 @@ io.on('connection', (socket) => {
       // activeStreams logic: If host leaves, redirect viewers
       if (socket.username === streamId && activeStreams.has(streamId)) {
           activeStreams.delete(streamId);
+          streamSquads.delete(streamId);
 
           if (activePolls.has(streamId)) {
               const poll = activePolls.get(streamId);
@@ -685,4 +839,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, io };
+module.exports = { server, io, streamSquads };

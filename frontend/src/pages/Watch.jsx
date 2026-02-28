@@ -1,6 +1,6 @@
 import VideoPlayer from '../components/VideoPlayer';
 import Chat from '../components/Chat';
-import { Share2, ThumbsUp, MoreHorizontal, UserPlus, UserCheck } from 'lucide-react';
+import { Share2, ThumbsUp, MoreHorizontal, UserPlus, UserCheck, Check } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
@@ -15,6 +15,7 @@ export default function Watch() {
   const { id } = useParams();
   const { username } = useP2PSettings();
   const [hasStarted, setHasStarted] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const navigate = useNavigate();
   // Using useP2PSettings to avoid re-rendering the whole page every second when stats update
   const { setCurrentStreamId } = useP2PSettings();
@@ -71,6 +72,21 @@ export default function Watch() {
       }
     };
   }, [id, username, socket]);
+
+  useEffect(() => {
+    let timeout;
+    if (isCopied) {
+      timeout = setTimeout(() => setIsCopied(false), 2000);
+    }
+    return () => clearTimeout(timeout);
+  }, [isCopied]);
+
+  const handleShare = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href);
+      setIsCopied(true);
+    }
+  };
 
   const handleFollowToggle = () => {
     if (isFollowed) {
@@ -146,11 +162,12 @@ export default function Watch() {
                   <ThumbsUp className="w-5 h-5" />
                 </button>
                 <button
-                  className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700"
-                  aria-label="Share stream"
-                  title="Share stream"
+                  onClick={handleShare}
+                  className={`p-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-all border border-neutral-700 ${isCopied ? 'text-beacon-500 border-beacon-500/50' : 'text-neutral-400 hover:text-white'}`}
+                  aria-label={isCopied ? "Copied!" : "Share stream"}
+                  title={isCopied ? "Copied!" : "Share stream"}
                 >
-                  <Share2 className="w-5 h-5" />
+                  {isCopied ? <Check className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
                 </button>
                 <button
                   className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700"
