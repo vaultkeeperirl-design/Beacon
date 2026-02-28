@@ -31,6 +31,33 @@ const streamSquads = new Map();
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_beacon_key_123';
 
+// Prepared SQL Statements for Performance
+const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
+const deductCreditsStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ?');
+const getCreditsStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
+
+/**
+ * Distributes credits to a list of squad members and emits wallet updates.
+ * @param {Array<{username: string, split: number}>} squad - List of members and their percentage splits.
+ * @param {number} totalAmount - Total amount to be distributed.
+ */
+const distributeCredits = (squad, totalAmount) => {
+  for (const member of squad) {
+    const cut = totalAmount * (member.split / 100);
+    if (cut > 0) {
+      try {
+        updateCreditsStmt.run(cut, member.username);
+        const row = getCreditsStmt.get(member.username);
+        if (row) {
+          io.to(`user:${member.username}`).emit('wallet-update', { balance: row.credits });
+        }
+      } catch (err) {
+        console.error(`[Credits] Failed to distribute to ${member.username}:`, err);
+      }
+    }
+  }
+};
+
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -176,6 +203,7 @@ app.post('/api/tip', authenticateToken, (req, res) => {
   }
 
   try {
+    const tipperRow = getCreditsStmt.get(tipper);
     const tipTransaction = db.transaction(() => {
       const tipperRow = getCreditsStmt.get(tipper);
 
@@ -183,6 +211,19 @@ app.post('/api/tip', authenticateToken, (req, res) => {
         throw new Error('INSUFFICIENT_FUNDS');
       }
 
+    // Distribute within a transaction for atomicity
+    const transaction = db.transaction(() => {
+       deductCreditsStmt.run(amount, tipper);
+       const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
+       distributeCredits(squad, amount);
+    });
+
+    transaction();
+
+    // Notify all of tipper's devices about the new balance
+    const updatedTipper = getCreditsStmt.get(tipper);
+    if (updatedTipper) {
+      io.to(`user:${tipper}`).emit('wallet-update', { balance: updatedTipper.credits });
       // Deduct from tipper
       updateCreditsStmt.run(-amount, tipper);
 
@@ -393,6 +434,8 @@ io.on('connection', (socket) => {
       }
 
       socket.username = username;
+      // Join user-specific room for real-time wallet updates across devices/tabs
+      socket.join(`user:${username}`);
       socket.accountName = accountName;
       socket.join(`user:${accountName}`);
     }
@@ -530,6 +573,8 @@ io.on('connection', (socket) => {
     // Credit Economy Calculation
     if (socket.accountName && uploadMbps > 0) {
       const earnedCredits = uploadMbps * 0.01; // Match frontend logic
+      const squad = [{ username: socket.username, split: 100 }];
+      distributeCredits(squad, earnedCredits);
 
       try {
         // Increment user credits in DB

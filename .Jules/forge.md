@@ -25,3 +25,7 @@
 ## 2025-05-25 - [Broadcast Studio Placeholder Elimination]
 **Learning:** Turning static placeholders into controlled components involves adding `useState` hooks for input values, implementing async simulation (e.g., `setTimeout`) for loading/success states, and ensuring proper accessibility by linking labels to inputs via `htmlFor` and `id`.
 **Action:** Always verify that input labels are correctly associated and provide clear visual feedback for "saving" operations.
+
+## 2025-05-26 - [Real-time Wallet Synchronization]
+**Learning:** To synchronize state across multiple devices or browser tabs for a specific user, use a dedicated Socket.io room pattern (e.g., `user:${username}`). This ensures that events like `wallet-update` reach all active sessions regardless of which one triggered the update.
+**Action:** Implement a `join` to a user-specific room during the initial connection or authentication handshake.
