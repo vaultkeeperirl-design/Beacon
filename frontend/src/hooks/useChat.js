@@ -7,6 +7,20 @@ const colors = ['text-red-400', 'text-green-400', 'text-blue-400', 'text-yellow-
 const getRandomColor = () => colors[Math.floor(Math.random() * colors.length)];
 const randomUserColor = getRandomColor();
 
+/**
+ * Custom hook to manage real-time chat functionality for a specific stream.
+ *
+ * Handles connecting to the chat room, receiving messages, optimistically
+ * updating the UI when sending messages, and receiving system notifications
+ * for users joining/leaving.
+ *
+ * @param {string} streamId - The unique identifier of the stream/room to join.
+ * @returns {{
+ *   messages: Array<{id: string, user: string, text: string, color: string, isPending?: boolean}>,
+ *   sendMessage: (text: string) => boolean,
+ *   isConnected: boolean
+ * }} The chat state and functions to interact with it.
+ */
 export const useChat = (streamId) => {
   const { socket, isConnected } = useSocket();
   const { username } = useP2PSettings();

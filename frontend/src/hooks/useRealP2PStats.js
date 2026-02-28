@@ -2,6 +2,27 @@ import { useState, useEffect } from 'react';
 import { useSocket } from './useSocket';
 import { useP2PMesh } from './useP2PMesh';
 
+/**
+ * Custom hook to manage and format P2P statistics for the user interface.
+ *
+ * Subscribes to the underlying mesh network metrics (`useP2PMesh`) and computes derived
+ * metrics such as accumulated credits, total uploaded data, and buffer health,
+ * factoring in user settings and stream sharing status.
+ *
+ * @param {boolean} isSharing - Whether the user is actively participating in P2P sharing.
+ * @param {Object} settings - Configuration options (e.g. `maxUploadSpeed`).
+ * @param {string} streamId - The unique identifier of the active stream.
+ * @param {string} username - The current user's identification.
+ * @returns {{
+ *   uploadSpeed: number,
+ *   downloadSpeed: number,
+ *   peersConnected: number,
+ *   credits: number,
+ *   totalUploaded: number,
+ *   bufferHealth: number,
+ *   latency?: number
+ * }} An object containing computed and formatted P2P stats.
+ */
 export function useRealP2PStats(isSharing, settings, streamId, username) {
   const { socket, isConnected } = useSocket();
   const meshStats = useP2PMesh(); // Use the real mesh stats
