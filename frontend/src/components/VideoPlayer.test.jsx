@@ -146,4 +146,24 @@ describe('VideoPlayer Keyboard Shortcuts', () => {
     // Should still be muted (initial state)
     expect(screen.getByTestId('is-muted')).toHaveTextContent('true');
   });
+
+  it('toggles playback when the video element is clicked', () => {
+    // ⚡ Aura: Verify click-to-play functionality works correctly
+    render(<VideoPlayer />);
+
+    // Initial state is playing
+    expect(screen.getByTestId('is-playing')).toHaveTextContent('true');
+
+    // Get the video element directly. It doesn't have a test ID, but it's the only video tag
+    const videoElement = document.querySelector('video');
+    expect(videoElement).toBeInTheDocument();
+
+    // Click to pause
+    fireEvent.click(videoElement);
+    expect(screen.getByTestId('is-playing')).toHaveTextContent('false');
+
+    // Click to play again
+    fireEvent.click(videoElement);
+    expect(screen.getByTestId('is-playing')).toHaveTextContent('true');
+  });
 });

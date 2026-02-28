@@ -8,10 +8,16 @@ describe("Mesh Network Tree Healing and Routing", () => {
   let broadcaster, viewer1, viewer2, viewer3;
 
   beforeAll((done) => {
-    server.listen(0, () => {
+    // Only listen if not already listening
+    if (!server.listening) {
+      server.listen(0, () => {
+        port = server.address().port;
+        done();
+      });
+    } else {
       port = server.address().port;
       done();
-    });
+    }
   });
 
   afterAll((done) => {

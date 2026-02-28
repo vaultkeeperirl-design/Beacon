@@ -135,14 +135,16 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
       ref={containerRef}
       className="relative aspect-video bg-black rounded-lg overflow-hidden group shadow-2xl ring-1 ring-neutral-800"
     >
+      {/* ⚡ Aura: Adding click-to-play functionality for intuitive, frictionless playback control. */}
       <video
         ref={videoRef}
         src={!stream ? streamUrl : undefined}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover cursor-pointer"
         autoPlay
         muted
         loop={!stream}
         playsInline
+        onClick={() => setIsPlaying(prev => !prev)}
       />
 
       {autoplayBlocked && (
