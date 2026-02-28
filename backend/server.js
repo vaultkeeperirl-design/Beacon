@@ -155,13 +155,26 @@ app.post('/api/tip', authenticateToken, (req, res) => {
             // Only update if the user exists
             const addStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
             addStmt.run(cut, member.username);
-
-            // Note: In a real app we'd fetch the new balance and emit a socket event here to update their UI
          }
        }
+       return squad;
     });
 
-    updateCredits();
+    const squad = updateCredits();
+
+    // Notify tipper of new balance
+    const tipperRowUpdated = db.prepare('SELECT credits FROM Users WHERE username = ?').get(tipper);
+    if (tipperRowUpdated) {
+      io.to(`user:${tipper}`).emit('wallet-update', { balance: tipperRowUpdated.credits });
+    }
+
+    // Notify squad members of new balance
+    for (const member of squad) {
+      const row = db.prepare('SELECT credits FROM Users WHERE username = ?').get(member.username);
+      if (row) {
+        io.to(`user:${member.username}`).emit('wallet-update', { balance: row.credits });
+      }
+    }
 
     // Emit event to the room so chat can show the tip
     io.to(streamId).emit('chat-message', {
@@ -279,7 +292,8 @@ io.on('connection', (socket) => {
 
   socket.on('join-stream', (data) => {
     const streamId = (typeof data === 'string' ? data : data?.streamId) || null;
-    let username = typeof data === 'object' ? data?.username : null;
+    const accountName = typeof data === 'object' ? data?.username : null;
+    let username = accountName;
 
     if (username) {
       // Security: Prevent users from impersonating the host
@@ -288,7 +302,15 @@ io.on('connection', (socket) => {
       if (username === streamId && activeStreams.has(streamId)) {
         username = `${username}-viewer`;
       }
+
+      // Leave old user room if identity changed
+      if (socket.accountName && socket.accountName !== accountName) {
+        socket.leave(`user:${socket.accountName}`);
+      }
+
       socket.username = username;
+      socket.accountName = accountName;
+      socket.join(`user:${accountName}`);
     }
 
     // Leave previous room if any to prevent double counting or stale state
@@ -298,6 +320,7 @@ io.on('connection', (socket) => {
        // activeStreams logic: If host leaves, redirect viewers
        if (socket.username === prevRoom && activeStreams.has(prevRoom)) {
           activeStreams.delete(prevRoom);
+          streamSquads.delete(prevRoom);
           // Check for active poll and clear its timeout
           if (activePolls.has(prevRoom)) {
               const poll = activePolls.get(prevRoom);
@@ -355,6 +378,7 @@ io.on('connection', (socket) => {
        // activeStreams logic: If host leaves, redirect viewers
        if (socket.username === room && activeStreams.has(room)) {
           activeStreams.delete(room);
+          streamSquads.delete(room);
           // Check for active poll and clear its timeout
           if (activePolls.has(room)) {
               const poll = activePolls.get(room);
@@ -420,20 +444,20 @@ io.on('connection', (socket) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
     // Credit Economy Calculation
-    if (socket.username && uploadMbps > 0) {
+    if (socket.accountName && uploadMbps > 0) {
       const earnedCredits = uploadMbps * 0.01; // Match frontend logic
 
       try {
         // Increment user credits in DB
         const stmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
-        stmt.run(earnedCredits, socket.username);
+        stmt.run(earnedCredits, socket.accountName);
 
         // Fetch new balance to broadcast back
         const getStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
-        const row = getStmt.get(socket.username);
+        const row = getStmt.get(socket.accountName);
 
         if (row) {
-          socket.emit('wallet-update', { balance: row.credits });
+          io.to(`user:${socket.accountName}`).emit('wallet-update', { balance: row.credits });
         }
       } catch (err) {
         console.error('Error updating credits:', err);
@@ -623,6 +647,7 @@ io.on('connection', (socket) => {
       // activeStreams logic: If host leaves, redirect viewers
       if (socket.username === streamId && activeStreams.has(streamId)) {
           activeStreams.delete(streamId);
+          streamSquads.delete(streamId);
 
           if (activePolls.has(streamId)) {
               const poll = activePolls.get(streamId);
@@ -679,4 +704,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, io };
+module.exports = { server, io, streamSquads };
