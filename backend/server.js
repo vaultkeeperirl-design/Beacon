@@ -36,28 +36,6 @@ const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHE
 const deductCreditsStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ?');
 const getCreditsStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
 
-/**
- * Distributes credits to a list of squad members and emits wallet updates.
- * @param {Array<{username: string, split: number}>} squad - List of members and their percentage splits.
- * @param {number} totalAmount - Total amount to be distributed.
- */
-const distributeCredits = (squad, totalAmount) => {
-  for (const member of squad) {
-    const cut = totalAmount * (member.split / 100);
-    if (cut > 0) {
-      try {
-        updateCreditsStmt.run(cut, member.username);
-        const row = getCreditsStmt.get(member.username);
-        if (row) {
-          io.to(`user:${member.username}`).emit('wallet-update', { balance: row.credits });
-        }
-      } catch (err) {
-        console.error(`[Credits] Failed to distribute to ${member.username}:`, err);
-      }
-    }
-  }
-};
-
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -76,28 +54,19 @@ const authenticateToken = (req, res, next) => {
 const distributeCreditsToStream = (streamId, amount) => {
   const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
 
-  // Optimization: Pre-calculate active sockets per username
-  const usernameToSockets = new Map();
-  for (const [id, socket] of io.sockets.sockets) {
-    if (socket.username) {
-      if (!usernameToSockets.has(socket.username)) {
-        usernameToSockets.set(socket.username, []);
-      }
-      usernameToSockets.get(socket.username).push(socket);
-    }
-  }
-
-  // Use a transaction for the entire distribution
+  // ⚡ Performance Optimization:
+  // We use a transaction to update the DB, then emit events only if successful.
+  // Instead of an O(N) iteration over all sockets, we target the user's specific room
+  // which ensures all of their devices/tabs receive the update instantly.
+  const updates = [];
   const distributionTx = db.transaction((squadMembers, totalAmount) => {
     for (const member of squadMembers) {
       const cut = totalAmount * (member.split / 100);
       if (cut > 0) {
         updateCreditsStmt.run(cut, member.username);
         const row = getCreditsStmt.get(member.username);
-        if (row && usernameToSockets.has(member.username)) {
-          for (const socket of usernameToSockets.get(member.username)) {
-            socket.emit('wallet-update', { balance: row.credits });
-          }
+        if (row) {
+          updates.push({ username: member.username, balance: row.credits });
         }
       }
     }
@@ -105,9 +74,13 @@ const distributeCreditsToStream = (streamId, amount) => {
 
   try {
     distributionTx(squad, amount);
+    // Emit updates after successful transaction to prevent state desync
+    for (const update of updates) {
+      io.to(`user:${update.username}`).emit('wallet-update', { balance: update.balance });
+    }
   } catch (err) {
     console.error(`Failed to distribute credits for stream ${streamId}:`, err);
-    throw err; // Re-throw to allow caller to handle failure
+    throw err;
   }
 };
 
@@ -544,20 +517,16 @@ io.on('connection', (socket) => {
     // Credit Economy Calculation
     if (socket.accountName && uploadMbps > 0) {
       const earnedCredits = uploadMbps * 0.01; // Match frontend logic
-      const squad = [{ username: socket.username, split: 100 }];
 
-      // We process the metrics directly inline or call a specific generic distribute helper,
-      // but distributeCredits was previously duplicating logic. Let's just remove that duplicate call here
-      // since the following block directly updates the DB.
-
+      // ⚡ Performance Optimization:
+      // Use pre-prepared statements instead of re-preparing on every 2s poll.
+      // This reduces CPU overhead and memory churn for high-frequency events.
       try {
         // Increment user credits in DB
-        const stmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
-        stmt.run(earnedCredits, socket.accountName);
+        updateCreditsStmt.run(earnedCredits, socket.accountName);
 
         // Fetch new balance to broadcast back
-        const getStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
-        const row = getStmt.get(socket.accountName);
+        const row = getCreditsStmt.get(socket.accountName);
 
         if (row) {
           io.to(`user:${socket.accountName}`).emit('wallet-update', { balance: row.credits });

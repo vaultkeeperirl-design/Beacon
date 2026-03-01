@@ -13,3 +13,7 @@
 ## 2025-02-28 - [React] Decoupling State from Custom Hooks used in Layouts
 **Learning:** Custom hooks that encapsulate logic (like WebRTC connections in `useP2PStream`) often manage internal state (like real-time stats) and return it. If a large layout component uses that hook *just for the connection*, the internal state updates (e.g., every 2s) will force the entire layout component to re-render, causing massive DOM thrashing.
 **Action:** Remove high-frequency state from the custom hook's returned values. Instead, have the hook update a global store or context, and create small, isolated leaf components (like `StreamHealthIndicator`) that subscribe to that context directly. This shields the large layout from the high-frequency pulse.
+
+## 2025-06-15 - [Backend] High-Frequency SQL and Socket Iteration
+**Learning:** Re-preparing SQL statements (`db.prepare()`) inside high-frequency socket handlers (like 2s metrics polls) causes unnecessary CPU load and memory churn. Additionally, iterating over all connected sockets ($O(N)$) to find specific users is extremely inefficient as the user base grows.
+**Action:** Always use pre-prepared module-level SQL statements. Leverage Socket.io's room pattern (e.g., `io.to('user:${username}')`) for targeted broadcasts to achieve $O(1)$ lookup instead of manual $O(N)$ loops.
