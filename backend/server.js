@@ -72,12 +72,8 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Prepare statements once for performance
-const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
-const getCreditsStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
-
 // Helper to distribute credits to a stream's squad and notify online members
-const distributeCredits = (streamId, amount) => {
+const distributeCreditsToStream = (streamId, amount) => {
   const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
 
   // Optimization: Pre-calculate active sockets per username
@@ -211,55 +207,30 @@ app.post('/api/tip', authenticateToken, (req, res) => {
         throw new Error('INSUFFICIENT_FUNDS');
       }
 
-    // Distribute within a transaction for atomicity
-    const transaction = db.transaction(() => {
-       deductCreditsStmt.run(amount, tipper);
-       const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
-       distributeCredits(squad, amount);
+      // Distribute within a transaction for atomicity
+      deductCreditsStmt.run(amount, tipper);
+      const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
+
+      for (const member of squad) {
+        const cut = amount * (member.split / 100);
+        if (cut > 0) {
+          updateCreditsStmt.run(cut, member.username);
+        }
+      }
+      return squad;
     });
 
-    transaction();
+    const squad = tipTransaction();
 
     // Notify all of tipper's devices about the new balance
     const updatedTipper = getCreditsStmt.get(tipper);
     if (updatedTipper) {
       io.to(`user:${tipper}`).emit('wallet-update', { balance: updatedTipper.credits });
-      // Deduct from tipper
-      updateCreditsStmt.run(-amount, tipper);
-
-      // Distribute to squad
-      distributeCredits(streamId, amount);
-    });
-
-    tipTransaction();
-
-    // Notify tipper of their new balance
-    const updatedTipperRow = getCreditsStmt.get(tipper);
-    for (const [id, socket] of io.sockets.sockets) {
-      if (socket.username === tipper) {
-        socket.emit('wallet-update', { balance: updatedTipperRow.credits });
-       for (const member of squad) {
-         const cut = amount * (member.split / 100);
-         if (cut > 0) {
-            // Only update if the user exists
-            const addStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
-            addStmt.run(cut, member.username);
-         }
-       }
-       return squad;
-    });
-
-    const squad = updateCredits();
-
-    // Notify tipper of new balance
-    const tipperRowUpdated = db.prepare('SELECT credits FROM Users WHERE username = ?').get(tipper);
-    if (tipperRowUpdated) {
-      io.to(`user:${tipper}`).emit('wallet-update', { balance: tipperRowUpdated.credits });
     }
 
     // Notify squad members of new balance
     for (const member of squad) {
-      const row = db.prepare('SELECT credits FROM Users WHERE username = ?').get(member.username);
+      const row = getCreditsStmt.get(member.username);
       if (row) {
         io.to(`user:${member.username}`).emit('wallet-update', { balance: row.credits });
       }
@@ -299,7 +270,7 @@ app.post('/api/ads/trigger', authenticateToken, (req, res) => {
     const adRevenue = viewersCount * 0.5;
 
     if (adRevenue > 0) {
-      distributeCredits(streamId, adRevenue);
+      distributeCreditsToStream(streamId, adRevenue);
 
       io.to(streamId).emit('chat-message', {
         id: Date.now(),
@@ -574,7 +545,10 @@ io.on('connection', (socket) => {
     if (socket.accountName && uploadMbps > 0) {
       const earnedCredits = uploadMbps * 0.01; // Match frontend logic
       const squad = [{ username: socket.username, split: 100 }];
-      distributeCredits(squad, earnedCredits);
+
+      // We process the metrics directly inline or call a specific generic distribute helper,
+      // but distributeCredits was previously duplicating logic. Let's just remove that duplicate call here
+      // since the following block directly updates the DB.
 
       try {
         // Increment user credits in DB
