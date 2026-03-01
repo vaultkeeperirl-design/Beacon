@@ -8,10 +8,16 @@ const jwt = require('jsonwebtoken');
 describe("Bridge Revenue Real-time Sync", () => {
   let port;
   let clientSocketHost, clientSocketGuest, tokenTipper;
+  let tipperUser, hostUser, guestUser;
 
   beforeAll(async () => {
-    // Clear Users table
+    // Clear Users table for isolation
     db.prepare('DELETE FROM Users').run();
+
+    const timestamp = Date.now();
+    tipperUser = `tipper_${timestamp}`;
+    hostUser = `host_${timestamp}`;
+    guestUser = `guest_${timestamp}`;
 
     // Create users for testing
     const salt = await bcrypt.genSalt(10);
@@ -19,13 +25,13 @@ describe("Bridge Revenue Real-time Sync", () => {
 
     const insertStmt = db.prepare('INSERT INTO Users (username, password_hash, credits) VALUES (?, ?, ?)');
 
-    const tipperInfo = insertStmt.run('tipper', hash, 500.0);
-    insertStmt.run('hostStreamer', hash, 0.0);
-    insertStmt.run('guestStreamer', hash, 0.0);
+    const tipperInfo = insertStmt.run(tipperUser, hash, 500.0);
+    insertStmt.run(hostUser, hash, 0.0);
+    insertStmt.run(guestUser, hash, 0.0);
 
     // Generate tokens
     const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_beacon_key_123';
-    tokenTipper = jwt.sign({ id: tipperInfo.lastInsertRowid, username: 'tipper' }, JWT_SECRET, { expiresIn: '1h' });
+    tokenTipper = jwt.sign({ id: tipperInfo.lastInsertRowid, username: tipperUser }, JWT_SECRET, { expiresIn: '1h' });
 
     return new Promise((resolve) => {
       server.listen(0, () => {
@@ -46,7 +52,7 @@ describe("Bridge Revenue Real-time Sync", () => {
   });
 
   test("Should emit wallet-update to host and guest when a tip is received", (done) => {
-    const streamId = "hostStreamer";
+    const streamId = hostUser;
     let hostReceivedUpdate = false;
     let guestReceivedUpdate = false;
 
@@ -55,19 +61,19 @@ describe("Bridge Revenue Real-time Sync", () => {
     clientSocketGuest = Client(`http://localhost:${port}`);
 
     clientSocketHost.on("connect", () => {
-      clientSocketHost.emit("join-stream", { streamId, username: "hostStreamer" });
+      clientSocketHost.emit("join-stream", { streamId, username: hostUser });
 
       // 2. Set the squad
       clientSocketHost.emit("update-squad", {
         streamId,
         squad: [
-          { name: "hostStreamer", split: 70 },
-          { name: "guestStreamer", split: 30 }
+          { name: hostUser, split: 70 },
+          { name: guestUser, split: 30 }
         ]
       });
 
       clientSocketGuest.on("connect", () => {
-        clientSocketGuest.emit("join-stream", { streamId, username: "guestStreamer" });
+        clientSocketGuest.emit("join-stream", { streamId, username: guestUser });
 
         // Listen for wallet updates
         clientSocketHost.on("wallet-update", (data) => {

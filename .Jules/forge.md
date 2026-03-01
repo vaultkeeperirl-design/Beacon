@@ -29,3 +29,7 @@
 ## 2025-05-26 - [Real-time Wallet Synchronization]
 **Learning:** To synchronize state across multiple devices or browser tabs for a specific user, use a dedicated Socket.io room pattern (e.g., `user:${username}`). This ensures that events like `wallet-update` reach all active sessions regardless of which one triggered the update.
 **Action:** Implement a `join` to a user-specific room during the initial connection or authentication handshake.
+
+## 2025-05-27 - [Transactional Integrity and Side Effects]
+**Learning:** Decoupling side effects (like Socket.io emissions) from database transactions is crucial for maintaining consistency. Emitting events inside a transaction can lead to "phantom" updates if the transaction later fails.
+**Action:** Refactor data distribution helpers to return a list of updates, and have the caller perform the broadcasts only after the transaction successfully commits.
