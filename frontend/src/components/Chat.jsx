@@ -75,15 +75,21 @@ const Chat = memo(function Chat({
              type="submit"
              className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-beacon-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
              disabled={!input.trim() || !isConnected}
+             aria-label="Send message"
+             title="Send message"
           >
             <Send className="w-4 h-4" />
           </button>
         </div>
         <div className="flex justify-between items-center mt-3 text-[10px] text-neutral-600 font-medium">
-           <div className="flex items-center gap-1.5 cursor-pointer hover:text-neutral-400 transition-colors">
+           <button
+             type="button"
+             className="flex items-center gap-1.5 cursor-pointer hover:text-neutral-400 transition-colors focus-visible:ring-1 focus-visible:ring-beacon-500 rounded outline-none"
+             aria-label="Open emotes menu"
+           >
              <Smile className="w-3.5 h-3.5" />
              <span>Emotes</span>
-           </div>
+           </button>
            <span>Chat rules apply</span>
         </div>
       </form>

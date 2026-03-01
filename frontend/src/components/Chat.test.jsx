@@ -54,7 +54,7 @@ describe('Chat Component - Optimistic UI', () => {
 
     const input = screen.getByPlaceholderText(/Send a message/i);
     // Find button by icon or simpler selector. The button is type="submit" in the form.
-    const sendButton = screen.getByRole('button');
+    const sendButton = screen.getByRole('button', { name: 'Send message' });
 
     fireEvent.change(input, { target: { value: 'Hello World' } });
     fireEvent.click(sendButton);
@@ -68,7 +68,7 @@ describe('Chat Component - Optimistic UI', () => {
     render(<Chat streamId="test-stream" />);
 
     const input = screen.getByPlaceholderText(/Send a message/i);
-    const sendButton = screen.getByRole('button');
+    const sendButton = screen.getByRole('button', { name: 'Send message' });
 
     fireEvent.change(input, { target: { value: 'Instant Message' } });
     fireEvent.click(sendButton);
