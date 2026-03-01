@@ -1,3 +1,3 @@
-## 2024-03-24 - Backend API Test Coverage
-**Learning:** The Express backend API routes (/api/auth/register, /api/auth/login, /api/users/:username, /api/wallet) had 0% test coverage, despite containing critical business logic and database interactions.
-**Action:** Added `auth_api.test.js` using `supertest` to cover these endpoints and mock database interactions effectively, bumping backend coverage significantly.
+## 2026-03-01 - Adding comprehensive UI component tests
+**Learning:** Adding test files specific to a component allows ensuring that various UI variations load correctly in a localized context. Mocks can simulate states to cover components effectively without complex test setups.
+**Action:** When working on tests, make sure to consider states such as connection loss and poor latency for components dealing with sockets.
