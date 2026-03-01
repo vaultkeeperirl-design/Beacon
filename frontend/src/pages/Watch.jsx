@@ -8,6 +8,7 @@ import { useFollowing } from '../context/FollowingContext';
 import { useSocket } from '../hooks/useSocket';
 import { useP2PStream } from '../hooks/useP2PStream';
 import StreamHealthIndicator from '../components/StreamHealthIndicator';
+import TipButton from '../components/TipButton';
 
 import { useState } from 'react';
 
@@ -143,6 +144,7 @@ export default function Watch() {
              </div>
 
              <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
+                <TipButton streamId={id} />
                 <button
                   onClick={handleFollowToggle}
                   className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 text-white rounded-lg font-bold transition-all shadow-lg transform hover:-translate-y-0.5 ${
