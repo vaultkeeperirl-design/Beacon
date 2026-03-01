@@ -25,21 +25,12 @@ const VideoControls = memo(({
           >
             {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
           </button>
-          <button
-            className="text-white hover:text-beacon-500 transition-colors group/vol"
-            onClick={onMuteToggle}
-            aria-label={isMuted ? "Unmute audio (m)" : "Mute audio (m)"}
-            title={isMuted ? "Unmute (m)" : "Mute (m)"}
-          >
-            {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-          </button>
-
-          <div className="flex items-center gap-2 group/vol-control">
+          <div className="flex items-center group/vol-control">
              <button
                className="text-white hover:text-beacon-500 transition-colors"
                onClick={onMuteToggle}
-               aria-label={isMuted ? "Unmute audio" : "Mute audio"}
-               title={isMuted ? "Unmute" : "Mute"}
+               aria-label={isMuted ? "Unmute audio (m)" : "Mute audio (m)"}
+               title={isMuted ? "Unmute (m)" : "Mute (m)"}
              >
                {isMuted || volume === 0 ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
              </button>
@@ -51,7 +42,7 @@ const VideoControls = memo(({
                step="0.01"
                value={isMuted ? 0 : volume}
                onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-               className="w-24 h-1.5 bg-neutral-600 rounded-lg appearance-none cursor-pointer accent-beacon-500 hover:accent-beacon-400 transition-all opacity-0 group-hover/vol-control:opacity-100 duration-200"
+               className="w-0 group-hover/vol-control:w-24 group-hover/vol-control:ml-2 focus-visible:w-24 focus-visible:ml-2 h-1.5 bg-neutral-600 rounded-lg appearance-none cursor-pointer accent-beacon-500 hover:accent-beacon-400 transition-all opacity-0 group-hover/vol-control:opacity-100 focus-visible:opacity-100 duration-300 overflow-hidden"
                aria-label="Volume"
              />
           </div>
