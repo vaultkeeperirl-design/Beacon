@@ -102,6 +102,10 @@ const distributeCreditsToStream = (streamId, amount) => {
 
   try {
     distributionTx(squad, amount);
+    // Emit updates after successful transaction to prevent state desync
+    for (const update of updates) {
+      io.to(`user:${update.username}`).emit('wallet-update', { balance: update.balance });
+    }
   } catch (err) {
     console.error(`Failed to distribute credits for stream ${streamId}:`, err);
     throw err;
@@ -521,6 +525,9 @@ io.on('connection', (socket) => {
         distributeCredits(s, amount);
       });
 
+      // ⚡ Performance Optimization:
+      // Use pre-prepared statements instead of re-preparing on every 2s poll.
+      // This reduces CPU overhead and memory churn for high-frequency events.
       try {
         metricsTx(squad, earnedCredits);
       } catch (err) {
