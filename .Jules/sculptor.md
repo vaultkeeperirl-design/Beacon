@@ -7,3 +7,7 @@
 ## 2025-02-28 - Extracting UI blocks into components
 **Learning:** Extracting isolated UI features, such as Co-Streaming blocks, into their own separate components simplifies the code of monolithic components. State logically related to the extracted feature should go with it.
 **Action:** Always identify chunks of logic and UI that can be isolated into functional components.
+
+## 2025-03-01 - Deleting dead code blocks
+**Learning:** Dead files (e.g. `useP2PSimulation.js` which was replaced by `useRealP2PStats.js`) should be safely removed from the repository. Also, any large block of rambling comments directly referencing dead code must also be removed to preserve code readability.
+**Action:** Always hunt for dead components and completely clean their references.
