@@ -92,6 +92,25 @@ pnpm test:frontend
 
 # Run Frontend tests in watch mode
 cd frontend && pnpm test:watch
+
+# Run Frontend and Backend tests concurrently in watch mode
+pnpm test:watch
+```
+
+## 🛠️ Utilities & DX Commands
+
+We have added a few commands to make working on Beacon faster:
+
+```bash
+# Clean out all node_modules and build artifacts across the whole repository
+pnpm clean
+
+# The "Turn It Off and On Again" button.
+# Cleans, reinstalls, and bootstraps the repo. Fixes 99% of dependency issues.
+pnpm reset
+
+# Format and automatically fix simple frontend lint errors
+pnpm lint:fix
 ```
 
 ## Progress Screenshots

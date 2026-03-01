@@ -12,7 +12,13 @@
     "test": "npm-run-all test:*",
     "test:backend": "cd backend && pnpm test",
     "test:frontend": "cd frontend && pnpm test",
-    "lint": "cd frontend && pnpm lint"
+    "test:watch": "concurrently \"pnpm test:backend:watch\" \"pnpm test:frontend:watch\"",
+    "test:backend:watch": "cd backend && pnpm test:watch",
+    "test:frontend:watch": "cd frontend && pnpm test:watch",
+    "lint": "cd frontend && pnpm lint",
+    "lint:fix": "cd frontend && pnpm lint --fix",
+    "clean": "rm -rf node_modules backend/node_modules frontend/node_modules launcher/node_modules launcher/dist frontend/dist",
+    "reset": "pnpm clean && pnpm install && pnpm bootstrap"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
