@@ -17,6 +17,16 @@ let globalMeshStats = {
 };
 let globalMeshStatsSubscribers = new Set();
 
+/**
+ * Subscribes a callback function to global mesh network statistics updates.
+ *
+ * This function allows components to react to changes in P2P mesh performance
+ * (such as upload speed, download speed, latency, and connected peers) without
+ * re-rendering the entire component tree that uses `useP2PStream`.
+ *
+ * @param {Function} callback - A function that receives the latest mesh statistics object.
+ * @returns {Function} An unsubscribe function to remove the callback, preventing memory leaks.
+ */
 export const subscribeToMeshStats = (callback) => {
   globalMeshStatsSubscribers.add(callback);
   callback(globalMeshStats); // send initial
@@ -28,6 +38,21 @@ const updateGlobalMeshStats = (newStats) => {
   globalMeshStatsSubscribers.forEach(cb => cb(globalMeshStats));
 };
 
+/**
+ * Custom hook to manage WebRTC Peer-to-Peer streaming connections.
+ *
+ * Handles signaling, connection establishment, stream relaying, and dynamic
+ * mesh network statistics polling. It supports both broadcaster (sending a local stream)
+ * and viewer/relay (receiving and forwarding a remote stream) roles.
+ *
+ * @param {boolean} [isBroadcaster=false] - If true, the hook acts as the root node, sending `localStream`.
+ * @param {MediaStream|null} [localStream=null] - The broadcaster's local media stream to share.
+ * @param {string|null} [streamId=null] - The unique identifier of the stream being accessed.
+ * @returns {{
+ *   remoteStream: MediaStream|null,
+ *   peers: Object<string, RTCPeerConnection>
+ * }} An object containing the received remote stream (if not a broadcaster) and active peer connections.
+ */
 export const useP2PStream = (isBroadcaster = false, localStream = null, streamId = null) => {
   const { socket, isConnected } = useSocket();
   const [remoteStream, setRemoteStream] = useState(null);
