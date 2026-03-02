@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useRef, useEffect } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import { X, Server, Wifi, Zap, Activity } from 'lucide-react';
 
@@ -6,52 +6,71 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
   // Using useP2PSettings instead of useP2P to avoid unnecessary re-renders when stats update.
   // Settings only change when the user interacts with this modal.
   const { settings, updateSettings, isSharing, setIsSharing, username, updateUsername } = useP2PSettings();
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+    <div
+      ref={menuRef}
+      className="absolute bottom-16 right-4 z-50 bg-neutral-900/95 border border-neutral-800 rounded-xl w-72 p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in duration-200"
+    >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-neutral-400 hover:text-white transition-colors"
+          className="absolute top-3 right-3 text-neutral-400 hover:text-white transition-colors"
           aria-label="Close"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <Server className="w-5 h-5 text-beacon-500" />
-          Stream Configuration
+        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <Server className="w-4 h-4 text-beacon-500" />
+          Stream Config
         </h2>
 
-        <div className="space-y-6 h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+        <div className="space-y-4 pr-1">
            {/* User Settings */}
-          <div className="space-y-3 pb-4 border-b border-neutral-800">
-            <label htmlFor="username" className="text-sm font-semibold text-neutral-300">Display Name</label>
+          <div className="space-y-2 pb-3 border-b border-neutral-800">
+            <label htmlFor="username" className="text-xs font-semibold text-neutral-300">Display Name</label>
             <input
               id="username"
               type="text"
               value={username}
               onChange={(e) => updateUsername(e.target.value)}
-              className="w-full bg-neutral-800 text-white rounded px-3 py-2 text-sm border border-neutral-700 focus:outline-none focus:border-beacon-500"
+              className="w-full bg-neutral-800 text-white rounded px-2 py-1.5 text-xs border border-neutral-700 focus:outline-none focus:border-beacon-500"
               placeholder="Enter your username"
             />
           </div>
 
           {/* Quality Selection */}
-          <div className="space-y-3">
-            <label className="text-sm font-semibold text-neutral-300">Video Quality</label>
-            <div className="grid grid-cols-3 gap-2">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-neutral-300">Video Quality</label>
+            <div className="grid grid-cols-3 gap-1.5">
               {['1080p60', '720p60', '480p'].map((q) => (
                 <button
                   key={q}
                   onClick={() => updateSettings({ quality: q })}
                   aria-pressed={settings.quality === q}
                   aria-label={`Select ${q} quality`}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+                  className={`px-2 py-1 rounded-lg text-xs font-medium border transition-all ${
                     settings.quality === q
-                      ? 'bg-beacon-600 text-white border-beacon-500 shadow-lg shadow-beacon-600/20'
+                      ? 'bg-beacon-600 text-white border-beacon-500 shadow-md shadow-beacon-600/20'
                       : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700 hover:text-white'
                   }`}
                 >
@@ -62,13 +81,13 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
           </div>
 
           {/* Max Upload Speed */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex justify-between">
-              <label htmlFor="max-upload-speed" className="text-sm font-semibold text-neutral-300 flex items-center gap-2">
-                <Wifi className="w-4 h-4 text-blue-500" />
-                Max Upload Speed
+              <label htmlFor="max-upload-speed" className="text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
+                <Wifi className="w-3.5 h-3.5 text-blue-500" />
+                Max Upload
               </label>
-              <span className="text-sm font-mono text-blue-400">{settings.maxUploadSpeed} Mbps</span>
+              <span className="text-xs font-mono text-blue-400">{settings.maxUploadSpeed} Mbps</span>
             </div>
             <input
               id="max-upload-speed"
@@ -78,99 +97,80 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
               step="5"
               value={settings.maxUploadSpeed}
               onChange={(e) => updateSettings({ maxUploadSpeed: Number(e.target.value) })}
-              className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 transition-all"
+              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 transition-all"
               aria-label="Max Upload Speed"
             />
-            <p className="text-xs text-neutral-500">
-              Higher upload limits allow you to earn more Credits (CR) by relaying to more peers.
-            </p>
           </div>
 
           {/* Toggles */}
-          <div className="space-y-4 pt-4 border-t border-neutral-800">
+          <div className="space-y-3 pt-3 border-t border-neutral-800">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-yellow-500/10 rounded-lg text-yellow-500">
-                  <Zap className="w-4 h-4" />
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-yellow-500/10 rounded-lg text-yellow-500">
+                  <Zap className="w-3.5 h-3.5" />
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Low Latency Mode</p>
-                  <p className="text-xs text-neutral-500">Reduces buffer for real-time interaction</p>
-                </div>
+                <p className="text-xs font-semibold text-white">Low Latency Mode</p>
               </div>
               <button
                 onClick={() => updateSettings({ lowLatency: !settings.lowLatency })}
                 role="switch"
                 aria-checked={settings.lowLatency}
                 aria-label="Low Latency Mode"
-                className={`w-11 h-6 rounded-full transition-colors relative ${
+                className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center ${
                   settings.lowLatency ? 'bg-beacon-600' : 'bg-neutral-700'
                 }`}
               >
-                <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${
-                  settings.lowLatency ? 'left-6' : 'left-1'
+                <div className={`w-3.5 h-3.5 bg-white rounded-full absolute transition-transform ${
+                  settings.lowLatency ? 'left-[18px]' : 'left-0.5'
                 }`} />
               </button>
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500">
-                  <Activity className="w-4 h-4" />
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-purple-500/10 rounded-lg text-purple-500">
+                  <Activity className="w-3.5 h-3.5" />
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Stats for Nerds</p>
-                  <p className="text-xs text-neutral-500">Show detailed overlay on video</p>
-                </div>
+                <p className="text-xs font-semibold text-white">Stats for Nerds</p>
               </div>
               <button
                 onClick={() => updateSettings({ showStats: !settings.showStats })}
                 role="switch"
                 aria-checked={settings.showStats}
                 aria-label="Show Stats"
-                className={`w-11 h-6 rounded-full transition-colors relative ${
+                className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center ${
                   settings.showStats ? 'bg-beacon-600' : 'bg-neutral-700'
                 }`}
               >
-                <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${
-                  settings.showStats ? 'left-6' : 'left-1'
+                <div className={`w-3.5 h-3.5 bg-white rounded-full absolute transition-transform ${
+                  settings.showStats ? 'left-[18px]' : 'left-0.5'
                 }`} />
               </button>
             </div>
 
              <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-500/10 rounded-lg text-green-500">
-                  <Server className="w-4 h-4" />
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-green-500/10 rounded-lg text-green-500">
+                  <Server className="w-3.5 h-3.5" />
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">P2P Sharing</p>
-                  <p className="text-xs text-neutral-500">Enable/Disable relaying</p>
-                </div>
+                <p className="text-xs font-semibold text-white">P2P Sharing</p>
               </div>
               <button
                 onClick={() => setIsSharing(!isSharing)}
                 role="switch"
                 aria-checked={isSharing}
                 aria-label="P2P Sharing"
-                className={`w-11 h-6 rounded-full transition-colors relative ${
+                className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center ${
                   isSharing ? 'bg-beacon-600' : 'bg-neutral-700'
                 }`}
               >
-                <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${
-                  isSharing ? 'left-6' : 'left-1'
+                <div className={`w-3.5 h-3.5 bg-white rounded-full absolute transition-transform ${
+                  isSharing ? 'left-[18px]' : 'left-0.5'
                 }`} />
               </button>
             </div>
           </div>
         </div>
-
-        <div className="mt-8 pt-6 border-t border-neutral-800 flex justify-end">
-             <button onClick={onClose} className="px-4 py-2 bg-white text-black font-bold rounded-lg hover:bg-neutral-200 transition-colors text-sm">
-                 Done
-             </button>
-        </div>
-      </div>
     </div>
   );
 });
