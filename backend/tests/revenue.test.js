@@ -1,5 +1,5 @@
 const request = require('supertest');
-const { server, io } = require('../server');
+const { server, io, JWT_SECRET } = require('../server');
 const db = require('../db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -19,16 +19,27 @@ describe('Co-Streaming Revenue Split Logic', () => {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash('password123', salt);
 
-    const insertStmt = db.prepare('INSERT INTO Users (username, password_hash, credits) VALUES (?, ?, ?)');
+    const insertStmt = db.prepare('INSERT OR IGNORE INTO Users (username, password_hash, credits) VALUES (?, ?, ?)');
 
     const tipperInfo = insertStmt.run('tipper', hash, 500.0);
     const hostInfo = insertStmt.run('hostStreamer', hash, 0.0);
     const guestInfo = insertStmt.run('guestStreamer', hash, 0.0);
 
+    let tipperId = tipperInfo.lastInsertRowid;
+    let hostId = hostInfo.lastInsertRowid;
+
+    // Ensure we have valid info if ignored
+    if (tipperInfo.changes === 0) {
+      db.prepare('UPDATE Users SET credits = 500.0 WHERE username = ?').run('tipper');
+      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run('hostStreamer');
+      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run('guestStreamer');
+      tipperId = db.prepare('SELECT id FROM Users WHERE username = ?').get('tipper').id;
+      hostId = db.prepare('SELECT id FROM Users WHERE username = ?').get('hostStreamer').id;
+    }
+
     // Generate tokens
-    const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_beacon_key_123';
-    tokenTipper = jwt.sign({ id: tipperInfo.lastInsertRowid, username: 'tipper' }, JWT_SECRET, { expiresIn: '1h' });
-    tokenHost = jwt.sign({ id: hostInfo.lastInsertRowid, username: 'hostStreamer' }, JWT_SECRET, { expiresIn: '1h' });
+    tokenTipper = jwt.sign({ id: tipperId, username: 'tipper' }, JWT_SECRET, { expiresIn: '1h' });
+    tokenHost = jwt.sign({ id: hostId, username: 'hostStreamer' }, JWT_SECRET, { expiresIn: '1h' });
   });
 
   afterAll((done) => {

@@ -5,8 +5,14 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const db = require('./db');
+
+// Load environment variables before initializing constants
 require('dotenv').config();
+
+// Explicitly export JWT_SECRET for tests
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
 
 const app = express();
 app.use(express.json());
@@ -27,9 +33,6 @@ const activePolls = new Map();
 // Track stream squads for revenue splits
 // Map<streamId, Array<{ username: string, split: number }>>
 const streamSquads = new Map();
-
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_beacon_key_123';
 
 // Prepared SQL Statements for Performance
 const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
@@ -832,4 +835,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, io, streamSquads };
+module.exports = { server, io, streamSquads, JWT_SECRET };

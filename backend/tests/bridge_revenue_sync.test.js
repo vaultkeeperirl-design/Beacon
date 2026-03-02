@@ -1,6 +1,6 @@
 const Client = require("socket.io-client");
 const request = require('supertest');
-const { server, io } = require("../server");
+const { server, io, JWT_SECRET } = require("../server");
 const db = require('../db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -23,15 +23,22 @@ describe("Bridge Revenue Real-time Sync", () => {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash('password123', salt);
 
-    const insertStmt = db.prepare('INSERT INTO Users (username, password_hash, credits) VALUES (?, ?, ?)');
+    const insertStmt = db.prepare('INSERT OR IGNORE INTO Users (username, password_hash, credits) VALUES (?, ?, ?)');
 
     const tipperInfo = insertStmt.run(tipperUser, hash, 500.0);
     insertStmt.run(hostUser, hash, 0.0);
     insertStmt.run(guestUser, hash, 0.0);
 
+    let tipperId = tipperInfo.lastInsertRowid;
+    if (tipperInfo.changes === 0) {
+      db.prepare('UPDATE Users SET credits = 500.0 WHERE username = ?').run(tipperUser);
+      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run(hostUser);
+      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run(guestUser);
+      tipperId = db.prepare('SELECT id FROM Users WHERE username = ?').get(tipperUser).id;
+    }
+
     // Generate tokens
-    const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_beacon_key_123';
-    tokenTipper = jwt.sign({ id: tipperInfo.lastInsertRowid, username: tipperUser }, JWT_SECRET, { expiresIn: '1h' });
+    tokenTipper = jwt.sign({ id: tipperId, username: tipperUser }, JWT_SECRET, { expiresIn: '1h' });
 
     return new Promise((resolve) => {
       server.listen(0, () => {
