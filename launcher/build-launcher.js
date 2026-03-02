@@ -9,9 +9,9 @@ const backendDest = path.join(resourcesDir, 'backend');
 const frontendDist = path.join(rootDir, 'frontend', 'dist');
 const clientBuildDest = path.join(backendDest, 'client_build');
 
-const run = (cmd, cwd) => {
+const run = (cmd, cwd, env = process.env) => {
   console.log(`[Build] Running: ${cmd}`);
-  execSync(cmd, { stdio: 'inherit', cwd: cwd || rootDir });
+  execSync(cmd, { stdio: 'inherit', cwd: cwd || rootDir, env });
 };
 
 try {
@@ -53,8 +53,23 @@ try {
     fs.unlinkSync(path.join(backendDest, 'pnpm-workspace.yaml'));
   }
 
+  // Configure environment variables to cross-compile native modules for Electron
+  const launcherPkg = require('./package.json');
+  const electronVersion = launcherPkg.devDependencies.electron.replace(/^[^\d]+/, '');
+
+  const buildEnv = {
+    ...process.env,
+    npm_config_runtime: 'electron',
+    npm_config_target: electronVersion,
+    npm_config_disturl: 'https://electronjs.org/headers',
+    npm_config_build_from_source: 'true'
+  };
+
   // Use pnpm to install since the root uses pnpm. Ignore workspace root.
-  run('pnpm install --prod --ignore-workspace', backendDest);
+  run('pnpm install --prod --ignore-workspace', backendDest, buildEnv);
+
+  // Explicitly rebuild native modules like better-sqlite3 for the target Electron architecture
+  run('pnpm rebuild better-sqlite3', backendDest, buildEnv);
 
   console.log('Build Preparation Complete.');
 } catch (error) {
