@@ -114,6 +114,10 @@ pnpm reset
 
 # Format and automatically fix simple frontend lint errors
 pnpm lint:fix
+
+# Regenerate README screenshots automatically
+# Note: You must have the dev server running first (e.g., pnpm dev:web)
+python scripts/generate_readme_screenshots.py
 ```
 
 ## Progress Screenshots

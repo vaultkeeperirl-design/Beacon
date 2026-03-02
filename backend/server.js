@@ -167,6 +167,53 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Update User Profile
+app.patch('/api/users/profile', authenticateToken, (req, res) => {
+  const { bio, avatar_url } = req.body;
+  const username = req.user.username;
+
+  if (bio !== undefined) {
+    if (typeof bio !== 'string') {
+      return res.status(400).json({ error: 'Bio must be a string' });
+    }
+    if (bio.length > 500) {
+      return res.status(400).json({ error: 'Bio cannot exceed 500 characters' });
+    }
+  }
+
+  if (avatar_url !== undefined) {
+    if (avatar_url !== null && typeof avatar_url !== 'string') {
+      return res.status(400).json({ error: 'Avatar URL must be a string or null' });
+    }
+    if (typeof avatar_url === 'string' && avatar_url.length > 1000) {
+      return res.status(400).json({ error: 'Avatar URL is too long' });
+    }
+  }
+
+  try {
+    const currentUserStmt = db.prepare('SELECT avatar_url, bio FROM Users WHERE username = ?');
+    const currentUser = currentUserStmt.get(username);
+
+    if (!currentUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const newBio = bio !== undefined ? bio : currentUser.bio;
+    const newAvatarUrl = avatar_url !== undefined ? avatar_url : currentUser.avatar_url;
+
+    const updateStmt = db.prepare('UPDATE Users SET bio = ?, avatar_url = ? WHERE username = ?');
+    updateStmt.run(newBio, newAvatarUrl, username);
+
+    const getUpdatedUserStmt = db.prepare('SELECT id, username, avatar_url, bio, follower_count FROM Users WHERE username = ?');
+    const updatedUser = getUpdatedUserStmt.get(username);
+
+    res.json({ success: true, user: updatedUser, message: 'Profile updated successfully' });
+  } catch (err) {
+    console.error('Profile update failed:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // Get User Profile
 app.get('/api/users/:username', (req, res) => {
   try {

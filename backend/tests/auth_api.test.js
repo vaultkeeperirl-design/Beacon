@@ -175,6 +175,109 @@ describe('User Profile API', () => {
     jest.restoreAllMocks();
   });
 
+  describe('PATCH /api/users/profile', () => {
+    let token;
+    beforeEach(async () => {
+      // Pre-populate a user and generate a token
+      const salt = await bcrypt.genSalt(10);
+      const password_hash = await bcrypt.hash('password123', salt);
+      db.prepare('INSERT INTO Users (username, password_hash, credits, bio, avatar_url) VALUES (?, ?, ?, ?, ?)')
+        .run('updateuser', password_hash, 10, 'Old bio', 'old_avatar.png');
+
+      const response = await request(server)
+        .post('/api/auth/login')
+        .send({ username: 'updateuser', password: 'password123' });
+
+      token = response.body.token;
+    });
+
+    it('should update bio successfully', async () => {
+      const response = await request(server)
+        .patch('/api/users/profile')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ bio: 'New bio updated' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.user.bio).toBe('New bio updated');
+      expect(response.body.user.avatar_url).toBe('old_avatar.png'); // Unchanged
+    });
+
+    it('should update avatar_url successfully', async () => {
+      const response = await request(server)
+        .patch('/api/users/profile')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ avatar_url: 'new_avatar.png' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.user.bio).toBe('Old bio'); // Unchanged
+      expect(response.body.user.avatar_url).toBe('new_avatar.png');
+    });
+
+    it('should update both bio and avatar_url successfully', async () => {
+      const response = await request(server)
+        .patch('/api/users/profile')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ bio: 'New bio updated', avatar_url: 'new_avatar.png' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.user.bio).toBe('New bio updated');
+      expect(response.body.user.avatar_url).toBe('new_avatar.png');
+    });
+
+    it('should update avatar_url to null successfully', async () => {
+      const response = await request(server)
+        .patch('/api/users/profile')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ avatar_url: null });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.user.avatar_url).toBe(null);
+    });
+
+    it('should return 400 if bio is not a string', async () => {
+      const response = await request(server)
+        .patch('/api/users/profile')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ bio: 123 });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Bio must be a string');
+    });
+
+    it('should return 400 if bio exceeds 500 characters', async () => {
+      const longBio = 'a'.repeat(501);
+      const response = await request(server)
+        .patch('/api/users/profile')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ bio: longBio });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Bio cannot exceed 500 characters');
+    });
+
+    it('should return 400 if avatar_url is not a string or null', async () => {
+      const response = await request(server)
+        .patch('/api/users/profile')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ avatar_url: 123 });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Avatar URL must be a string or null');
+    });
+
+    it('should return 401 if unauthorized', async () => {
+      const response = await request(server)
+        .patch('/api/users/profile')
+        .send({ bio: 'New bio updated' });
+
+      expect(response.status).toBe(401);
+    });
+  });
+
   describe('GET /api/users/:username', () => {
     beforeEach(async () => {
       // Pre-populate a user

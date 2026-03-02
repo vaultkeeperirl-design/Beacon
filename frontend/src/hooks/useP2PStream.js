@@ -182,6 +182,20 @@ export const useP2PStream = (isBroadcaster = false, localStream = null, streamId
     }
   }, [socket, createPeerConnection, addPeer]);
 
+  const initiateChildConnection = useCallback(async (childId, streamToSend) => {
+    console.log(`[Mesh] Initiating connection to child ${childId}`);
+    const pc = createPeerConnection(childId, streamToSend);
+    addPeer(childId, pc);
+
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('offer', { target: childId, offer });
+    } catch (err) {
+      console.error('Error creating offer:', err);
+    }
+  }, [socket, createPeerConnection, addPeer]);
+
   useEffect(() => {
     if (!socket || !isConnected || !streamId) return;
 
