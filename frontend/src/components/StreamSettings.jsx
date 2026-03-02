@@ -35,13 +35,14 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
           onClick={onClose}
           className="absolute top-3 right-3 text-neutral-400 hover:text-white transition-colors"
           aria-label="Close"
+          title="Close Settings"
         >
           <X className="w-4 h-4" />
         </button>
 
         <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
           <Server className="w-4 h-4 text-beacon-500" />
-          Stream Config
+          Stream Configuration
         </h2>
 
         <div className="space-y-4 pr-1">
@@ -85,7 +86,7 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
             <div className="flex justify-between">
               <label htmlFor="max-upload-speed" className="text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
                 <Wifi className="w-3.5 h-3.5 text-blue-500" />
-                Max Upload
+                Max Upload Speed
               </label>
               <span className="text-xs font-mono text-blue-400">{settings.maxUploadSpeed} Mbps</span>
             </div>
