@@ -9,7 +9,7 @@
     "dev": "cd launcher && pnpm dev",
     "dev:web": "concurrently \"cd backend && pnpm dev\" \"cd frontend && pnpm dev\"",
     "build": "cd launcher && pnpm build",
-    "test": "npm-run-all test:*",
+    "test": "npm-run-all test:backend test:frontend",
     "test:backend": "cd backend && pnpm test",
     "test:frontend": "cd frontend && pnpm test",
     "test:watch": "concurrently \"pnpm test:backend:watch\" \"pnpm test:frontend:watch\"",
@@ -17,6 +17,7 @@
     "test:frontend:watch": "cd frontend && pnpm test:watch",
     "lint": "cd frontend && pnpm lint",
     "lint:fix": "cd frontend && pnpm lint --fix",
+    "check": "pnpm lint && pnpm test",
     "clean": "rm -rf node_modules backend/node_modules frontend/node_modules launcher/node_modules launcher/dist frontend/dist",
     "reset": "pnpm clean && pnpm install && pnpm bootstrap"
   },
