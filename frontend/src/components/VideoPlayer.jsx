@@ -145,6 +145,8 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
         loop={!stream}
         playsInline
         onClick={() => setIsPlaying(prev => !prev)}
+        /* ⚡ Aura: Double-click to fullscreen respects user muscle memory from major platforms and reduces the cognitive load of finding the small controls button. */
+        onDoubleClick={toggleFullscreen}
       />
 
       {autoplayBlocked && (
