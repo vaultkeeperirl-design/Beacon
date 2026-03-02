@@ -166,4 +166,15 @@ describe('VideoPlayer Keyboard Shortcuts', () => {
     fireEvent.click(videoElement);
     expect(screen.getByTestId('is-playing')).toHaveTextContent('true');
   });
+
+  it('toggles fullscreen when the video element is double clicked', () => {
+    // ⚡ Aura: Verify double-click-to-fullscreen functionality works correctly. This reduces the cognitive load of finding the small controls button.
+    render(<VideoPlayer />);
+
+    const videoElement = document.querySelector('video');
+    expect(videoElement).toBeInTheDocument();
+
+    fireEvent.doubleClick(videoElement);
+    expect(Element.prototype.requestFullscreen).toHaveBeenCalled();
+  });
 });
