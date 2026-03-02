@@ -26,9 +26,9 @@ const AdBreakButton = memo(function AdBreakButton() {
 
     try {
       // Trigger ad revenue distribution on backend
-      const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
       await axios.post(
-        `${API_URL}/api/ads/trigger`,
+        `${API_URL}/ads/trigger`,
         { streamId: username },
         { headers: { Authorization: `Bearer ${token}` } }
       );

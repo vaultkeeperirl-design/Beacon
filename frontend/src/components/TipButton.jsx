@@ -39,9 +39,9 @@ export default function TipButton({ streamId }) {
 
     setStatus('loading');
     try {
-      const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
       await axios.post(
-        `${API_URL}/api/tip`,
+        `${API_URL}/tip`,
         { streamId, amount },
         { headers: { Authorization: `Bearer ${token}` } }
       );

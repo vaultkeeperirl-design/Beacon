@@ -49,7 +49,7 @@ const cleanupPoll = (streamId, notifyViewers = false) => {
     }
 
     if (notifyViewers) {
-      const { voters, timeoutId, ...pollData } = poll;
+      const { voters: _v, timeoutId: _t, ...pollData } = poll;
       pollData.isActive = false;
       io.to(streamId).emit('poll-ended', pollData);
     }
@@ -341,6 +341,15 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   }
 
   const mesh = streamMeshTopology.get(streamId);
+
+  // If node already exists, don't reset its state (children/parent)
+  // This can happen on reconnects or re-joins to the same stream
+  if (mesh.has(socketId)) {
+    const node = mesh.get(socketId);
+    node.isBroadcaster = isBroadcaster; // Update broadcaster status just in case
+    return;
+  }
+
   mesh.set(socketId, { children: new Set(), parent: null, isBroadcaster, metrics: { latency: 0, uploadMbps: 0 } });
 
   if (isBroadcaster) {
@@ -429,6 +438,8 @@ io.on('connection', (socket) => {
     const streamId = (typeof data === 'string' ? data : data?.streamId) || null;
     const accountName = typeof data === 'object' ? data?.username : null;
     let username = accountName;
+
+    console.log(`[Join] User ${username} joining stream ${streamId}`);
 
     if (username) {
       // Security: Prevent users from impersonating the host
@@ -690,7 +701,7 @@ io.on('connection', (socket) => {
     activePolls.set(streamId, poll);
     // Note: We don't send 'voters' Set to client, we should probably strip it or rely on JSON.stringify behavior
     // (Sets are serialized as {} in JSON.stringify unless handled, which is fine for hiding data but we should be clean)
-    const { voters, timeoutId, ...pollData } = poll;
+    const { voters: _v, timeoutId: _t, ...pollData } = poll;
     io.to(streamId).emit('poll-started', pollData);
   });
 
@@ -709,8 +720,8 @@ io.on('connection', (socket) => {
       poll.totalVotes++;
       poll.voters.add(socket.id);
 
-      // Broadcast update (exclude voters set)
-      const { voters, ...pollData } = poll;
+      // Broadcast update (exclude voters set and timeoutId)
+      const { voters: _v, timeoutId: _t, ...pollData } = poll;
       io.to(streamId).emit('poll-update', pollData);
     }
   });

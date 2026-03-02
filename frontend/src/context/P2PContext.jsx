@@ -14,7 +14,8 @@ const P2PSettingsContext = createContext();
 import axios from 'axios';
 
 // API base URL
-const API_URL = 'http://localhost:3000/api';
+// When running in the Electron launcher, the frontend is served from the same dynamic port as the backend.
+const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
 
 /**
  * Provider component that wraps the application and manages the global state
