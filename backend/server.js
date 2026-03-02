@@ -523,7 +523,9 @@ io.on('connection', (socket) => {
 
     // Credit Economy Calculation
     if (socket.accountName && uploadMbps > 0) {
-      const earnedCredits = uploadMbps * 0.01; // Match frontend logic
+      // Security: Cap uploadMbps to realistic maximum (100 Mbps) to prevent infinite credit exploits
+      const validUploadMbps = Math.min(Number(uploadMbps) || 0, 100);
+      const earnedCredits = validUploadMbps * 0.01; // Match frontend logic
       const squad = [{ username: socket.accountName, split: 100 }];
 
       const metricsTx = db.transaction((s, amount) => {

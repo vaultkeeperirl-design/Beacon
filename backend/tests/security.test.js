@@ -168,6 +168,44 @@ describe("Backend Security", () => {
       expect(message.text).toBe("Valid");
   });
 
+  test("should prevent infinite credit exploits via bounds on uploadMbps", async () => {
+    const streamId = "stream-credits";
+    const username = "GreedyNode";
+
+    // Wait for the room join
+    const updatePromise1 = waitFor(clientSocket, "room-users-update");
+    // Client must have accountName set to receive wallet updates
+    // join-stream takes an object {streamId, username}
+    clientSocket.emit("join-stream", { streamId, username });
+    await updatePromise1;
+
+    // In server.js, user room is user:${accountName} which is username in this case
+    // We also need to add them to the database to ensure `distributeCredits` actually runs,
+    // otherwise the DB query for `getCreditsStmt` returns null and NO wallet-update is emitted!
+    // But since this is a test and we might not have them in the DB, let's create them!
+    const db = require('../db');
+    try {
+        db.prepare("INSERT INTO Users (username, password_hash, credits) VALUES ('GreedyNode', 'hash', 0)").run();
+    } catch (e) {
+        // Ignore if exists
+    }
+
+    // Listen for wallet updates
+    const walletPromise = waitFor(clientSocket, "wallet-update");
+
+    // Attempt exploit: report 999 million Mbps upload
+    clientSocket.emit("metrics-report", {
+        streamId,
+        latency: 10,
+        uploadMbps: 999999999
+    });
+
+    // We should receive a wallet update based on the capped value
+    // Max capped uploadMbps = 100. 100 * 0.01 = 1 credit.
+    const walletData = await walletPromise;
+    expect(walletData.balance).toBeLessThanOrEqual(100); // 100 is way below millions
+  });
+
   test("should prevent cross-room signaling", async () => {
     const streamA = "stream-A";
     const streamB = "stream-B";
