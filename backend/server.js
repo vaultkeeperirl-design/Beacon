@@ -65,17 +65,18 @@ const cleanupPoll = (streamId, notifyViewers = false) => {
  * @param {number} totalAmount - Total amount to be distributed.
  */
 const distributeCredits = (squad, totalAmount) => {
+  const updates = [];
   for (const member of squad) {
     const cut = totalAmount * (member.split / 100);
     if (cut > 0) {
       updateCreditsStmt.run(cut, member.username);
       const row = getCreditsStmt.get(member.username);
       if (row) {
-        // Notify all active sessions of the user across tabs/devices
-        io.to(`user:${member.username}`).emit('wallet-update', { balance: row.credits });
+        updates.push({ username: member.username, balance: row.credits });
       }
     }
   }
+  return updates;
 };
 
 // Auth Middleware
@@ -97,11 +98,11 @@ const distributeCreditsToStream = (streamId, amount) => {
   const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
 
   const distributionTx = db.transaction((squadMembers, totalAmount) => {
-    distributeCredits(squadMembers, totalAmount);
+    return distributeCredits(squadMembers, totalAmount);
   });
 
   try {
-    distributionTx(squad, amount);
+    const updates = distributionTx(squad, amount);
     // Emit updates after successful transaction to prevent state desync
     for (const update of updates) {
       io.to(`user:${update.username}`).emit('wallet-update', { balance: update.balance });
@@ -211,11 +212,15 @@ app.post('/api/tip', authenticateToken, (req, res) => {
       deductCreditsStmt.run(amount, tipper);
       const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
 
-      distributeCredits(squad, amount);
-      return squad;
+      return distributeCredits(squad, amount);
     });
 
-    tipTransaction();
+    const updates = tipTransaction();
+
+    // Emit updates after successful transaction
+    for (const update of updates) {
+      io.to(`user:${update.username}`).emit('wallet-update', { balance: update.balance });
+    }
 
     // Notify all of tipper's devices about the new balance
     const updatedTipper = getCreditsStmt.get(tipper);
@@ -522,14 +527,17 @@ io.on('connection', (socket) => {
       const squad = [{ username: socket.accountName, split: 100 }];
 
       const metricsTx = db.transaction((s, amount) => {
-        distributeCredits(s, amount);
+        return distributeCredits(s, amount);
       });
 
       // ⚡ Performance Optimization:
       // Use pre-prepared statements instead of re-preparing on every 2s poll.
       // This reduces CPU overhead and memory churn for high-frequency events.
       try {
-        metricsTx(squad, earnedCredits);
+        const updates = metricsTx(squad, earnedCredits);
+        for (const update of updates) {
+          io.to(`user:${update.username}`).emit('wallet-update', { balance: update.balance });
+        }
       } catch (err) {
         console.error('[Metrics] Failed to update credits:', err);
       }
