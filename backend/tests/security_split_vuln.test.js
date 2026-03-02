@@ -1,4 +1,4 @@
-const { server, io } = require('../server');
+const { server, io, JWT_SECRET } = require('../server');
 const Client = require('socket.io-client');
 const request = require('supertest');
 const db = require('../db');
@@ -47,7 +47,7 @@ describe('Security: Squad Split Infinite Money Vulnerability', () => {
 
       setTimeout(async () => {
         const jwt = require('jsonwebtoken');
-        const token = jwt.sign({ id: 2, username: 'tipper' }, process.env.JWT_SECRET || 'super_secret_beacon_key_123');
+        const token = jwt.sign({ id: 2, username: 'tipper' }, JWT_SECRET);
 
         await request(server)
           .post('/api/tip')
