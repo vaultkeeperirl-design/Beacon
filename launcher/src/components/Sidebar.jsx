@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Radio, User, LogOut } from 'lucide-react';
 import AuthModal from './AuthModal';
 
-export default function Sidebar() {
+export default function Sidebar({ isInstalled }) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [user, setUser] = useState(null);
 
@@ -82,9 +82,10 @@ export default function Sidebar() {
           </div>
         ) : (
           <button
-            onClick={() => setShowAuthModal(true)}
-            title="Log In"
-            className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 hover:border-orange-500 hover:bg-gray-700 transition-colors flex items-center justify-center"
+            onClick={() => isInstalled && setShowAuthModal(true)}
+            disabled={!isInstalled}
+            title={isInstalled ? "Log In" : "Install Node to Log In"}
+            className={`w-10 h-10 rounded-full bg-gray-800 border border-gray-700 transition-colors flex items-center justify-center ${isInstalled ? 'hover:border-orange-500 hover:bg-gray-700' : 'opacity-20 cursor-not-allowed'}`}
           >
             <User className="w-5 h-5 text-gray-400" />
           </button>

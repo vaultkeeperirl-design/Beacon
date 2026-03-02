@@ -41,7 +41,8 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
   useEffect(() => {
     const token = localStorage.getItem('beacon_token');
     if (token) {
-      axios.get('http://localhost:3000/api/wallet', {
+      const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
+      axios.get(`${API_URL}/wallet`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => {
