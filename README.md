@@ -102,6 +102,9 @@ pnpm test:watch
 We have added a few commands to make working on Beacon faster:
 
 ```bash
+# Run the complete test suite and linter (Great before committing!)
+pnpm check
+
 # Clean out all node_modules and build artifacts across the whole repository
 pnpm clean
 
