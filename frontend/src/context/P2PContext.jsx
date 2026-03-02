@@ -16,6 +16,21 @@ import axios from 'axios';
 // API base URL
 const API_URL = 'http://localhost:3000/api';
 
+/**
+ * Provider component that wraps the application and manages the global state
+ * for user authentication, P2P mesh network configuration, and real-time mesh statistics.
+ *
+ * To optimize performance, this provider splits its state into two contexts:
+ * - `P2PSettingsContext`: Manages stable state like user auth and stream settings.
+ * - `P2PStatsContext`: Manages frequently updating state (e.g., bandwidth, peers).
+ *
+ * This separation prevents expensive re-renders across the app when only network
+ * metrics update.
+ *
+ * @param {Object} props - The component props.
+ * @param {React.ReactNode} props.children - The child components.
+ * @returns {JSX.Element} The context providers wrapping the children.
+ */
 export function P2PProvider({ children }) {
   const [isSharing, setIsSharing] = useState(true);
   const [currentStreamId, setCurrentStreamId] = useState(null);
@@ -152,8 +167,22 @@ export function P2PProvider({ children }) {
 }
 
 /**
- * Hook for components that only need P2P stats (updates frequently).
- * @returns {Object} P2P statistics
+ * Hook for consuming real-time P2P network statistics.
+ *
+ * ⚡ PERFORMANCE WARNING: This hook causes the consuming component to re-render
+ * every time the mesh network statistics update (currently every 1 second).
+ * Only use this hook in components that actually display these metrics.
+ *
+ * @returns {{
+ *   uploadSpeed: number,
+ *   downloadSpeed: number,
+ *   peersConnected: number,
+ *   credits: number,
+ *   totalUploaded: number,
+ *   bufferHealth: number,
+ *   latency?: number
+ * }} An object containing the current P2P statistics.
+ * @throws {Error} If called outside of a P2PProvider.
  */
 export function useP2PStats() {
   const context = useContext(P2PStatsContext);
@@ -164,8 +193,28 @@ export function useP2PStats() {
 }
 
 /**
- * Hook for components that only need P2P settings and actions (stable).
- * @returns {Object} P2P settings and update functions
+ * Hook for consuming stable P2P settings and authentication actions.
+ *
+ * This hook is optimized and will only cause a re-render when a user explicitly
+ * changes a setting, logs in, logs out, or changes streams. Use this hook when
+ * you need to trigger actions or read stable configurations.
+ *
+ * @returns {{
+ *   isSharing: boolean,
+ *   setIsSharing: React.Dispatch<React.SetStateAction<boolean>>,
+ *   settings: { maxUploadSpeed: number, quality: string, showStats: boolean, lowLatency: boolean },
+ *   updateSettings: (newSettings: Object) => void,
+ *   currentStreamId: string | null,
+ *   setCurrentStreamId: React.Dispatch<React.SetStateAction<string | null>>,
+ *   username: string,
+ *   updateUsername: (newName: string) => void,
+ *   user: Object | null,
+ *   token: string | null,
+ *   login: (username: string, password: string) => Promise<{success: boolean, error?: string}>,
+ *   register: (username: string, password: string) => Promise<{success: boolean, error?: string}>,
+ *   logout: () => void
+ * }} An object containing stable settings and action functions.
+ * @throws {Error} If called outside of a P2PProvider.
  */
 export function useP2PSettings() {
   const context = useContext(P2PSettingsContext);
@@ -176,10 +225,14 @@ export function useP2PSettings() {
 }
 
 /**
- * Combined hook for backward compatibility.
+ * Combined hook for accessing both P2P stats and settings.
+ * Maintained primarily for backward compatibility.
+ *
  * ⚡ PERFORMANCE WARNING: Using this hook will cause your component to
  * re-render every time stats update (currently every 1 second).
- * Prefer using useP2PSettings() if you don't need real-time stats.
+ * Prefer using `useP2PSettings()` if you do not need to display real-time stats.
+ *
+ * @returns {Object} An object combining the properties of both `useP2PStats` and `useP2PSettings`.
  */
 export function useP2P() {
   const stats = useP2PStats();
