@@ -16,7 +16,8 @@ export default function Channel() {
 
   useEffect(() => {
     // Fetch real channel data
-    axios.get(`http://localhost:3000/api/users/${username}`)
+    const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
+    axios.get(`${API_URL}/users/${username}`)
       .then(res => {
         setChannelData({
           username: res.data.username,
