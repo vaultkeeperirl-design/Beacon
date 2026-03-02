@@ -5,3 +5,7 @@
 ## 2024-05-15 - Local Dev Guide Addition
 **Learning:** Developers need clear distinctions between web-only and full-desktop dev modes to choose the right workflow.
 **Action:** Created `running-locally.md` to provide a dedicated local development guide that distinguishes between web-only and full-desktop dev modes, including troubleshooting for SQLite database locks and port conflicts.
+
+## 2024-10-27 - Centralized Troubleshooting
+**Learning:** Common local development and build errors (like `better-sqlite3` bindings missing, ghost processes blocking port 3000, and Electron workspace issues) are scattered across PRs and tribal knowledge.
+**Action:** Created `/docs/troubleshooting.md` to centralize these fixes so new developers have a single reference point for unblocking themselves.
