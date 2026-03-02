@@ -143,7 +143,7 @@ export const useP2PStream = (isBroadcaster = false, localStream = null, streamId
   useEffect(() => {
     remoteStreamRef.current = remoteStream;
 
-    // If we just received a stream and have pending children, initiate connections now
+    // If we just received a remote stream (viewer relay) and have pending children, initiate connections now
     if (remoteStream && pendingChildrenRef.current.size > 0) {
       console.log(`[Mesh] Remote stream received. Initializing ${pendingChildrenRef.current.size} pending child connections.`);
       const children = Array.from(pendingChildrenRef.current);
@@ -153,7 +153,34 @@ export const useP2PStream = (isBroadcaster = false, localStream = null, streamId
         initiateChildConnection(childId, remoteStream);
       });
     }
-  }, [remoteStream]);
+  }, [remoteStream, initiateChildConnection]);
+
+  // Handle broadcaster's local stream availability for pending children
+  useEffect(() => {
+    if (isBroadcaster && localStream && pendingChildrenRef.current.size > 0) {
+      console.log(`[Mesh] Local stream available. Initializing ${pendingChildrenRef.current.size} pending child connections.`);
+      const children = Array.from(pendingChildrenRef.current);
+      pendingChildrenRef.current.clear();
+
+      children.forEach(childId => {
+        initiateChildConnection(childId, localStream);
+      });
+    }
+  }, [isBroadcaster, localStream, initiateChildConnection]);
+
+  const initiateChildConnection = useCallback(async (childId, streamToSend) => {
+    console.log(`[Mesh] Initiating connection to child ${childId}`);
+    const pc = createPeerConnection(childId, streamToSend);
+    addPeer(childId, pc);
+
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('offer', { target: childId, offer });
+    } catch (err) {
+      console.error('Error creating offer:', err);
+    }
+  }, [socket, createPeerConnection, addPeer]);
 
   const initiateChildConnection = useCallback(async (childId, streamToSend) => {
     console.log(`[Mesh] Initiating connection to child ${childId}`);

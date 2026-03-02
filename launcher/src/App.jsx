@@ -114,6 +114,8 @@ function App() {
         window.electron.ipcRenderer.invoke('get-backend-version').then(ver => {
             if (ver) setBackendVersion(ver);
         });
+        // Start the background node immediately after installation
+        window.electron.ipcRenderer.send('start-background-node');
       });
 
       // Listen for launch status
@@ -224,7 +226,7 @@ function App() {
           onCancel={() => setShowTermsModal(false)}
         />
       )}
-      <Sidebar />
+      <Sidebar isInstalled={status !== STATUS.NOT_INSTALLED && status !== STATUS.INSTALLING && status !== STATUS.LOADING} />
       <MainLayout>
         {/* Header / Logo Area */}
         <div className="flex flex-col gap-2 mb-8 app-drag-region">

@@ -26,7 +26,7 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
         if (port) {
           setBackendPort(port);
         } else {
-          setError('Could not connect to local backend node. Make sure it is installed and running.');
+          setError('Could not connect to local backend node. Click "Install" in the launcher first.');
         }
       } else {
         // Fallback for web dev mode

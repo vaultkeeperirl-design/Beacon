@@ -13,9 +13,11 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import { P2PProvider } from './context/P2PContext';
 import { FollowingProvider } from './context/FollowingContext';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
+    <ErrorBoundary>
     <P2PProvider>
       <FollowingProvider>
         <BrowserRouter>
@@ -37,6 +39,7 @@ function App() {
         </BrowserRouter>
       </FollowingProvider>
     </P2PProvider>
+    </ErrorBoundary>
   );
 }
 

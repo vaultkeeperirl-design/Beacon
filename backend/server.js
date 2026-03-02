@@ -807,7 +807,8 @@ if (process.env.SERVE_STATIC) {
   const buildPath = path.join(__dirname, 'client_build');
   app.use(express.static(buildPath));
 
-  app.get('*', (req, res) => {
+  // The wildcard route for SPA should only catch non-API routes
+  app.get(/^(?!\/api).*$/, (req, res) => {
     res.sendFile(path.join(buildPath, 'index.html'));
   });
 } else {
