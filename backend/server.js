@@ -79,6 +79,24 @@ const distributeCredits = (squad, totalAmount) => {
   return updates;
 };
 
+// ⚡ Performance Optimization:
+// Hoisting transactions to the module level prevents the overhead of creating
+// new transaction functions on every request or socket event.
+// This is critical for high-frequency events like 'metrics-report' (every 2s per user).
+const distributeCreditsTx = db.transaction(distributeCredits);
+
+const tipTx = db.transaction((tipper, amount, squad) => {
+  const tipperRow = getCreditsStmt.get(tipper);
+
+  if (!tipperRow || tipperRow.credits < amount) {
+    throw new Error('INSUFFICIENT_FUNDS');
+  }
+
+  // Distribute within a transaction for atomicity
+  deductCreditsStmt.run(amount, tipper);
+  return distributeCredits(squad, amount);
+});
+
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -97,12 +115,8 @@ const authenticateToken = (req, res, next) => {
 const distributeCreditsToStream = (streamId, amount) => {
   const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
 
-  const distributionTx = db.transaction((squadMembers, totalAmount) => {
-    return distributeCredits(squadMembers, totalAmount);
-  });
-
   try {
-    const updates = distributionTx(squad, amount);
+    const updates = distributeCreditsTx(squad, amount);
     // Emit updates after successful transaction to prevent state desync
     for (const update of updates) {
       io.to(`user:${update.username}`).emit('wallet-update', { balance: update.balance });
@@ -248,21 +262,8 @@ app.post('/api/tip', authenticateToken, (req, res) => {
   }
 
   try {
-    const tipTransaction = db.transaction(() => {
-      const tipperRow = getCreditsStmt.get(tipper);
-
-      if (!tipperRow || tipperRow.credits < amount) {
-        throw new Error('INSUFFICIENT_FUNDS');
-      }
-
-      // Distribute within a transaction for atomicity
-      deductCreditsStmt.run(amount, tipper);
-      const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
-
-      return distributeCredits(squad, amount);
-    });
-
-    const updates = tipTransaction();
+    const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
+    const updates = tipTx(tipper, amount, squad);
 
     // Emit updates after successful transaction
     for (const update of updates) {
@@ -586,15 +587,11 @@ io.on('connection', (socket) => {
       const earnedCredits = validUploadMbps * 0.01; // Match frontend logic
       const squad = [{ username: socket.accountName, split: 100 }];
 
-      const metricsTx = db.transaction((s, amount) => {
-        return distributeCredits(s, amount);
-      });
-
       // ⚡ Performance Optimization:
-      // Use pre-prepared statements instead of re-preparing on every 2s poll.
+      // Use pre-hoisted transaction instead of creating one on every 2s poll.
       // This reduces CPU overhead and memory churn for high-frequency events.
       try {
-        const updates = metricsTx(squad, earnedCredits);
+        const updates = distributeCreditsTx(squad, earnedCredits);
         for (const update of updates) {
           io.to(`user:${update.username}`).emit('wallet-update', { balance: update.balance });
         }
