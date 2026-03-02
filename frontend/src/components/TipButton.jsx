@@ -13,7 +13,7 @@ export default function TipButton({ streamId }) {
   const [amount, setAmount] = useState(10);
   const [status, setStatus] = useState('idle'); // idle, loading, success, error
   const [errorMessage, setErrorMessage] = useState('');
-  const { token, user } = useP2PSettings();
+  const { token } = useP2PSettings();
   const dropdownRef = useRef(null);
 
   const tipAmounts = [1, 5, 10, 50, 100];

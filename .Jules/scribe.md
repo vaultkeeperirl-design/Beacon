@@ -1,3 +1,7 @@
 ## 2024-03-01 - Documenting Core WebRTC/P2P Hooks
 **Learning:** The application's complex P2P mesh logic (connecting nodes, signaling, pooling stats) is centralized in a few hooks like `useP2PStream.js` and `useRealP2PStats.js`. These functions have significant impacts on the platform's core mechanics (mandatory bandwidth sharing) but lacked explicit inline API documentation, making it difficult for new agents or humans to trace the data flow or usage of these hooks safely.
 **Action:** Added comprehensive JSDoc to `useP2PStream` and `subscribeToMeshStats` explaining their parameters, return values, and overall architecture responsibilities (broadcasting vs relaying). Reviewed `useRealP2PStats` to ensure its existing JSDoc adequately described the underlying stat polling and calculation rules.
+
+## 2026-03-02 - Documenting P2PContext Split Hooks
+**Learning:** The `P2PContext` was refactored into two contexts (`P2PStatsContext` and `P2PSettingsContext`) to mitigate excessive app-wide re-renders caused by frequent stat updates. However, the exported hooks (`useP2PStats`, `useP2PSettings`, and the legacy `useP2P`) lacked adequate documentation, making it easy for developers to accidentally use the wrong hook and re-introduce performance bottlenecks by triggering unneeded renders when stable values are desired.
+**Action:** Added comprehensive JSDoc comments to `P2PProvider` and the associated hooks (`useP2PStats`, `useP2PSettings`, `useP2P`), explicitly emphasizing the performance implications and return types to guide safe usage across the application.
