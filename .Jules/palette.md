@@ -11,3 +11,7 @@
 ## 2024-06-25 - Chat Emotes Accessibility
 **Learning:** Interactive elements styled as buttons (like Emotes triggers in chat) should use semantic `<button>` tags rather than `<div>` elements with `cursor-pointer` to ensure proper keyboard navigation and focus management.
 **Action:** Convert faux-buttons to real `<button>` elements, ensuring they have `type="button"` and focus-visible states for keyboard accessibility, and update corresponding tests to use `getByRole`.
+
+## 2024-05-27 - Input Field Accessibility
+**Learning:** Relying solely on `placeholder` attributes for text input fields (like in chat forms) is insufficient for screen readers. Screen readers may inconsistently read or completely ignore placeholders, leaving the user without context for what the input is for.
+**Action:** Always provide an explicit `aria-label` or an associated `<label>` element for all input fields to ensure they are fully accessible to screen reader users.
