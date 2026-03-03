@@ -70,6 +70,7 @@ const Chat = memo(function Chat({
             className="w-full bg-neutral-800/50 text-white rounded-lg pl-3 pr-10 py-2.5 text-sm focus:outline-none placeholder-neutral-600 transition-colors border border-transparent focus:border-beacon-500/50"
             placeholder={isConnected ? "Send a message..." : "Connecting..."}
             disabled={!isConnected}
+            aria-label="Chat message"
           />
           <button
              type="submit"
