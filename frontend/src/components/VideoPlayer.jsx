@@ -71,15 +71,6 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
     videoRef.current.muted = isMuted;
   }, [isMuted]);
 
-  // Keyboard Shortcuts
-  useVideoShortcuts({ setIsPlaying, setIsMuted, toggleFullscreen });
-
-  // Synchronize volume state
-  useEffect(() => {
-    if (!videoRef.current) return;
-    videoRef.current.volume = volume;
-  }, [volume]);
-
   const handleVolumeChange = (newVolume) => {
       setVolume(newVolume);
       if (newVolume > 0 && isMuted) {
@@ -88,6 +79,15 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
           setIsMuted(true);
       }
   };
+
+  // Keyboard Shortcuts
+  useVideoShortcuts({ setIsPlaying, setIsMuted, toggleFullscreen, volume, handleVolumeChange, containerRef });
+
+  // Synchronize volume state
+  useEffect(() => {
+    if (!videoRef.current) return;
+    videoRef.current.volume = volume;
+  }, [volume]);
 
   const handleMuteToggle = () => {
       const newMutedState = !isMuted;
@@ -109,7 +109,8 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
   return (
     <div
       ref={containerRef}
-      className="relative aspect-video bg-black rounded-lg overflow-hidden group shadow-2xl ring-1 ring-neutral-800"
+      tabIndex={0}
+      className="relative aspect-video bg-black rounded-lg overflow-hidden group shadow-2xl ring-1 ring-neutral-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-beacon-500"
     >
       {/* ⚡ Aura: Adding click-to-play functionality for intuitive, frictionless playback control. */}
       <video
