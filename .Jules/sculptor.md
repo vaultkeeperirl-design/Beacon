@@ -11,3 +11,7 @@
 ## 2025-03-01 - Deleting dead code blocks
 **Learning:** Dead files (e.g. `useP2PSimulation.js` which was replaced by `useRealP2PStats.js`) should be safely removed from the repository. Also, any large block of rambling comments directly referencing dead code must also be removed to preserve code readability.
 **Action:** Always hunt for dead components and completely clean their references.
+
+## 2025-03-03 - Extract Keyboard Shortcuts from VideoPlayer
+**Learning:** Extracting isolated behavioral logic, like keyboard event listeners for video playback, into a custom hook (`useVideoShortcuts`) significantly reduces the visual noise in complex presentation components like `VideoPlayer.jsx`.
+**Action:** When a component grows large with disparate concerns (e.g., stats overlays, playback synchronization, keyboard shortcuts), look for cohesive logic chunks that can be safely decoupled into custom hooks. Ensure any callbacks passed to the hook are properly wrapped in `useCallback` if they depend on unstable values.
