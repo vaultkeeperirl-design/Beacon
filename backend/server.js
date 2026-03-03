@@ -522,9 +522,11 @@ io.on('connection', (socket) => {
         const count = io.sockets.adapter.rooms.get(streamId)?.size || 0;
         io.to(streamId).emit('room-users-update', count);
 
-        // Send current active poll to the joining user
+        // Send current active poll to the joining user (sanitized)
         if (activePolls.has(streamId)) {
-          socket.emit('poll-update', activePolls.get(streamId));
+          const poll = activePolls.get(streamId);
+          const { voters: _v, timeoutId: _t, ...pollData } = poll;
+          socket.emit('poll-update', pollData);
         }
     }
   });
@@ -681,22 +683,32 @@ io.on('connection', (socket) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
     // Only host can create polls (simple check: username matches streamId)
-    // In a real app, use proper auth/permissions
     if (socket.username !== streamId) return;
 
-    if (!question || !options || !Array.isArray(options) || options.length < 2) return;
+    // Validation
+    if (!question || typeof question !== 'string' || question.trim().length === 0 || question.length > 200) return;
+    if (!options || !Array.isArray(options) || options.length < 2 || options.length > 5) return;
+
+    const sanitizedOptions = options
+      .map(opt => typeof opt === 'string' ? opt.trim() : '')
+      .filter(opt => opt.length > 0 && opt.length <= 100);
+
+    if (sanitizedOptions.length < 2) return;
 
     // Cleanup existing poll if any
     cleanupPoll(streamId);
 
+    // Max duration: 1 hour (3600 seconds)
+    const validDuration = (typeof duration === 'number' && duration > 0) ? Math.min(duration, 3600) : null;
+
     const poll = {
       id: Date.now(),
-      question,
-      options: options.map(opt => ({ text: opt, votes: 0 })),
+      question: question.trim(),
+      options: sanitizedOptions.map(opt => ({ text: opt, votes: 0 })),
       totalVotes: 0,
       isActive: true,
       voters: new Set(), // Track who voted
-      duration: typeof duration === 'number' && duration > 0 ? duration : null
+      duration: validDuration
     };
 
     if (poll.duration) {
@@ -704,15 +716,14 @@ io.on('connection', (socket) => {
             if (activePolls.has(streamId) && activePolls.get(streamId).id === poll.id) {
                 const currentPoll = activePolls.get(streamId);
                 currentPoll.isActive = false;
-                io.to(streamId).emit('poll-ended', { ...currentPoll, voters: undefined, timeoutId: undefined });
+                const { voters: _v, timeoutId: _t, ...pollData } = currentPoll;
+                io.to(streamId).emit('poll-ended', pollData);
                 activePolls.delete(streamId);
             }
         }, poll.duration * 1000);
     }
 
     activePolls.set(streamId, poll);
-    // Note: We don't send 'voters' Set to client, we should probably strip it or rely on JSON.stringify behavior
-    // (Sets are serialized as {} in JSON.stringify unless handled, which is fine for hiding data but we should be clean)
     const { voters: _v, timeoutId: _t, ...pollData } = poll;
     io.to(streamId).emit('poll-started', pollData);
   });
@@ -723,14 +734,17 @@ io.on('connection', (socket) => {
     const poll = activePolls.get(streamId);
     if (!poll || poll.id !== pollId || !poll.isActive) return;
 
-    if (poll.voters.has(socket.id)) {
+    // Use username for persistent identity, fallback to socket.id for guests
+    const voterId = socket.username || socket.id;
+
+    if (poll.voters.has(voterId)) {
         return; // Already voted
     }
 
     if (optionIndex >= 0 && optionIndex < poll.options.length) {
       poll.options[optionIndex].votes++;
       poll.totalVotes++;
-      poll.voters.add(socket.id);
+      poll.voters.add(voterId);
 
       // Broadcast update (exclude voters set and timeoutId)
       const { voters: _v, timeoutId: _t, ...pollData } = poll;
