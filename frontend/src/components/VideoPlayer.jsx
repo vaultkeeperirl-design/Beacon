@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect, memo } from 'react';
+import { useState, useRef, useEffect, memo, useCallback } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import StreamSettings from './StreamSettings';
 import VideoStatsOverlay from './VideoStatsOverlay';
 import VideoControls from './VideoControls';
+import { useVideoShortcuts } from '../hooks/useVideoShortcuts';
 
 const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }) {
   const [isPlaying, setIsPlaying] = useState(true);
@@ -32,7 +33,7 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
 
     if (!document.fullscreenElement) {
@@ -42,7 +43,7 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
     } else {
       document.exitFullscreen();
     }
-  };
+  }, []);
 
   // Synchronize playback state
   useEffect(() => {
@@ -71,33 +72,8 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
   }, [isMuted]);
 
   // Keyboard Shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Ignore shortcuts if the user is typing in an input or textarea
-      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
-        return;
-      }
+  useVideoShortcuts({ setIsPlaying, setIsMuted, toggleFullscreen });
 
-      switch (e.key.toLowerCase()) {
-        case ' ':
-        case 'k':
-          e.preventDefault(); // Prevent scrolling for space
-          setIsPlaying((prev) => !prev);
-          break;
-        case 'm':
-          setIsMuted((prev) => !prev);
-          break;
-        case 'f':
-          toggleFullscreen();
-          break;
-        default:
-          break;
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
   // Synchronize volume state
   useEffect(() => {
     if (!videoRef.current) return;
