@@ -81,6 +81,8 @@ export default function TipButton({ streamId }) {
               <button
                 key={amt}
                 onClick={() => setAmount(amt)}
+                aria-label={`Tip ${amt} credits`}
+                aria-pressed={amount === amt}
                 className={`py-2 rounded-lg text-xs font-mono font-bold transition-all border ${
                   amount === amt
                     ? 'bg-beacon-600 border-beacon-500 text-white'
@@ -95,6 +97,7 @@ export default function TipButton({ streamId }) {
                  type="number"
                  value={amount}
                  onChange={(e) => setAmount(Number(e.target.value))}
+                 aria-label="Custom tip amount"
                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white text-sm focus:border-beacon-500 outline-none transition-colors pr-10"
                  placeholder="Custom amount..."
                  min="1"
@@ -115,7 +118,7 @@ export default function TipButton({ streamId }) {
             } disabled:opacity-50`}
           >
             {status === 'loading' ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Sending...</>
             ) : status === 'success' ? (
               <><Check className="w-4 h-4" /> Sent!</>
             ) : status === 'error' ? (
