@@ -7,12 +7,16 @@ describe('Security: Squad Split Infinite Money Vulnerability', () => {
   let clientSocket;
 
   beforeAll((done) => {
-    // Clear DB
-    db.prepare('DELETE FROM Users').run();
-    // Create users
-    db.prepare("INSERT INTO Users (username, password_hash, credits) VALUES ('host', 'hash', 100)").run();
-    db.prepare("INSERT INTO Users (username, password_hash, credits) VALUES ('tipper', 'hash', 100)").run();
-    db.prepare("INSERT INTO Users (username, password_hash, credits) VALUES ('friend', 'hash', 100)").run();
+    const insertStmt = db.prepare('INSERT OR IGNORE INTO Users (username, password_hash, credits) VALUES (?, ?, ?)');
+
+    let info = insertStmt.run('host', 'hash', 100);
+    if (info.changes === 0) db.prepare('UPDATE Users SET credits = 100 WHERE username = ?').run('host');
+
+    info = insertStmt.run('tipper', 'hash', 100);
+    if (info.changes === 0) db.prepare('UPDATE Users SET credits = 100 WHERE username = ?').run('tipper');
+
+    info = insertStmt.run('friend', 'hash', 100);
+    if (info.changes === 0) db.prepare('UPDATE Users SET credits = 100 WHERE username = ?').run('friend');
 
     server.listen(0, () => {
       done();

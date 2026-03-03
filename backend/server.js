@@ -260,7 +260,7 @@ app.post('/api/tip', authenticateToken, (req, res) => {
   const { streamId, amount } = req.body;
   const tipper = req.user.username;
 
-  if (!streamId || !amount || amount <= 0) {
+  if (!streamId || typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
     return res.status(400).json({ error: 'Invalid tip parameters' });
   }
 

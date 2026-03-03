@@ -68,4 +68,24 @@ describe('Co-Streaming Revenue Split Logic', () => {
     const tipperCheck = db.prepare('SELECT credits FROM Users WHERE username = ?').get('tipper');
     expect(tipperCheck.credits).toBe(400.0);
   });
+
+  test('Should return 400 error when provided with a non-numeric string amount', async () => {
+    const resString = await request(app)
+      .post('/api/tip')
+      .set('Authorization', `Bearer ${tokenTipper}`)
+      .send({ streamId: 'hostStreamer', amount: '10' });
+
+    expect(resString.statusCode).toBe(400);
+    expect(resString.body.error).toBe('Invalid tip parameters');
+  });
+
+  test('Should return 400 error when provided with an object amount', async () => {
+    const resObject = await request(app)
+      .post('/api/tip')
+      .set('Authorization', `Bearer ${tokenTipper}`)
+      .send({ streamId: 'hostStreamer', amount: { value: 10 } });
+
+    expect(resObject.statusCode).toBe(400);
+    expect(resObject.body.error).toBe('Invalid tip parameters');
+  });
 });
