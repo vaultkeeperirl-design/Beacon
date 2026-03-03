@@ -50,7 +50,10 @@ describe('TipButton', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Tip Streamer' }));
 
     // Select 50 CR
-    await userEvent.click(screen.getByText('50 CR'));
+    const fiftyCrButton = screen.getByRole('button', { name: 'Tip 50 credits' });
+    expect(fiftyCrButton).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(fiftyCrButton);
+    expect(fiftyCrButton).toHaveAttribute('aria-pressed', 'true');
 
     const tipActionButton = screen.getByRole('button', { name: 'Tip 50 CR' });
     await userEvent.click(tipActionButton);
@@ -101,10 +104,32 @@ describe('TipButton', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Tip Streamer' }));
 
-    const input = screen.getByPlaceholderText('Custom amount...');
+    const input = screen.getByLabelText('Custom tip amount');
     await userEvent.clear(input);
     await userEvent.type(input, '123');
 
     expect(screen.getByRole('button', { name: 'Tip 123 CR' })).toBeInTheDocument();
+  });
+
+  it('shows "Sending..." text during loading', async () => {
+    // Delay the response to check for loading state
+    let resolveTip;
+    const tipPromise = new Promise(resolve => {
+      resolveTip = resolve;
+    });
+    axios.post.mockReturnValue(tipPromise);
+
+    render(<TipButton streamId={streamId} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tip Streamer' }));
+
+    const tipActionButton = screen.getByRole('button', { name: 'Tip 10 CR' });
+    await userEvent.click(tipActionButton);
+
+    expect(screen.getByText(/Sending\.\.\./)).toBeInTheDocument();
+
+    // Clean up
+    resolveTip({ data: { success: true } });
+    await waitFor(() => expect(screen.queryByText(/Sending\.\.\./)).not.toBeInTheDocument());
   });
 });
