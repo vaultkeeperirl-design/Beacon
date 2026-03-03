@@ -42,7 +42,10 @@ A core architectural principle is **Mandatory Bandwidth Sharing**.
     -   `src/context`: Global state management (P2PContext).
     -   `src/hooks`: Custom hooks for P2P logic and Socket.IO.
 -   **backend/**: Contains the signaling server code.
-    -   `server.js`: Main entry point handling Socket.IO events.
+    -   `server.js`: Main entry point handling Socket.IO events and REST API endpoints.
 -   **docs/**: Project documentation (you are here).
 
-For more details on specific features, see [Features](Features.md).
+## Related Documentation
+
+-   [Features](Features.md): Detailed overview of core platform features.
+-   [Backend REST API](backend-api.md): Reference for authentication, wallet, and user endpoints.
