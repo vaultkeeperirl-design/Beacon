@@ -1,5 +1,6 @@
 import VideoPlayer from '../components/VideoPlayer';
 import Chat from '../components/Chat';
+import axios from 'axios';
 import { Share2, ThumbsUp, MoreHorizontal, UserPlus, UserCheck, Check } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useEffect } from 'react';
@@ -17,6 +18,11 @@ export default function Watch() {
   const { username } = useP2PSettings();
   const [hasStarted, setHasStarted] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [streamInfo, setStreamInfo] = useState({
+    title: 'Building a P2P streaming app from scratch',
+    tags: 'P2P, Decentralized, WebRTC, React, Coding, Open Source',
+    streamer: id
+  });
   const navigate = useNavigate();
   // Using useP2PSettings to avoid re-rendering the whole page every second when stats update
   const { setCurrentStreamId } = useP2PSettings();
@@ -25,6 +31,12 @@ export default function Watch() {
 
   useEffect(() => {
     if (!socket) return;
+
+    const handleStreamInfoUpdated = (info) => {
+      setStreamInfo(info);
+    };
+
+    socket.on('stream-info-updated', handleStreamInfoUpdated);
 
     const handleStreamEnded = ({ redirect }) => {
        if (redirect) {
@@ -38,6 +50,7 @@ export default function Watch() {
     socket.on('stream-ended', handleStreamEnded);
 
     return () => {
+      socket.off('stream-info-updated', handleStreamInfoUpdated);
       socket.off('stream-ended', handleStreamEnded);
     };
   }, [socket, navigate]);
@@ -66,6 +79,16 @@ export default function Watch() {
   useEffect(() => {
     if (socket && id && username) {
       socket.emit('join-stream', { streamId: id, username: username });
+
+      // Fetch current stream info from API
+      const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
+      axios.get(`${API_URL}/streams/${id}`)
+        .then(res => {
+          setStreamInfo(res.data);
+        })
+        .catch(err => {
+          console.error('Error fetching stream info:', err);
+        });
     }
     return () => {
       if (socket) {
@@ -123,7 +146,7 @@ export default function Watch() {
          <div className="py-6 px-4 lg:px-0">
            <div className="flex flex-col md:flex-row items-start justify-between gap-4">
              <div>
-               <h1 className="text-2xl md:text-3xl font-poppins font-extrabold text-brand mb-2 leading-tight">Building a P2P streaming app from scratch</h1>
+               <h1 className="text-2xl md:text-3xl font-poppins font-extrabold text-brand mb-2 leading-tight">{streamInfo.title}</h1>
                <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-400">
                  <div className="flex items-center gap-2">
                     <Link to={`/channel/${id}`} className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center overflow-hidden border border-neutral-700 hover:ring-2 hover:ring-beacon-500 transition-all text-neutral-400">
@@ -132,7 +155,7 @@ export default function Watch() {
                     <Link to={`/channel/${id}`} className="text-white font-bold hover:text-beacon-400 cursor-pointer transition-colors">{id}</Link>
                  </div>
                  <span className="hidden md:inline">•</span>
-                 <span className="bg-neutral-800 px-2 py-0.5 rounded text-beacon-400 font-medium border border-neutral-700">Software Development</span>
+                 <span className="bg-neutral-800 px-2 py-0.5 rounded text-beacon-400 font-medium border border-neutral-700">Decentralized</span>
                  <span className="hidden md:inline">•</span>
                  <span className="flex items-center gap-1 text-red-500 font-semibold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
@@ -193,7 +216,7 @@ export default function Watch() {
                  Check your real-time contribution stats in the bottom right corner!
               </p>
               <div className="mt-5 flex flex-wrap gap-2 relative z-10">
-                 {['P2P', 'Decentralized', 'WebRTC', 'React', 'Coding', 'Open Source'].map(tag => (
+                 {typeof streamInfo.tags === 'string' && streamInfo.tags.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => (
                     <span key={tag} className="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 transition-colors rounded-full text-xs text-neutral-400 font-medium border border-neutral-700 cursor-pointer">#{tag}</span>
                  ))}
               </div>

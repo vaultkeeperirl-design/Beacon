@@ -52,6 +52,12 @@ export default function Broadcast() {
       setCurrentStreamId(username);
       if (socket) {
         socket.emit('join-stream', { streamId: username, username: username });
+        // Send initial stream info
+        socket.emit('update-stream-info', {
+          streamId: username,
+          title,
+          tags
+        });
       }
     } else {
       setCurrentStreamId(null);
@@ -157,13 +163,21 @@ export default function Broadcast() {
   };
 
   const handleUpdateInfo = () => {
-    setIsUpdating(true);
-    // Simulate API call to update stream metadata
-    setTimeout(() => {
-      setIsUpdating(false);
-      setUpdateSuccess(true);
-      setTimeout(() => setUpdateSuccess(false), 3000);
-    }, 1000);
+    if (socket && isLive) {
+      setIsUpdating(true);
+      socket.emit('update-stream-info', {
+        streamId: username,
+        title,
+        tags
+      });
+      // We assume success for the UI feedback, as socket events are fire-and-forget here
+      // but in a real app we might wait for an ack.
+      setTimeout(() => {
+        setIsUpdating(false);
+        setUpdateSuccess(true);
+        setTimeout(() => setUpdateSuccess(false), 3000);
+      }, 500);
+    }
   };
 
   const handleStartPoll = (question, options, duration) => {

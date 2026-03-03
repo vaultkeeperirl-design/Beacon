@@ -27,7 +27,8 @@ const io = new Server(server, {
 });
 
 // Track active streams (where host is present)
-const activeStreams = new Set();
+// Map<streamId, { title: string, tags: string, streamer: string }>
+const activeStreams = new Map();
 // Track active polls per stream
 const activePolls = new Map();
 // Track stream squads for revenue splits
@@ -134,6 +135,36 @@ const distributeCreditsToStream = (streamId, amount) => {
 };
 
 // REST API Endpoints
+
+// Get Active Streams
+app.get('/api/streams', (req, res) => {
+  const streams = Array.from(activeStreams.entries()).map(([id, info]) => {
+    const viewersCount = io.sockets.adapter.rooms.get(id)?.size || 0;
+    return {
+      id,
+      ...info,
+      viewers: viewersCount
+    };
+  });
+  res.json(streams);
+});
+
+// Get Stream Detail
+app.get('/api/streams/:streamId', (req, res) => {
+  const { streamId } = req.params;
+  const info = activeStreams.get(streamId);
+
+  if (!info) {
+    return res.status(404).json({ error: 'Stream not found or offline' });
+  }
+
+  const viewersCount = io.sockets.adapter.rooms.get(streamId)?.size || 0;
+  res.json({
+    id: streamId,
+    ...info,
+    viewers: viewersCount
+  });
+});
 
 // Register
 app.post('/api/auth/register', async (req, res) => {
@@ -487,7 +518,7 @@ io.on('connection', (socket) => {
           streamSquads.delete(prevRoom);
           // Check for active poll and clear its timeout
           cleanupPoll(prevRoom, true);
-          const otherStreams = Array.from(activeStreams);
+          const otherStreams = Array.from(activeStreams.keys());
           const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
           socket.to(prevRoom).emit('stream-ended', { redirect });
        }
@@ -511,8 +542,12 @@ io.on('connection', (socket) => {
         }
 
         // If the user is the host, mark stream as active
-        if (socket.username === streamId) {
-          activeStreams.add(streamId);
+        if (socket.username === streamId && !activeStreams.has(streamId)) {
+          activeStreams.set(streamId, {
+            title: 'Welcome to my stream!',
+            tags: 'Beacon, P2P, Streaming',
+            streamer: socket.username
+          });
         }
 
         // Add to Mesh Tracker
@@ -541,7 +576,7 @@ io.on('connection', (socket) => {
           streamSquads.delete(room);
           // Check for active poll and clear its timeout
           cleanupPoll(room, true);
-          const otherStreams = Array.from(activeStreams);
+          const otherStreams = Array.from(activeStreams.keys());
           const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
           socket.to(room).emit('stream-ended', { redirect });
        }
@@ -759,6 +794,30 @@ io.on('connection', (socket) => {
     cleanupPoll(streamId, true);
   });
 
+  // --- Stream Metadata ---
+  socket.on('update-stream-info', ({ streamId, title, tags }) => {
+    if (!streamId || socket.currentRoom !== streamId) return;
+
+    // Only host can update stream info
+    if (socket.username !== streamId) return;
+
+    // Basic Validation
+    const safeTitle = (typeof title === 'string') ? title.trim().substring(0, 100) : 'Beacon Stream';
+    const safeTags = (typeof tags === 'string') ? tags.trim().substring(0, 100) : '';
+
+    const streamInfo = {
+      title: safeTitle,
+      tags: safeTags,
+      streamer: socket.username
+    };
+
+    activeStreams.set(streamId, streamInfo);
+
+    // Broadcast update to all viewers in the room
+    io.to(streamId).emit('stream-info-updated', streamInfo);
+    console.log(`[StreamInfo] Updated for ${streamId}:`, streamInfo);
+  });
+
   // ------------------
 
   // WebRTC Signaling
@@ -813,7 +872,7 @@ io.on('connection', (socket) => {
 
           cleanupPoll(streamId, true);
 
-          const otherStreams = Array.from(activeStreams);
+          const otherStreams = Array.from(activeStreams.keys());
           const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
           socket.to(streamId).emit('stream-ended', { redirect });
       }
