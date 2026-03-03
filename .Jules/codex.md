@@ -9,3 +9,7 @@
 ## 2024-10-27 - Centralized Troubleshooting
 **Learning:** Common local development and build errors (like `better-sqlite3` bindings missing, ghost processes blocking port 3000, and Electron workspace issues) are scattered across PRs and tribal knowledge.
 **Action:** Created `/docs/troubleshooting.md` to centralize these fixes so new developers have a single reference point for unblocking themselves.
+
+## 2025-03-03 - Testing Guide Documentation
+**Learning:** Developers and contributors lack a centralized testing guide covering Vitest explicit imports, Playwright animations, Jest DB isolation setups, and specific environment rules like reparenting. The knowledge is spread across memory and multiple environments.
+**Action:** Created `docs/testing-guide.md` to centralize this know-how and document clear setups, execution scripts, and troubleshooting tips.
