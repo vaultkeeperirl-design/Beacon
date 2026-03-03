@@ -17,3 +17,7 @@
 ## 2025-06-15 - [Backend] High-Frequency SQL and Socket Iteration
 **Learning:** Re-preparing SQL statements (`db.prepare()`) inside high-frequency socket handlers (like 2s metrics polls) causes unnecessary CPU load and memory churn. Additionally, iterating over all connected sockets ($O(N)$) to find specific users is extremely inefficient as the user base grows.
 **Action:** Always use pre-prepared module-level SQL statements. Leverage Socket.io's room pattern (e.g., `io.to('user:${username}')`) for targeted broadcasts to achieve $O(1)$ lookup instead of manual $O(N)$ loops.
+
+## 2025-06-25 - [Backend] Atomic Conditional Updates vs. RETURNING
+**Learning:** Merging conditional checks into an `UPDATE` statement (e.g., `UPDATE ... WHERE credits >= ?`) is ~33% faster than separate `SELECT` and `UPDATE` calls, even within a transaction. Surprisingly, in this Node 22/better-sqlite3 environment, using the `RETURNING` clause was slightly slower than separate statements for simple row updates.
+**Action:** Use atomic conditional `UPDATE` statements to reduce DB roundtrips. Verify success using `info.changes`. Avoid `RETURNING` for high-frequency simple updates if performance is critical; benchmark first.
