@@ -5,3 +5,7 @@
 ## 2024-10-25 - Implement Mutable User Profiles
 **Learning:** User profiles (`bio`, `avatar_url`) were immutable after registration. A default bio ("I love streaming on Beacon!") was hardcoded, preventing users from customizing their channels, even though the frontend UI expected this capability.
 **Action:** Added a `PATCH /api/users/profile` endpoint to allow authenticated users to update their bio and avatar_url, bringing the backend into alignment with user expectations and frontend capabilities.
+
+## 2026-03-03 - Add Validation to Registration API
+**Learning:** Malformed data can cause frontend breakage. When users are generated with extreme attributes like single character names or whitespace names, it breaks layout. SQLite allows it. We need explicit API-level bounds checking even for basic authentication flows, especially mapping into socket namespaces.
+**Action:** Implemented strict alphanumeric requirements, 3-30 character length restrictions, and simple password boundaries directly inside the REST endpoint `/api/auth/register` in `backend/server.js`.
