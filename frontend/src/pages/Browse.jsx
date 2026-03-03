@@ -1,32 +1,39 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import axios from 'axios';
 import StreamCard from '../components/StreamCard';
 import { Filter, ChevronDown, Flame, Search, X } from 'lucide-react';
-
-const MOCK_STREAMS = [
-  { id: 1, title: 'Building a P2P streaming app from scratch', streamer: 'JulesDev', viewers: '12.5k', tags: ['Coding', 'React', 'WebRTC'], thumbnail: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600' },
-  { id: 2, title: 'Late Night Valorant Ranked Grind', streamer: 'FPS_God', viewers: '8.2k', tags: ['FPS', 'Competitive'], thumbnail: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=600' },
-  { id: 3, title: 'Cooking with reckless abandon', streamer: 'ChefChaos', viewers: '5.1k', tags: ['IRL', 'Cooking'], thumbnail: 'https://images.unsplash.com/photo-1556910103-1c02745a30bf?auto=format&fit=crop&q=80&w=600' },
-  { id: 4, title: 'Just Chatting & Vibe', streamer: 'ChillZone', viewers: '3.4k', tags: ['Just Chatting'], thumbnail: 'https://images.unsplash.com/photo-1527689368864-3a821dbccc34?auto=format&fit=crop&q=80&w=600' },
-  { id: 5, title: 'Speedrunning Mario 64', streamer: 'RetroGamer', viewers: '2.9k', tags: ['Retro', 'Speedrun'], thumbnail: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=600' },
-  { id: 6, title: 'Designing the future of UI', streamer: 'DesignMaster', viewers: '1.8k', tags: ['Design', 'Figma'], thumbnail: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&q=80&w=600' },
-  { id: 7, title: 'Exploring the mountains', streamer: 'TravelBlogger', viewers: '1.2k', tags: ['Travel', 'IRL'], thumbnail: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=600' },
-  { id: 8, title: 'Music Production 101', streamer: 'BeatMaker', viewers: '950', tags: ['Music', 'Creative'], thumbnail: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&q=80&w=600' },
-];
 
 export default function Browse() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
+  const [streams, setStreams] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStreams = async () => {
+      try {
+        const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
+        const res = await axios.get(`${API_URL}/streams`);
+        setStreams(res.data);
+      } catch (err) {
+        console.error('Error fetching streams:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchStreams();
+  }, []);
 
   const filteredStreams = useMemo(() => {
-    if (!query) return MOCK_STREAMS;
+    if (!query) return streams;
     const lowerQuery = query.toLowerCase();
-    return MOCK_STREAMS.filter(stream =>
+    return streams.filter(stream =>
       stream.title.toLowerCase().includes(lowerQuery) ||
       stream.streamer.toLowerCase().includes(lowerQuery) ||
-      stream.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
+      (typeof stream.tags === 'string' && stream.tags.toLowerCase().includes(lowerQuery))
     );
-  }, [query]);
+  }, [query, streams]);
 
   const clearSearch = () => {
     setSearchParams({});
@@ -57,10 +64,19 @@ export default function Browse() {
          </div>
        </div>
 
-       {filteredStreams.length > 0 ? (
+       {isLoading ? (
+         <div className="flex justify-center py-20">
+           <div className="w-10 h-10 border-4 border-beacon-500 border-t-transparent rounded-full animate-spin"></div>
+         </div>
+       ) : filteredStreams.length > 0 ? (
          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
            {filteredStreams.map(stream => (
-             <StreamCard key={stream.id} {...stream} />
+             <StreamCard
+                key={stream.id}
+                {...stream}
+                tags={typeof stream.tags === 'string' ? stream.tags.split(',').map(t => t.trim()) : []}
+                thumbnail={stream.thumbnail || `https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600`}
+              />
            ))}
          </div>
        ) : (
