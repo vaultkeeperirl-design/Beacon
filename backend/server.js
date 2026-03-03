@@ -137,6 +137,15 @@ app.post('/api/auth/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
 
+  // Input Validation
+  if (typeof username !== 'string' || !/^[a-zA-Z0-9]+$/.test(username) || username.length < 3 || username.length > 30) {
+    return res.status(400).json({ error: 'Username must be 3-30 alphanumeric characters' });
+  }
+
+  if (typeof password !== 'string' || password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+  }
+
   try {
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);

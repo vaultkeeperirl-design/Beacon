@@ -83,6 +83,32 @@ describe('Auth API', () => {
       expect(response.status).toBe(400);
     });
 
+    it('should return 400 if username length is invalid or not alphanumeric', async () => {
+      let response = await request(server)
+        .post('/api/auth/register')
+        .send({ username: 'ab', password: 'password123' });
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Username must be 3-30 alphanumeric characters');
+
+      response = await request(server)
+        .post('/api/auth/register')
+        .send({ username: 'test user', password: 'password123' });
+      expect(response.status).toBe(400);
+
+      response = await request(server)
+        .post('/api/auth/register')
+        .send({ username: 'test_user!', password: 'password123' });
+      expect(response.status).toBe(400);
+    });
+
+    it('should return 400 if password is less than 6 characters', async () => {
+      let response = await request(server)
+        .post('/api/auth/register')
+        .send({ username: 'testuser2', password: 'pass' });
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Password must be at least 6 characters long');
+    });
+
     it('should return 409 if username already exists', async () => {
       await request(server)
         .post('/api/auth/register')
