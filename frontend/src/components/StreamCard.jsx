@@ -1,12 +1,23 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, User } from 'lucide-react';
 
 const StreamCard = memo(function StreamCard({ id, title, streamer, viewers, thumbnail, tags, isLive = true }) {
+  const [isLoaded, setIsLoaded] = useState(false);
+
   return (
     <div className="group block space-y-3">
       <Link to={`/watch/${id}`} className="block relative aspect-video rounded-lg overflow-hidden bg-neutral-800 border border-neutral-800 group-hover:border-beacon-500/50 transition-colors">
-        <img src={thumbnail} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+        {!isLoaded && (
+          <div className="absolute inset-0 bg-neutral-800 animate-pulse" />
+        )}
+        <img
+          src={thumbnail}
+          alt={title}
+          onLoad={() => setIsLoaded(true)}
+          className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+          loading="lazy"
+        />
         {isLive && (
           <div className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider shadow-sm">
             Live
