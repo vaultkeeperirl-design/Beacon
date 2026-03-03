@@ -70,9 +70,11 @@ pnpm dev:web
 
 Detailed setup instructions can be found in [docs/Installation.md](docs/Installation.md).
 
-## 🧪 Testing
+## 🧪 Testing & CI
 
 We use standardized commands to run tests across the codebase.
+
+GitHub Actions are configured to automatically run `pnpm check` (which includes both `pnpm lint` and `pnpm test`) on all Pull Requests and pushes to the `main` branch.
 
 ```bash
 # Run all tests (Frontend + Backend)
