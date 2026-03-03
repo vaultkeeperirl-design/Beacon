@@ -1,11 +1,11 @@
 import { memo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, User, Radio, LogOut } from 'lucide-react';
+import { Search, User, Radio, LogOut, Settings } from 'lucide-react';
 import WalletBalance from './WalletBalance';
 import { useP2PSettings } from '../context/P2PContext';
 
 const Navbar = memo(function Navbar() {
-  const { username, user, token, logout } = useP2PSettings();
+  const { username, user, token, logout, userProfile } = useP2PSettings();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const navigate = useNavigate();
@@ -64,8 +64,8 @@ const Navbar = memo(function Navbar() {
                 className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 hover:border-beacon-500 transition-colors overflow-hidden"
                 aria-label="Profile Menu"
               >
-                {user?.avatar_url ? (
-                  <img src={user.avatar_url} alt={username} className="w-full h-full object-cover" />
+                {userProfile?.avatar ? (
+                  <img src={userProfile.avatar} alt={userProfile.username} className="w-full h-full object-cover" />
                 ) : (
                   <User className="w-4 h-4 text-neutral-400" />
                 )}
@@ -77,11 +77,19 @@ const Navbar = memo(function Navbar() {
                     <p className="text-sm font-medium text-white truncate">{username}</p>
                   </div>
                   <Link
-                    to={`/channel/${username}`}
+                    to={`/channel/${userProfile?.username || username}`}
                     onClick={() => setIsDropdownOpen(false)}
                     className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white"
                   >
                     My Channel
+                  </Link>
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white"
+                  >
+                    <Settings className="w-4 h-4 text-beacon-500" />
+                    My Profile
                   </Link>
                   <button
                     onClick={() => {

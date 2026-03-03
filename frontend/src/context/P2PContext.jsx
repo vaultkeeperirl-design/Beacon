@@ -41,6 +41,33 @@ export function P2PProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('beacon_token') || null);
   const [username, setUsername] = useState('Guest'); // Fallback for backward compatibility
 
+  // User Profile State (Source of truth for display info)
+  const [userProfile, setUserProfile] = useState(() => {
+    const saved = localStorage.getItem('beacon_user_profile');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse beacon_user_profile', e);
+      }
+    }
+    return {
+      avatar: null,
+      displayName: 'Guest',
+      username: 'guest',
+      bio: '',
+      interests: [],
+      bandwidthPercent: 50,
+      email: '',
+      social: { twitch: '', twitter: '', discord: '' }
+    };
+  });
+
+  const updateUserProfile = (newProfile) => {
+    setUserProfile(newProfile);
+    localStorage.setItem('beacon_user_profile', JSON.stringify(newProfile));
+  };
+
   const logout = () => {
     localStorage.removeItem('beacon_token');
     setToken(null);
@@ -134,7 +161,15 @@ export function P2PProvider({ children }) {
     lowLatency: false,
   });
 
-  const stats = useRealP2PStats(isSharing, settings, currentStreamId, username);
+  const stats = useRealP2PStats(isSharing, settings, currentStreamId, username) || {
+    uploadSpeed: 0,
+    downloadSpeed: 0,
+    peersConnected: 0,
+    credits: 0.0,
+    totalUploaded: 0,
+    bufferHealth: 0,
+    latency: 0
+  };
 
   const updateSettings = (newSettings) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
@@ -155,8 +190,10 @@ export function P2PProvider({ children }) {
     token,
     login,
     register,
-    logout
-  }), [isSharing, settings, currentStreamId, username, user, token]);
+    logout,
+    userProfile,
+    updateUserProfile
+  }), [isSharing, settings, currentStreamId, username, user, token, userProfile]);
 
   return (
     <P2PSettingsContext.Provider value={settingsValue}>
@@ -190,7 +227,29 @@ export function useP2PStats() {
   if (context === undefined) {
     throw new Error('useP2PStats must be used within a P2PProvider');
   }
-  return context;
+
+  const fallback = {
+    uploadSpeed: 0,
+    downloadSpeed: 0,
+    peersConnected: 0,
+    credits: 0.0,
+    totalUploaded: 0,
+    bufferHealth: 0,
+    latency: 0
+  };
+
+  if (!context) return fallback;
+
+  // Ensure credits and other stats are always defined
+  return {
+    uploadSpeed: context.uploadSpeed ?? fallback.uploadSpeed,
+    downloadSpeed: context.downloadSpeed ?? fallback.downloadSpeed,
+    peersConnected: context.peersConnected ?? fallback.peersConnected,
+    credits: context.credits ?? fallback.credits,
+    totalUploaded: context.totalUploaded ?? fallback.totalUploaded,
+    bufferHealth: context.bufferHealth ?? fallback.bufferHealth,
+    latency: context.latency ?? fallback.latency
+  };
 }
 
 /**

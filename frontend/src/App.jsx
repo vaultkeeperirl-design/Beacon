@@ -7,6 +7,7 @@ import Broadcast from './pages/Broadcast';
 import Wallet from './pages/Wallet';
 import Following from './pages/Following';
 import Channel from './pages/Channel';
+import Profile from './pages/Profile';
 import TermsOfService from './pages/TermsOfService';
 import CommunityGuidelines from './pages/CommunityGuidelines';
 import Login from './pages/Login';
@@ -30,6 +31,7 @@ function App() {
               <Route path="broadcast" element={<Broadcast />} />
               <Route path="wallet" element={<Wallet />} />
               <Route path="following" element={<Following />} />
+              <Route path="profile" element={<Profile />} />
               <Route path="terms" element={<TermsOfService />} />
               <Route path="guidelines" element={<CommunityGuidelines />} />
               <Route path="login" element={<Login />} />
