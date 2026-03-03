@@ -10,11 +10,12 @@ vi.mock('../context/P2PContext', () => ({
 
 // Mock VideoControls to verify props are passed correctly
 vi.mock('./VideoControls', () => ({
-  default: ({ isPlaying, isMuted, isFullscreen }) => (
+  default: ({ isPlaying, isMuted, isFullscreen, volume }) => (
     <div data-testid="video-controls">
       <span data-testid="is-playing">{isPlaying.toString()}</span>
       <span data-testid="is-muted">{isMuted.toString()}</span>
       <span data-testid="is-fullscreen">{isFullscreen.toString()}</span>
+      <span data-testid="volume">{volume.toString()}</span>
     </div>
   )
 }));
@@ -118,6 +119,30 @@ describe('VideoPlayer Keyboard Shortcuts', () => {
 
     fireEvent.keyDown(document, { key: 'f', code: 'KeyF' });
     expect(Element.prototype.requestFullscreen).toHaveBeenCalled();
+  });
+
+  it('changes volume when ArrowUp or ArrowDown is pressed', () => {
+    // ⚡ Aura: Verify keyboard volume controls
+    render(<VideoPlayer />);
+
+    // Focus the container
+    const container = screen.getByTestId('video-controls').parentElement;
+    container.focus();
+
+    // Initial volume is 1
+    expect(screen.getByTestId('volume')).toHaveTextContent('1');
+
+    // Press ArrowDown
+    fireEvent.keyDown(document, { key: 'ArrowDown', code: 'ArrowDown' });
+    expect(screen.getByTestId('volume')).toHaveTextContent('0.9');
+
+    // Press ArrowDown again
+    fireEvent.keyDown(document, { key: 'ArrowDown', code: 'ArrowDown' });
+    expect(screen.getByTestId('volume')).toHaveTextContent('0.8');
+
+    // Press ArrowUp
+    fireEvent.keyDown(document, { key: 'ArrowUp', code: 'ArrowUp' });
+    expect(screen.getByTestId('volume')).toHaveTextContent('0.9');
   });
 
   it('does NOT toggle shortcuts when typing in an input', () => {
