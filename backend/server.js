@@ -403,12 +403,14 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
     return; // Broadcaster has no parent
   }
 
-  // Find a parent for the new viewer
-  // Advanced Routing: Prefer nodes with lower latency and higher upload capacity
+  // ⚡ Performance Optimization: Greedy O(N) Parent Selection
+  // Previously, this used an O(N log N) sort with intermediate object allocations.
+  // Now, we use a single-pass greedy approach to find the best parent, reducing
+  // CPU overhead and GC pressure as the viewer count grows.
   let assignedParent = null;
+  let bestScore = -1;
+  let bestChildrenCount = Infinity;
 
-  // Get all potential parent nodes that can still accept children
-  const potentialParents = [];
   for (const [id, node] of mesh.entries()) {
     if (id !== socketId && node.children.size < MAX_CHILDREN_PER_NODE) {
       // Prioritize broadcaster, then use metrics
@@ -421,20 +423,16 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
         const latencyPenalty = (node.metrics && node.metrics.latency > 0) ? node.metrics.latency : 100;
         score = (uploadScore / latencyPenalty) * 100;
       }
-      potentialParents.push({ id, score, childrenCount: node.children.size });
-    }
-  }
 
-  // Sort by score (descending), then by fewest children to balance the tree
-  potentialParents.sort((a, b) => {
-    if (b.score !== a.score) {
-      return b.score - a.score;
-    }
-    return a.childrenCount - b.childrenCount;
-  });
+      const childrenCount = node.children.size;
 
-  if (potentialParents.length > 0) {
-    assignedParent = potentialParents[0].id;
+      // Update best if this node has a higher score, or same score with fewer children
+      if (score > bestScore || (score === bestScore && childrenCount < bestChildrenCount)) {
+        bestScore = score;
+        bestChildrenCount = childrenCount;
+        assignedParent = id;
+      }
+    }
   }
 
   if (assignedParent) {

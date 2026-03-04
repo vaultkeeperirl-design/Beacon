@@ -21,3 +21,7 @@
 ## 2025-06-25 - [Backend] Atomic Conditional Updates vs. RETURNING
 **Learning:** Merging conditional checks into an `UPDATE` statement (e.g., `UPDATE ... WHERE credits >= ?`) is ~33% faster than separate `SELECT` and `UPDATE` calls, even within a transaction. Surprisingly, in this Node 22/better-sqlite3 environment, using the `RETURNING` clause was slightly slower than separate statements for simple row updates.
 **Action:** Use atomic conditional `UPDATE` statements to reduce DB roundtrips. Verify success using `info.changes`. Avoid `RETURNING` for high-frequency simple updates if performance is critical; benchmark first.
+
+## 2025-07-05 - [Backend] O(N) Greedy Selection vs. O(N log N) Sorting
+**Learning:** Using `Array.sort()` for selecting the best node in a high-frequency tracking Map (like the P2P Mesh) is inefficient. It forces O(N log N) complexity and creates O(N) intermediate objects for every join/leave event, leading to CPU spikes and GC pressure as the viewer count grows.
+**Action:** Implement a single-pass O(N) greedy selection algorithm that tracks the 'best' candidate using primitive variables. This avoids all intermediate allocations and ensures the tracker scales linearly with the number of concurrent viewers.
