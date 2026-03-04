@@ -118,12 +118,50 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Helper to distribute credits to a stream's squad and notify online members
+// Helper to distribute credits to a stream's squad and notify online members.
+// 20% of the amount is split among active relayers, and 80% is split among the squad.
 const distributeCreditsToStream = (streamId, amount) => {
   const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
+  const mesh = streamMeshTopology.get(streamId);
+  const relayers = [];
+
+  if (mesh) {
+    for (const [socketId, node] of mesh.entries()) {
+      // A relayer is a node that is not the broadcaster, has an account, and is actually uploading
+      const socket = io.sockets.sockets.get(socketId);
+      const accountName = socket?.accountName || node.accountName;
+      if (!node.isBroadcaster && accountName && node.metrics && node.metrics.uploadMbps > 0) {
+        relayers.push({ username: accountName, split: 0 }); // Split will be calculated
+      }
+    }
+  }
+
+  const RELAY_PORTION = 0.20;
+  const relayTotal = amount * RELAY_PORTION;
+  const squadTotal = amount - (relayers.length > 0 ? relayTotal : 0);
 
   try {
-    const updates = distributeCreditsTx(squad, amount);
+    const updates = db.transaction(() => {
+      const results = [];
+
+      // Distribute 80% to squad
+      results.push(...distributeCredits(squad, squadTotal));
+
+      // Distribute 20% split equally among relayers
+      if (relayers.length > 0) {
+        const perRelayerAmount = relayTotal / relayers.length;
+        for (const relayer of relayers) {
+          updateCreditsStmt.run(perRelayerAmount, relayer.username);
+          const row = getCreditsStmt.get(relayer.username);
+          if (row) {
+            results.push({ username: relayer.username, balance: row.credits });
+          }
+        }
+      }
+
+      return results;
+    })();
+
     // Emit updates after successful transaction to prevent state desync
     for (const update of updates) {
       io.to(`user:${update.username}`).emit('wallet-update', { balance: update.balance });
@@ -494,11 +532,20 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
     node.isBroadcaster = isBroadcaster;
+    const socket = io.sockets.sockets.get(socketId);
+    if (socket?.accountName) node.accountName = socket.accountName;
     // Only return if it already has a parent or it's the broadcaster.
     // If it exists but has no parent (orphan), we continue to find it one.
     if (node.parent || isBroadcaster) return;
   } else {
-    mesh.set(socketId, { children: new Set(), parent: null, isBroadcaster, metrics: { latency: 0, uploadMbps: 0 } });
+    const socket = io.sockets.sockets.get(socketId);
+    mesh.set(socketId, {
+      children: new Set(),
+      parent: null,
+      isBroadcaster,
+      accountName: socket?.accountName || null,
+      metrics: { latency: 0, uploadMbps: 0 }
+    });
   }
 
   if (isBroadcaster) {
@@ -603,6 +650,15 @@ io.on('connection', (socket) => {
 
       socket.username = username;
       socket.accountName = accountName;
+
+      // Persist accountName in the mesh topology for revenue sharing if node already exists
+      if (streamId && streamMeshTopology.has(streamId)) {
+        const mesh = streamMeshTopology.get(streamId);
+        if (mesh.has(socket.id)) {
+          mesh.get(socket.id).accountName = accountName;
+        }
+      }
+
       // Join user-specific room for real-time wallet updates across devices/tabs
       // We use accountName as the canonical identifier for wallet sync
       socket.join(`user:${accountName}`);
