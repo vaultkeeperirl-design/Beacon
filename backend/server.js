@@ -119,11 +119,51 @@ const authenticateToken = (req, res, next) => {
 };
 
 // Helper to distribute credits to a stream's squad and notify online members
+// Implements decentralized revenue sharing: a portion is shared with active P2P relayers.
 const distributeCreditsToStream = (streamId, amount) => {
   const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
+  const RELAY_REVENUE_SHARE = 0.20; // 20% of ad revenue goes to the relay mesh
+
+  // Find valid relayers in the mesh (logged in, not the broadcaster, and actively uploading)
+  const mesh = streamMeshTopology.get(streamId);
+  const relayers = [];
+  if (mesh) {
+    for (const node of mesh.values()) {
+      if (!node.isBroadcaster && node.accountName && node.metrics && node.metrics.uploadMbps > 0) {
+        relayers.push(node.accountName);
+      }
+    }
+  }
+
+  // Deduplicate relayers (in case of multiple tabs)
+  const uniqueRelayers = [...new Set(relayers)];
+  let distributionList = [];
+
+  if (uniqueRelayers.length > 0) {
+    const relayPoolPercent = RELAY_REVENUE_SHARE * 100;
+    const squadPoolPercent = 100 - relayPoolPercent;
+
+    // Distribute relay pool equally among unique relayers
+    const splitPerRelayer = relayPoolPercent / uniqueRelayers.length;
+    uniqueRelayers.forEach(username => {
+      distributionList.push({ username, split: splitPerRelayer });
+    });
+
+    // Adjust squad splits to fit within their remaining pool
+    squad.forEach(member => {
+      distributionList.push({
+        username: member.username,
+        split: (member.split * squadPoolPercent) / 100
+      });
+    });
+    console.log(`[Revenue] Distributing to ${uniqueRelayers.length} relayers (${relayPoolPercent}%) and squad (${squadPoolPercent}%)`);
+  } else {
+    // No relayers, 100% goes to the squad
+    distributionList = squad;
+  }
 
   try {
-    const updates = distributeCreditsTx(squad, amount);
+    const updates = distributeCreditsTx(distributionList, amount);
     // Emit updates after successful transaction to prevent state desync
     for (const update of updates) {
       io.to(`user:${update.username}`).emit('wallet-update', { balance: update.balance });
@@ -382,7 +422,7 @@ const streamMeshTopology = new Map();
 // Configuration
 const MAX_CHILDREN_PER_NODE = 2; // Keep it low for browser WebRTC stability
 
-function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
+function addNodeToMesh(streamId, socketId, isBroadcaster = false, accountName = null) {
   if (!streamMeshTopology.has(streamId)) {
     streamMeshTopology.set(streamId, new Map());
   }
@@ -394,10 +434,17 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
     node.isBroadcaster = isBroadcaster; // Update broadcaster status just in case
+    node.accountName = accountName; // Update account name
     return;
   }
 
-  mesh.set(socketId, { children: new Set(), parent: null, isBroadcaster, metrics: { latency: 0, uploadMbps: 0 } });
+  mesh.set(socketId, {
+    children: new Set(),
+    parent: null,
+    isBroadcaster,
+    accountName,
+    metrics: { latency: 0, uploadMbps: 0 }
+  });
 
   if (isBroadcaster) {
     return; // Broadcaster has no parent
@@ -551,7 +598,7 @@ io.on('connection', (socket) => {
         }
 
         // Add to Mesh Tracker
-        addNodeToMesh(streamId, socket.id, socket.username === streamId);
+        addNodeToMesh(streamId, socket.id, socket.username === streamId, socket.accountName);
 
         // Broadcast updated participant count to the room (and acknowledged requester)
         const count = io.sockets.adapter.rooms.get(streamId)?.size || 0;

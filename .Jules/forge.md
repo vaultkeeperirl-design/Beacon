@@ -33,3 +33,7 @@
 ## 2025-05-27 - [Transactional Integrity and Side Effects]
 **Learning:** Decoupling side effects (like Socket.io emissions) from database transactions is crucial for maintaining consistency. Emitting events inside a transaction can lead to "phantom" updates if the transaction later fails.
 **Action:** Refactor data distribution helpers to return a list of updates, and have the caller perform the broadcasts only after the transaction successfully commits.
+
+## 2025-05-28 - [Decentralized Revenue Distribution]
+**Learning:** Implementing a decentralized revenue model requires linking real-time network topology (mesh nodes) with authenticated user identities (wallets). By capturing the `accountName` during the socket handshake and persisting it in the mesh state, ad revenue can be dynamically partitioned between content creators (squad) and bandwidth contributors (relayers) using a unified transactional credit helper.
+**Action:** Always ensure that identity is propagated into the system state (like P2P mesh) if that state is later used for financial or credit-based distributions.
