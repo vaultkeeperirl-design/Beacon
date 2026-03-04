@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSocket } from './useSocket';
 import { subscribeToMeshStats } from './useP2PStream';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 
 /**
  * Custom hook to manage and format P2P statistics for the user interface.
@@ -41,7 +42,6 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
   useEffect(() => {
     const token = localStorage.getItem('beacon_token');
     if (token) {
-      const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
       axios.get(`${API_URL}/wallet`, {
         headers: { Authorization: `Bearer ${token}` }
       })

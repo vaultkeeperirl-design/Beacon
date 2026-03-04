@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Coins, Heart, Check, AlertCircle } from 'lucide-react';
 import { useP2PSettings } from '../context/P2PContext';
+import { API_URL } from '../config/api';
 
 /**
  * TipButton Component
@@ -39,7 +40,6 @@ export default function TipButton({ streamId }) {
 
     setStatus('loading');
     try {
-      const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
       await axios.post(
         `${API_URL}/tip`,
         { streamId, amount },

@@ -10,6 +10,7 @@ import { useSocket } from '../hooks/useSocket';
 import { useP2PStream } from '../hooks/useP2PStream';
 import StreamHealthIndicator from '../components/StreamHealthIndicator';
 import TipButton from '../components/TipButton';
+import { API_URL } from '../config/api';
 
 import { useState } from 'react';
 
@@ -81,7 +82,6 @@ export default function Watch() {
       socket.emit('join-stream', { streamId: id, username: username });
 
       // Fetch current stream info from API
-      const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
       axios.get(`${API_URL}/streams/${id}`)
         .then(res => {
           setStreamInfo(res.data);

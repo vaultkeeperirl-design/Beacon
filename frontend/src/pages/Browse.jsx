@@ -4,6 +4,7 @@ import axios from 'axios';
 import StreamCard from '../components/StreamCard';
 import StreamCardSkeleton from '../components/StreamCardSkeleton';
 import { Filter, ChevronDown, Flame, Search, X } from 'lucide-react';
+import { API_URL } from '../config/api';
 
 export default function Browse() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -14,7 +15,6 @@ export default function Browse() {
   useEffect(() => {
     const fetchStreams = async () => {
       try {
-        const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
         const res = await axios.get(`${API_URL}/streams`);
         setStreams(res.data);
       } catch (err) {
