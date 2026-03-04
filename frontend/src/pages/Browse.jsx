@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import StreamCard from '../components/StreamCard';
+import StreamCardSkeleton from '../components/StreamCardSkeleton';
 import { Filter, ChevronDown, Flame, Search, X } from 'lucide-react';
 
 export default function Browse() {
@@ -65,8 +66,10 @@ export default function Browse() {
        </div>
 
        {isLoading ? (
-         <div className="flex justify-center py-20">
-           <div className="w-10 h-10 border-4 border-beacon-500 border-t-transparent rounded-full animate-spin"></div>
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+           {Array.from({ length: 8 }).map((_, i) => (
+             <StreamCardSkeleton key={i} />
+           ))}
          </div>
        ) : filteredStreams.length > 0 ? (
          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
