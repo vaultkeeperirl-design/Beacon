@@ -15,3 +15,7 @@
 ## 2024-05-27 - Input Field Accessibility
 **Learning:** Relying solely on `placeholder` attributes for text input fields (like in chat forms) is insufficient for screen readers. Screen readers may inconsistently read or completely ignore placeholders, leaving the user without context for what the input is for.
 **Action:** Always provide an explicit `aria-label` or an associated `<label>` element for all input fields to ensure they are fully accessible to screen reader users.
+
+## 2026-03-04 - Co-Streaming Invite Input Accessibility
+**Learning:** Relying solely on placeholders for input fields within co-streaming features creates accessibility gaps for screen readers.
+**Action:** Ensure all functional input fields, even secondary ones like guest invites, include explicit `aria-label` attributes to clearly communicate their purpose.

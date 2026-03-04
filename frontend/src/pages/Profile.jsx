@@ -83,7 +83,7 @@ export default function Profile() {
         body: JSON.stringify(formData),
         headers: { 'Content-Type': 'application/json' }
       });
-    } catch (err) {
+    } catch {
       // Ignore error since API doesn't exist
     }
 

@@ -5,7 +5,7 @@ import WalletBalance from './WalletBalance';
 import { useP2PSettings } from '../context/P2PContext';
 
 const Navbar = memo(function Navbar() {
-  const { username, user, token, logout, userProfile } = useP2PSettings();
+  const { username, token, logout, userProfile } = useP2PSettings();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const navigate = useNavigate();
