@@ -97,6 +97,9 @@ cd frontend && pnpm test:watch
 pnpm test:watch
 ```
 
+### Continuous Integration (CI)
+We use GitHub Actions to automatically verify code quality. Every push to the `main` branch and every pull request will automatically run `pnpm check` to ensure both the linter and test suite pass without errors.
+
 ## 🛠️ Utilities & DX Commands
 
 We have added a few commands to make working on Beacon faster:
