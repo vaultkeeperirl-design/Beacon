@@ -286,6 +286,106 @@ app.get('/api/users/:username', (req, res) => {
   }
 });
 
+// Follow a User
+app.post('/api/users/:username/follow', authenticateToken, (req, res) => {
+  const followeeUsername = req.params.username;
+  const followerUsername = req.user.username;
+
+  if (followeeUsername === followerUsername) {
+    return res.status(400).json({ error: 'Cannot follow yourself' });
+  }
+
+  try {
+    const followerStmt = db.prepare('SELECT id FROM Users WHERE username = ?');
+    const followeeStmt = db.prepare('SELECT id FROM Users WHERE username = ?');
+
+    const follower = followerStmt.get(followerUsername);
+    const followee = followeeStmt.get(followeeUsername);
+
+    if (!followee) return res.status(404).json({ error: 'User to follow not found' });
+
+    // Check if already following
+    const checkStmt = db.prepare('SELECT * FROM Follows WHERE follower_id = ? AND followee_id = ?');
+    const existingFollow = checkStmt.get(follower.id, followee.id);
+
+    if (existingFollow) {
+      return res.status(409).json({ error: 'Already following this user' });
+    }
+
+    const followTx = db.transaction(() => {
+      const insertStmt = db.prepare('INSERT INTO Follows (follower_id, followee_id) VALUES (?, ?)');
+      insertStmt.run(follower.id, followee.id);
+
+      const updateCountStmt = db.prepare('UPDATE Users SET follower_count = follower_count + 1 WHERE id = ?');
+      updateCountStmt.run(followee.id);
+    });
+
+    followTx();
+
+    res.json({ success: true, message: `Successfully followed ${followeeUsername}` });
+  } catch (err) {
+    console.error('Follow error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Unfollow a User
+app.delete('/api/users/:username/follow', authenticateToken, (req, res) => {
+  const followeeUsername = req.params.username;
+  const followerUsername = req.user.username;
+
+  try {
+    const followerStmt = db.prepare('SELECT id FROM Users WHERE username = ?');
+    const followeeStmt = db.prepare('SELECT id FROM Users WHERE username = ?');
+
+    const follower = followerStmt.get(followerUsername);
+    const followee = followeeStmt.get(followeeUsername);
+
+    if (!followee) return res.status(404).json({ error: 'User to unfollow not found' });
+
+    // Check if actually following
+    const checkStmt = db.prepare('SELECT * FROM Follows WHERE follower_id = ? AND followee_id = ?');
+    const existingFollow = checkStmt.get(follower.id, followee.id);
+
+    if (!existingFollow) {
+      return res.status(400).json({ error: 'Not following this user' });
+    }
+
+    const unfollowTx = db.transaction(() => {
+      const deleteStmt = db.prepare('DELETE FROM Follows WHERE follower_id = ? AND followee_id = ?');
+      deleteStmt.run(follower.id, followee.id);
+
+      const updateCountStmt = db.prepare('UPDATE Users SET follower_count = follower_count - 1 WHERE id = ?');
+      updateCountStmt.run(followee.id);
+    });
+
+    unfollowTx();
+
+    res.json({ success: true, message: `Successfully unfollowed ${followeeUsername}` });
+  } catch (err) {
+    console.error('Unfollow error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Get Following List
+app.get('/api/users/:username/following', (req, res) => {
+  try {
+    const stmt = db.prepare(`
+      SELECT u.id, u.username, u.avatar_url, u.bio, u.follower_count
+      FROM Users u
+      JOIN Follows f ON u.id = f.followee_id
+      JOIN Users follower ON follower.id = f.follower_id
+      WHERE follower.username = ?
+    `);
+    const following = stmt.all(req.params.username);
+    res.json(following);
+  } catch (err) {
+    console.error('Get following error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // Get Wallet Balance
 app.get('/api/wallet', authenticateToken, (req, res) => {
   try {

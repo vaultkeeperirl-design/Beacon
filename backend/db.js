@@ -30,8 +30,17 @@ db.exec(`
     bio TEXT,
     follower_count INTEGER DEFAULT 0,
     credits REAL DEFAULT 0.0
-  )
+  );
+
+  CREATE TABLE IF NOT EXISTS Follows (
+    follower_id INTEGER NOT NULL,
+    followee_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (follower_id, followee_id),
+    FOREIGN KEY (follower_id) REFERENCES Users(id) ON DELETE CASCADE,
+    FOREIGN KEY (followee_id) REFERENCES Users(id) ON DELETE CASCADE
+  );
 `);
-console.log('Users table ready.');
+console.log('Database tables ready.');
 
 module.exports = db;
