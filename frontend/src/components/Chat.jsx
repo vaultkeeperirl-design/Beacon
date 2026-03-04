@@ -23,6 +23,7 @@ const Chat = memo(function Chat({
   const [input, setInput] = useState('');
 
   const chatEndRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Note: Resetting of messages when streamId changes is now handled by a 'key' on
   // the component in Watch.jsx, which is more idiomatic and avoids cascading renders.
@@ -32,6 +33,22 @@ const Chat = memo(function Chat({
     // for faster, less CPU-intensive scrolling during high-frequency chat updates.
     chatEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages]);
+
+  // Global 'Enter' listener to automatically focus chat input
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      // If user presses Enter and we are NOT already in an interactive element
+      const activeElement = document.activeElement;
+      const activeTag = activeElement?.tagName;
+      const isContentEditable = activeElement?.isContentEditable;
+      if (e.key === 'Enter' && !isContentEditable && !['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'A'].includes(activeTag)) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -64,11 +81,17 @@ const Chat = memo(function Chat({
       <form onSubmit={handleSubmit} className="p-4 border-t border-neutral-800 bg-neutral-900/80 backdrop-blur-md">
         <div className="relative group focus-within:ring-1 focus-within:ring-beacon-500 rounded-lg transition-all">
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.target.blur();
+              }
+            }}
             className="w-full bg-neutral-800/50 text-white rounded-lg pl-3 pr-10 py-2.5 text-sm focus:outline-none placeholder-neutral-600 transition-colors border border-transparent focus:border-beacon-500/50"
-            placeholder={isConnected ? "Send a message..." : "Connecting..."}
+            placeholder={isConnected ? "Send a message... (Press Enter)" : "Connecting..."}
             disabled={!isConnected}
             aria-label="Chat message"
           />
