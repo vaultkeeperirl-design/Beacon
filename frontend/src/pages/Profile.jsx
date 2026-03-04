@@ -97,7 +97,11 @@ export default function Profile() {
       <div className="max-w-4xl mx-auto py-8 px-4">
         {/* Toast */}
         {toast && (
-          <div className="fixed bottom-8 right-8 bg-green-600 text-white px-6 py-3 rounded-lg shadow-2xl z-50 flex items-center gap-3 animate-bounce border border-green-400">
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed bottom-8 right-8 bg-green-600 text-white px-6 py-3 rounded-lg shadow-2xl z-50 flex items-center gap-3 animate-bounce border border-green-400"
+          >
             <span>{toast}</span>
           </div>
         )}
@@ -141,6 +145,7 @@ export default function Profile() {
                   </div>
                   <button
                     type="button"
+                    aria-label="Change avatar"
                     onClick={() => fileInputRef.current.click()}
                     className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   >
@@ -158,8 +163,9 @@ export default function Profile() {
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Display Name</label>
+                    <label htmlFor="display-name" className="block text-xs font-bold text-neutral-500 uppercase mb-1">Display Name</label>
                     <input
+                      id="display-name"
                       type="text"
                       name="displayName"
                       required
@@ -169,10 +175,11 @@ export default function Profile() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-500 uppercase mb-1">Username / Handle</label>
+                    <label htmlFor="username" className="block text-xs font-bold text-neutral-500 uppercase mb-1">Username / Handle</label>
                     <div className="relative">
                       <span className="absolute left-4 top-2 text-neutral-500">@</span>
                       <input
+                        id="username"
                         type="text"
                         name="username"
                         required
@@ -221,8 +228,9 @@ export default function Profile() {
               <div className="bg-neutral-900 p-8 rounded-2xl border border-neutral-800">
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-500 uppercase mb-2">Bio</label>
+                    <label htmlFor="bio" className="block text-xs font-bold text-neutral-500 uppercase mb-2">Bio</label>
                     <textarea
+                      id="bio"
                       name="bio"
                       maxLength={500}
                       rows={4}
@@ -323,7 +331,11 @@ export default function Profile() {
     <div className="max-w-6xl mx-auto py-8 px-4">
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-8 right-8 bg-green-600 text-white px-6 py-3 rounded-lg shadow-2xl z-50 flex items-center gap-3 border border-green-400">
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-8 right-8 bg-green-600 text-white px-6 py-3 rounded-lg shadow-2xl z-50 flex items-center gap-3 border border-green-400"
+        >
           <span>{toast}</span>
         </div>
       )}
