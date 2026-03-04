@@ -9,3 +9,7 @@
 ## 2026-03-03 - Add Validation to Registration API
 **Learning:** Malformed data can cause frontend breakage. When users are generated with extreme attributes like single character names or whitespace names, it breaks layout. SQLite allows it. We need explicit API-level bounds checking even for basic authentication flows, especially mapping into socket namespaces.
 **Action:** Implemented strict alphanumeric requirements, 3-30 character length restrictions, and simple password boundaries directly inside the REST endpoint `/api/auth/register` in `backend/server.js`.
+
+## 2025-02-13 - Implement Persistent Follows API
+**Learning:** The frontend allowed users to "follow" streams, but it was purely relying on `localStorage`. If users cleared their cache or logged in on another device, they lost their followed list. This breaks the expected user experience.
+**Action:** Added a robust `Follows` mapping table to the backend `Users` database and implemented `POST`, `DELETE`, and `GET` endpoints for `/api/users/:username/follow`. This ensures follow states are durable, device-agnostic, and safe.
