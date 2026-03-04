@@ -5,3 +5,7 @@
 ## 2026-03-03 - Automated UI Refresh
 **Learning:** The UI has been updated recently and screenshots require regeneration. The generation script `scripts/generate_readme_screenshots.py` successfully captured these changes while pointing to `localhost:5173`.
 **Action:** Run the generate script regularly after UI changes to ensure documentation stays fresh.
+
+## 2026-03-04 - Refresh README Screenshots
+**Learning:** Running the test automation scripts regularly captures the latest state of the UI which may have been changed, so the README screenshots stay fresh.
+**Action:** Ran `python scripts/generate_readme_screenshots.py` to capture the newest screenshots for the README.
