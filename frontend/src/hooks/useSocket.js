@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-
-const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000' : window.location.origin);
+import { SOCKET_URL } from '../config/api';
 
 /**
  * Singleton instance of the Socket.IO client.

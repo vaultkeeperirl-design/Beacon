@@ -1,6 +1,7 @@
 import React, { useState, useEffect, memo } from 'react';
 import axios from 'axios';
 import { useP2PSettings } from '../context/P2PContext';
+import { API_URL } from '../config/api';
 
 /**
  * ⚡ Performance Optimization: Isolated Ad Break Timer
@@ -26,7 +27,6 @@ const AdBreakButton = memo(function AdBreakButton() {
 
     try {
       // Trigger ad revenue distribution on backend
-      const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
       await axios.post(
         `${API_URL}/ads/trigger`,
         { streamId: username },

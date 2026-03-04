@@ -15,3 +15,6 @@
 ## 2025-03-03 - Extract Keyboard Shortcuts from VideoPlayer
 **Learning:** Extracting isolated behavioral logic, like keyboard event listeners for video playback, into a custom hook (`useVideoShortcuts`) significantly reduces the visual noise in complex presentation components like `VideoPlayer.jsx`.
 **Action:** When a component grows large with disparate concerns (e.g., stats overlays, playback synchronization, keyboard shortcuts), look for cohesive logic chunks that can be safely decoupled into custom hooks. Ensure any callbacks passed to the hook are properly wrapped in `useCallback` if they depend on unstable values.
+## 2026-03-04 - Centralize API and Socket URL configuration
+**Learning:** The `API_URL` and `SOCKET_URL` string concatenation and environment fallback logic was duplicated across many frontend components (hooks, contexts, pages, components). This duplication creates a high risk of inconsistencies if environment structures or logic change, and litters application logic files with configuration boilerplate.
+**Action:** Extracted these URLs to a centralized `frontend/src/config/api.js` file, creating a single source of truth for API communication paths. Next time, identify environment-dependent constants early and establish a configuration pattern to prevent scattered duplications.

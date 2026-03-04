@@ -4,6 +4,7 @@ import axios from 'axios';
 import { UserPlus, UserCheck, MessageSquare, Share2, MoreHorizontal, Video, Calendar, Info, Clock, Heart } from 'lucide-react';
 import { useP2PSettings } from '../context/P2PContext';
 import StreamCard from '../components/StreamCard';
+import { API_URL } from '../config/api';
 
 export default function Channel() {
   const { username } = useParams();
@@ -16,7 +17,6 @@ export default function Channel() {
 
   useEffect(() => {
     // Fetch real channel data
-    const API_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : `${window.location.origin}/api`);
     axios.get(`${API_URL}/users/${username}`)
       .then(res => {
         setChannelData({
