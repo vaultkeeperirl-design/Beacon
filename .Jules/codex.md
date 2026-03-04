@@ -13,3 +13,7 @@
 ## 2025-03-03 - Testing Guide Documentation
 **Learning:** Developers and contributors lack a centralized testing guide covering Vitest explicit imports, Playwright animations, Jest DB isolation setups, and specific environment rules like reparenting. The knowledge is spread across memory and multiple environments.
 **Action:** Created `docs/testing-guide.md` to centralize this know-how and document clear setups, execution scripts, and troubleshooting tips.
+
+## 2025-03-04 - Socket.IO Event Reference
+**Learning:** The `backend-api.md` exclusively documented REST endpoints while real-time WebSocket communication and P2P connection logic managed by Socket.IO were undocumented, leaving a crucial gap for contributors building real-time features.
+**Action:** Created `docs/socket-events.md` to detail all WebSocket events such as `metrics-report` (for economy), WebRTC signaling (offers/answers), and mesh topology updates.

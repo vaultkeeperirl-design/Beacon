@@ -49,3 +49,4 @@ A core architectural principle is **Mandatory Bandwidth Sharing**.
 
 -   [Features](Features.md): Detailed overview of core platform features.
 -   [Backend REST API](backend-api.md): Reference for authentication, wallet, and user endpoints.
+-   [Socket.IO Events](socket-events.md): Reference for real-time interactions, WebRTC signaling, and P2P mesh logic.
