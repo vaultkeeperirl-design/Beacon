@@ -393,11 +393,13 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   // This can happen on reconnects or re-joins to the same stream
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
-    node.isBroadcaster = isBroadcaster; // Update broadcaster status just in case
-    return;
+    node.isBroadcaster = isBroadcaster;
+    // Only return if it already has a parent or it's the broadcaster.
+    // If it exists but has no parent (orphan), we continue to find it one.
+    if (node.parent || isBroadcaster) return;
+  } else {
+    mesh.set(socketId, { children: new Set(), parent: null, isBroadcaster, metrics: { latency: 0, uploadMbps: 0 } });
   }
-
-  mesh.set(socketId, { children: new Set(), parent: null, isBroadcaster, metrics: { latency: 0, uploadMbps: 0 } });
 
   if (isBroadcaster) {
     return; // Broadcaster has no parent
