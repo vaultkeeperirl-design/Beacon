@@ -206,6 +206,42 @@ describe("Backend Security", () => {
     expect(walletData.balance).toBeLessThanOrEqual(100); // 100 is way below millions
   });
 
+  test("should prevent infinite credit exploits via rapid metrics-report spam", async () => {
+    const streamId = "stream-spam";
+    const username = "SpammerNode";
+
+    const updatePromise1 = waitFor(clientSocket, "room-users-update");
+    clientSocket.emit("join-stream", { streamId, username });
+    await updatePromise1;
+
+    const db = require('../db');
+    try {
+        db.prepare("INSERT INTO Users (username, password_hash, credits) VALUES ('SpammerNode', 'hash', 0)").run();
+    } catch (e) {
+        // Ignore if exists
+    }
+
+    let walletUpdateCount = 0;
+    clientSocket.on("wallet-update", (data) => {
+        walletUpdateCount++;
+    });
+
+    // Spam metrics-report 10 times in quick succession
+    for (let i = 0; i < 10; i++) {
+        clientSocket.emit("metrics-report", {
+            streamId,
+            latency: 10,
+            uploadMbps: 100
+        });
+    }
+
+    // Wait a bit to see how many updates we get
+    await new Promise(r => setTimeout(r, 300));
+
+    // Because of rate limiting, we should only get exactly 1 update, not 10.
+    expect(walletUpdateCount).toBe(1);
+  });
+
   test("should prevent cross-room signaling", async () => {
     const streamA = "stream-A";
     const streamB = "stream-B";
