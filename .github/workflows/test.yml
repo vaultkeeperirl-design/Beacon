@@ -25,7 +25,7 @@ jobs:
           node-version: 18
 
       - name: Install Dependencies
-        run: pnpm bootstrap
+        run: pnpm install && pnpm bootstrap
 
       - name: Run Checks (Lint & Test)
         run: pnpm check
