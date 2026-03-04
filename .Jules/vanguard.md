@@ -4,3 +4,6 @@
 ## 2026-03-02 - Added test coverage to TipButton.jsx
 **Learning:** Added unit test coverage for the `TipButton.jsx` to ensure happy and error path works appropriately. Mocked `useP2PSettings` from `../context/P2PContext` to support authentication testing.
 **Action:** Always write unit test coverage to ensure critical flows have automated regression testing.
+## 2026-03-04 - Add missing useP2PStream test
+**Learning:** Testing custom React hooks that interact heavily with WebRTC APIs and socket connections requires careful isolation. When mocking `RTCPeerConnection`, assigning classes directly to `globalThis` instead of `global` avoids ESLint `no-undef` errors. Additionally, testing socket listener cleanup correctly requires intercepting the mocked callback and awaiting internal promises before asserting component unmount effects.
+**Action:** When writing tests that mock browser globals in Vitest, explicitly use `globalThis`. Always cleanly encapsulate event listener callbacks with mock implementations so they can be simulated dynamically during testing.
