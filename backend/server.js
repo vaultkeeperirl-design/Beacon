@@ -632,6 +632,13 @@ io.on('connection', (socket) => {
   socket.on('metrics-report', ({ streamId, latency, uploadMbps }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
+    // Rate limiting: 1 report per 1000ms to prevent infinite credit exploits
+    const now = Date.now();
+    if (socket.lastMetricsTime && now - socket.lastMetricsTime < 1000) {
+      return;
+    }
+    socket.lastMetricsTime = now;
+
     // Credit Economy Calculation
     if (socket.accountName && uploadMbps > 0) {
       // Security: Cap uploadMbps to realistic maximum (100 Mbps) to prevent infinite credit exploits
