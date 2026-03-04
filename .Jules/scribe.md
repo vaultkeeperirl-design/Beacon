@@ -8,3 +8,7 @@
 ## 2024-03-03 - Documenting Backend REST API Endpoints
 **Learning:** The `backend/server.js` file contained multiple undocumented REST API endpoints (`/api/auth/*`, `/api/users/*`, `/api/wallet`, `/api/tip`, etc.) alongside the Socket.IO signaling logic. Because these endpoints were undocumented, it wasn't immediately clear what payloads were required for authentication, tipping, or fetching profiles.
 **Action:** Created `docs/backend-api.md` to cleanly document the available REST endpoints, including request bodies, authentication requirements, and typical JSON responses. Also updated `docs/Architecture.md` to link to this new documentation file.
+
+## 2024-03-04 - Documenting Video Shortcuts Hook
+**Learning:** The `useVideoShortcuts` hook in the frontend handles global keyboard event listeners for media controls. However, the precise scoping of these listeners (e.g., ignoring form inputs and explicitly checking if the video container is focused before intercepting `ArrowUp`/`ArrowDown`) was completely undocumented. This made the code risky to refactor, as future engineers or agents might inadvertently break page scrolling.
+**Action:** Added comprehensive JSDoc to `useVideoShortcuts.js` explicitly explaining the hook's purpose, its parameter expectations, and documenting the critical focus safety checks that prevent scroll hijacking and input field interference.
