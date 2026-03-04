@@ -69,33 +69,22 @@ describe("Mesh Network Tree Healing and Routing", () => {
               // 4. Force Viewer 1 to disconnect
               viewer1.disconnect();
 
-              // Wait for re-parenting
+              // Wait for re-parenting. When Viewer 1 disconnects, Viewer 2 (its child)
+              // should be orphaned and then re-assigned to the Broadcaster.
               broadcaster.on("p2p-initiate-connection", ({ childId }) => {
                 if (testCompleted) return;
-                testCompleted = true;
-                done();
+                if (childId === viewer2.id) {
+                  testCompleted = true;
+                  done();
+                }
               });
 
-              // Just in case it gets parented to someone else
-              viewer2.on("p2p-initiate-connection", ({ childId }) => {
-                if (testCompleted) return;
-                testCompleted = true;
-                done();
-              });
-
-              viewer3.on("p2p-initiate-connection", ({ childId }) => {
-                if (testCompleted) return;
-                testCompleted = true;
-                done();
-              });
-
-              // Fallback resolve
+              // If it fails to heal within 2 seconds, fail the test
               setTimeout(() => {
                 if (!testCompleted) {
-                   testCompleted = true;
-                   done();
+                   done(new Error("Mesh failed to heal: Orphaned viewer was not re-parented to broadcaster"));
                 }
-              }, 500);
+              }, 2000);
             }
           };
 
