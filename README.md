@@ -95,6 +95,15 @@ cd frontend && pnpm test:watch
 
 # Run Frontend and Backend tests concurrently in watch mode
 pnpm test:watch
+
+# Run all tests with coverage reports
+pnpm test:coverage
+
+# Run Backend tests with coverage
+pnpm test:backend:coverage
+
+# Run Frontend tests with coverage
+pnpm test:frontend:coverage
 ```
 
 ## 🛠️ Utilities & DX Commands
