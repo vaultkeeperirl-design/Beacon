@@ -33,3 +33,7 @@
 ## 2025-05-27 - [Transactional Integrity and Side Effects]
 **Learning:** Decoupling side effects (like Socket.io emissions) from database transactions is crucial for maintaining consistency. Emitting events inside a transaction can lead to "phantom" updates if the transaction later fails.
 **Action:** Refactor data distribution helpers to return a list of updates, and have the caller perform the broadcasts only after the transaction successfully commits.
+
+## 2026-03-05 - [Optimistic UI Rollback Pattern]
+**Learning:** When implementing optimistic updates for network-bound actions (like follows), rolling back to a consistent state is best achieved by re-fetching the source of truth from the backend API upon failure. This approach avoids stale closures and manual state preservation issues.
+**Action:** Implement a re-fetch of the backend state within the `catch` block of an optimistic update to ensure long-term consistency.
