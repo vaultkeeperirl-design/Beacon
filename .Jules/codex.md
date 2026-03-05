@@ -17,3 +17,7 @@
 ## 2025-03-04 - Socket.IO Event Reference
 **Learning:** The `backend-api.md` exclusively documented REST endpoints while real-time WebSocket communication and P2P connection logic managed by Socket.IO were undocumented, leaving a crucial gap for contributors building real-time features.
 **Action:** Created `docs/socket-events.md` to detail all WebSocket events such as `metrics-report` (for economy), WebRTC signaling (offers/answers), and mesh topology updates.
+
+## 2025-03-05 - Broadcasting Guide
+**Learning:** The project had documentation covering the architecture, economy, and general setup, but lacked a step-by-step user guide explaining how to actually stream on the platform. Specifically, it wasn't clear to new streamers that Beacon handles broadcasting natively in the browser via WebRTC without needing third-party tools like OBS.
+**Action:** Created `docs/broadcasting-guide.md` to document the built-in Broadcast Studio. This guide walks users through setting up their stream info, managing camera/mic/screen share, interacting with chat, and using platform-specific features like polls, co-streaming revenue splits, and ad breaks.
