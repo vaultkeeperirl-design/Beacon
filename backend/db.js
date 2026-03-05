@@ -40,6 +40,9 @@ db.exec(`
     FOREIGN KEY (follower_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (followee_id) REFERENCES Users(id) ON DELETE CASCADE
   );
+
+  -- ⚡ Performance Optimization: Index for 'Get Followers' query (O(log N) instead of O(N))
+  CREATE INDEX IF NOT EXISTS idx_follows_followee ON Follows (followee_id);
 `);
 console.log('Database tables ready.');
 
