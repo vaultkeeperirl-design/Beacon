@@ -91,6 +91,16 @@ describe('Follows API Endpoints', () => {
     expect(res.body[0].username).toBe(followeeUsername);
   });
 
+  test('GET /api/users/:username/followers - Get followers list', async () => {
+    const res = await request(server)
+      .get(`/api/users/${followeeUsername}/followers`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(1);
+    expect(res.body[0].username).toBe(followerUsername);
+  });
+
   test('DELETE /api/users/:username/follow - Successfully unfollow a user', async () => {
     const res = await request(server)
       .delete(`/api/users/${followeeUsername}/follow`)
