@@ -2,6 +2,41 @@
 
 This document outlines the RESTful API endpoints provided by the Beacon backend server (Signaling Server) located in `backend/server.js`. The API primarily handles authentication, user profiles, wallet interactions, and basic network statistics. Real-time signaling and P2P communication are handled via Socket.IO, which is not covered in this document.
 
+## Streams
+
+### `GET /api/streams`
+Retrieves a list of all currently active streams. **No authentication required.**
+
+- **Response (200 OK):**
+  ```json
+  [
+    {
+      "id": "broadcaster_username",
+      "title": "Welcome to my stream!",
+      "tags": "Beacon, P2P, Streaming",
+      "streamer": "broadcaster_username",
+      "viewers": 5
+    }
+  ]
+  ```
+
+### `GET /api/streams/:streamId`
+Fetches details for a specific active stream. **No authentication required.**
+
+- **URL Parameters:**
+  - `streamId`: The username of the broadcaster.
+- **Response (200 OK):**
+  ```json
+  {
+    "id": "broadcaster_username",
+    "title": "Welcome to my stream!",
+    "tags": "Beacon, P2P, Streaming",
+    "streamer": "broadcaster_username",
+    "viewers": 5
+  }
+  ```
+- **Response (404 Not Found):** If the stream does not exist or is offline.
+
 ## Authentication
 
 All endpoints requiring authentication must include an `Authorization` header with a valid JSON Web Token (JWT):
@@ -81,8 +116,58 @@ Updates the authenticated user's profile information. **Authentication Required.
   ```json
   {
     "success": true,
-    "user": { "id": 1, "username": "current_user", "bio": "New bio", "avatar_url": "https://example.com/new_avatar.png", "follower_count": 0 }
+    "user": { "id": 1, "username": "current_user", "bio": "New bio", "avatar_url": "https://example.com/new_avatar.png", "follower_count": 0 },
+    "message": "Profile updated successfully"
   }
+  ```
+
+### `POST /api/users/:username/follow`
+Follows a specific user. **Authentication Required.**
+
+- **URL Parameters:**
+  - `username`: The username of the user to follow.
+- **Response (200 OK):**
+  ```json
+  {
+    "success": true,
+    "message": "Successfully followed target_user"
+  }
+  ```
+- **Response (400 Bad Request):** If attempting to follow yourself.
+- **Response (404 Not Found):** If the user to follow does not exist.
+- **Response (409 Conflict):** If you are already following the user.
+
+### `DELETE /api/users/:username/follow`
+Unfollows a specific user. **Authentication Required.**
+
+- **URL Parameters:**
+  - `username`: The username of the user to unfollow.
+- **Response (200 OK):**
+  ```json
+  {
+    "success": true,
+    "message": "Successfully unfollowed target_user"
+  }
+  ```
+- **Response (400 Bad Request):** If you are not currently following the user.
+- **Response (404 Not Found):** If the user to unfollow does not exist.
+
+### `GET /api/users/:username/following`
+Retrieves a list of users that the specified user is following. **No authentication required.**
+
+- **URL Parameters:**
+  - `username`: The username of the follower.
+- **Response (200 OK):**
+  ```json
+  [
+    {
+      "id": 2,
+      "username": "followed_user",
+      "avatar_url": "https://example.com/avatar.png",
+      "bio": "I stream cool stuff",
+      "follower_count": 100
+    }
+  ]
   ```
 
 ## Economy (Wallet & Tipping)
@@ -142,8 +227,7 @@ Returns current statistics for the signaling server and connected mesh. **No aut
 - **Response (200 OK):**
   ```json
   {
-    "activeStreams": 5,
-    "totalConnectedNodes": 120,
-    "uptime": 3600.5
+    "status": "Online",
+    "meshNodes": 120
   }
   ```
