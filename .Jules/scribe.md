@@ -12,3 +12,7 @@
 ## 2024-03-04 - Documenting Video Shortcuts Hook
 **Learning:** The `useVideoShortcuts` hook in the frontend handles global keyboard event listeners for media controls. However, the precise scoping of these listeners (e.g., ignoring form inputs and explicitly checking if the video container is focused before intercepting `ArrowUp`/`ArrowDown`) was completely undocumented. This made the code risky to refactor, as future engineers or agents might inadvertently break page scrolling.
 **Action:** Added comprehensive JSDoc to `useVideoShortcuts.js` explicitly explaining the hook's purpose, its parameter expectations, and documenting the critical focus safety checks that prevent scroll hijacking and input field interference.
+
+## 2024-03-05 - Documenting Missing Backend REST API Endpoints
+**Learning:** The `docs/backend-api.md` file was missing documentation for several endpoints related to streams and following users, and the documentation for the `GET /api/node-stats` endpoint was incorrect compared to the actual implementation in `backend/server.js`. Having incomplete documentation can lead to confusion for developers interacting with the API.
+**Action:** Updated `docs/backend-api.md` to add documentation for `GET /api/streams`, `GET /api/streams/:streamId`, `POST /api/users/:username/follow`, `DELETE /api/users/:username/follow`, and `GET /api/users/:username/following`, and fixed the expected JSON response for `GET /api/node-stats`.
