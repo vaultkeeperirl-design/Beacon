@@ -61,7 +61,12 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="poll-question" className="block text-sm font-semibold text-neutral-300 mb-2">Question</label>
+            <div className="flex justify-between items-center mb-2">
+              <label htmlFor="poll-question" className="block text-sm font-semibold text-neutral-300">Question</label>
+              <span className={`text-[10px] font-mono ${question.length >= 90 ? 'text-beacon-500' : 'text-neutral-500'}`}>
+                {question.length}/100
+              </span>
+            </div>
             <input
               id="poll-question"
               type="text"
@@ -102,16 +107,19 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
             ))}
           </div>
 
-          {options.length < 4 && (
-            <button
-              type="button"
-              onClick={handleAddOption}
-              className="text-sm font-medium text-beacon-400 hover:text-beacon-300 flex items-center gap-1 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Option
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleAddOption}
+            disabled={options.length >= 4}
+            className={`text-sm font-medium flex items-center gap-1 transition-colors ${
+              options.length < 4
+                ? 'text-beacon-400 hover:text-beacon-300'
+                : 'text-neutral-600 cursor-not-allowed'
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            {options.length < 4 ? 'Add Option' : 'Add Option (Max 4)'}
+          </button>
 
           <div className="space-y-3 pt-4 border-t border-neutral-800">
             <label className="block text-sm font-semibold text-neutral-300">Duration</label>
@@ -126,6 +134,7 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
                   key={d.label}
                   type="button"
                   onClick={() => setDuration(d.value)}
+                  aria-pressed={duration === d.value}
                   className={`px-3 py-2 rounded-lg text-xs font-bold transition-all border ${
                     duration === d.value
                       ? 'bg-beacon-600 text-white border-beacon-500 shadow-lg shadow-beacon-600/20'

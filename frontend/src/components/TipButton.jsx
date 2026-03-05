@@ -64,6 +64,8 @@ export default function TipButton({ streamId }) {
         className="p-2.5 bg-beacon-600 hover:bg-beacon-500 text-white rounded-lg transition-all shadow-lg shadow-beacon-600/20 border border-beacon-500/50 flex items-center gap-2 group"
         aria-label="Tip Streamer"
         title="Tip Streamer"
+        aria-expanded={isOpen}
+        aria-haspopup="true"
       >
         <Coins className="w-5 h-5 group-hover:scale-110 transition-transform" />
         <span className="hidden md:inline font-bold">Tip</span>

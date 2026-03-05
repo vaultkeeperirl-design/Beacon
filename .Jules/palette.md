@@ -19,3 +19,7 @@
 ## 2026-03-04 - Co-Streaming Invite Input Accessibility
 **Learning:** Relying solely on placeholders for input fields within co-streaming features creates accessibility gaps for screen readers.
 **Action:** Ensure all functional input fields, even secondary ones like guest invites, include explicit `aria-label` attributes to clearly communicate their purpose.
+
+## 2026-03-05 - Dropdown and Selection Accessibility
+**Learning:** Toggle buttons for menus or dropdowns (e.g., Profile menu, Tip menu) must include `aria-expanded` and `aria-haspopup` to properly signal state to assistive technologies. Similarly, selection buttons in a group should use `aria-pressed` to indicate the active state.
+**Action:** Always include state-reflecting ARIA attributes on interactive elements that control visibility or represent a selection.
