@@ -3,17 +3,34 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { UserPlus, UserCheck, MessageSquare, Share2, MoreHorizontal, Video, Calendar, Info, Clock, Heart } from 'lucide-react';
 import { useP2PSettings } from '../context/P2PContext';
+import { useFollowing } from '../context/FollowingContext';
 import StreamCard from '../components/StreamCard';
 import { API_URL } from '../config/api';
 
 export default function Channel() {
   const { username } = useParams();
   const { username: currentUsername } = useP2PSettings();
-  const [isFollowing, setIsFollowing] = useState(false);
+  const { follow, unfollow, isFollowing: checkIsFollowing } = useFollowing();
   const [activeTab, setActiveTab] = useState('home');
   const [channelData, setChannelData] = useState(null);
 
   const isOwnProfile = currentUsername === username;
+  const isFollowed = checkIsFollowing(username);
+
+  const handleFollowToggle = () => {
+    if (isFollowed) {
+      unfollow(username);
+    } else {
+      follow({
+        id: username,
+        name: channelData?.displayName || username,
+        avatar: channelData?.avatar || null,
+        title: channelData?.bio || 'Streamer',
+        isLive: false,
+        category: 'Software Development'
+      });
+    }
+  };
 
   useEffect(() => {
     // Fetch real channel data
@@ -96,15 +113,15 @@ export default function Channel() {
           <div className="flex items-center gap-3 pb-2 w-full md:w-auto">
              {!isOwnProfile && (
                <button
-                 onClick={() => setIsFollowing(!isFollowing)}
+                 onClick={handleFollowToggle}
                  className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all shadow-lg ${
-                   isFollowing
+                   isFollowed
                    ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white shadow-none'
                    : 'bg-beacon-600 hover:bg-beacon-500 text-white shadow-beacon-600/20'
                  }`}
                >
-                 {isFollowing ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                 <span>{isFollowing ? 'Following' : 'Follow'}</span>
+                 {isFollowed ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                 <span>{isFollowed ? 'Following' : 'Follow'}</span>
                </button>
              )}
 
