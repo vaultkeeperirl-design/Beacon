@@ -20,3 +20,6 @@
 ## 2026-03-04 - Skeleton Loaders vs Spinners
 - **Learning**: Using a central loading spinner while fetching the stream list creates a sudden, jarring layout shift when the data finally arrives. The page goes from mostly empty to instantly full, which feels unpolished.
 - **Action**: Created a `StreamCardSkeleton` component using Tailwind's `animate-pulse` and replaced the central spinner in `Browse.jsx` with a grid of these skeletons. This preserves the layout structure during loading, drastically improving perceived performance and providing a smoother transition for the user.
+## 2026-03-05 - Global Following State Consistency
+- **Learning**: In `Channel.jsx`, the follow button was relying on local component state instead of integrating with the global `FollowingContext`. This caused a fragmented experience where following a user on their channel page did not actually update the global state or reflect in other parts of the application like the Following page.
+- **Action**: Refactored `Channel.jsx` to consume `useFollowing` context, mapping the follow/unfollow actions properly so that user state is immediately and globally consistent.
