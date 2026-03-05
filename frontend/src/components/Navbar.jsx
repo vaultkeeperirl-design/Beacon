@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, User, Radio, LogOut, Settings } from 'lucide-react';
 import WalletBalance from './WalletBalance';
@@ -8,7 +8,23 @@ const Navbar = memo(function Navbar() {
   const { username, token, logout, userProfile } = useP2PSettings();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const searchInputRef = useRef(null);
   const navigate = useNavigate();
+
+  // Global '/' listener to automatically focus search input
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      const activeElement = document.activeElement;
+      const activeTag = activeElement?.tagName;
+      const isContentEditable = activeElement?.isContentEditable;
+      if (e.key === '/' && !isContentEditable && !['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT'].includes(activeTag)) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -35,12 +51,14 @@ const Navbar = memo(function Navbar() {
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-neutral-500 group-focus-within:text-beacon-500 transition-colors" />
           </div>
+          {/* ⚡ Aura: Added ref and '/' placeholder text to reduce search friction */}
           <input
+            ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="block w-full pl-10 pr-3 py-2 border border-neutral-800 rounded-full leading-5 bg-neutral-950 text-neutral-300 placeholder-neutral-600 focus:outline-none focus:border-beacon-500/50 focus:ring-1 focus:ring-beacon-500/50 sm:text-sm transition-colors"
-            placeholder="Search streams..."
+            placeholder="Search streams... (Press /)"
           />
         </form>
       </div>
