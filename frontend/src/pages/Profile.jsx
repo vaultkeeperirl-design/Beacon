@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Camera, Edit2, Save, X, Github, Twitter, MessageSquare, Globe, Activity, Database, Shield, Twitch, Layout as LayoutIcon, Mail, Plus } from 'lucide-react';
+import axios from 'axios';
+import { API_URL } from '../config/api';
 import { useP2PStats, useP2PSettings } from '../context/P2PContext';
 
 export default function Profile() {
   const stats = useP2PStats();
-  const { isSharing, userProfile, updateUserProfile } = useP2PSettings();
+  const { isSharing, userProfile, updateUserProfile, token } = useP2PSettings();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(userProfile);
   const [interestInput, setInterestInput] = useState('');
@@ -75,21 +77,36 @@ export default function Profile() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Simulate API Call
+    // Update real Backend API
     console.log('📡 Saving to Beacon mesh...', formData);
     try {
-      await fetch('/api/profile', {
-        method: 'PUT',
-        body: JSON.stringify(formData),
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch {
-      // Ignore error since API doesn't exist
-    }
+      if (token) {
+        const res = await axios.patch(`${API_URL}/users/profile`, {
+          bio: formData.bio,
+          avatar_url: formData.avatar
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
-    updateUserProfile(formData);
-    setIsEditing(false);
-    setToast('Profile updated – changes are now live on the Beacon mesh ✨');
+        if (res.data.success) {
+          updateUserProfile({
+            ...formData,
+            bio: res.data.user.bio,
+            avatar: res.data.user.avatar_url
+          });
+          setIsEditing(false);
+          setToast('Profile updated – changes are now live on the Beacon mesh ✨');
+        }
+      } else {
+        // Fallback for guest/local-only updates
+        updateUserProfile(formData);
+        setIsEditing(false);
+        setToast('Profile updated locally ✨');
+      }
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      setToast('Failed to update profile. Please try again.');
+    }
   };
 
   if (isEditing) {
