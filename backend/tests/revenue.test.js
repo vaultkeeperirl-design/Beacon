@@ -9,11 +9,15 @@ describe('Co-Streaming Revenue Split Logic', () => {
   let tokenTipper;
   let tokenHost;
 
+  let tipperUsername, hostUsername, guestUsername;
+
   beforeAll(async () => {
     app = server; // Use the exported HTTP server
 
-    // Clear Users table
-    db.prepare('DELETE FROM Users').run();
+    const timestamp = Date.now();
+    tipperUsername = `tipper_${timestamp}`;
+    hostUsername = `hostStreamer_${timestamp}`;
+    guestUsername = `guestStreamer_${timestamp}`;
 
     // Create users for testing
     const salt = await bcrypt.genSalt(10);
@@ -21,25 +25,29 @@ describe('Co-Streaming Revenue Split Logic', () => {
 
     const insertStmt = db.prepare('INSERT OR IGNORE INTO Users (username, password_hash, credits) VALUES (?, ?, ?)');
 
-    const tipperInfo = insertStmt.run('tipper', hash, 500.0);
-    const hostInfo = insertStmt.run('hostStreamer', hash, 0.0);
-    const guestInfo = insertStmt.run('guestStreamer', hash, 0.0);
+    const tipperInfo = insertStmt.run(tipperUsername, hash, 500.0);
+    const hostInfo = insertStmt.run(hostUsername, hash, 0.0);
+    const guestInfo = insertStmt.run(guestUsername, hash, 0.0);
 
     let tipperId = tipperInfo.lastInsertRowid;
     let hostId = hostInfo.lastInsertRowid;
 
     // Ensure we have valid info if ignored
     if (tipperInfo.changes === 0) {
-      db.prepare('UPDATE Users SET credits = 500.0 WHERE username = ?').run('tipper');
-      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run('hostStreamer');
-      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run('guestStreamer');
-      tipperId = db.prepare('SELECT id FROM Users WHERE username = ?').get('tipper').id;
-      hostId = db.prepare('SELECT id FROM Users WHERE username = ?').get('hostStreamer').id;
+      db.prepare('UPDATE Users SET credits = 500.0 WHERE username = ?').run(tipperUsername);
+      tipperId = db.prepare('SELECT id FROM Users WHERE username = ?').get(tipperUsername).id;
+    }
+    if (hostInfo.changes === 0) {
+      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run(hostUsername);
+      hostId = db.prepare('SELECT id FROM Users WHERE username = ?').get(hostUsername).id;
+    }
+    if (guestInfo.changes === 0) {
+      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run(guestUsername);
     }
 
     // Generate tokens
-    tokenTipper = jwt.sign({ id: tipperId, username: 'tipper' }, JWT_SECRET, { expiresIn: '1h' });
-    tokenHost = jwt.sign({ id: hostId, username: 'hostStreamer' }, JWT_SECRET, { expiresIn: '1h' });
+    tokenTipper = jwt.sign({ id: tipperId, username: tipperUsername }, JWT_SECRET, { expiresIn: '1h' });
+    tokenHost = jwt.sign({ id: hostId, username: hostUsername }, JWT_SECRET, { expiresIn: '1h' });
   });
 
   afterAll((done) => {
@@ -58,14 +66,14 @@ describe('Co-Streaming Revenue Split Logic', () => {
     const resDefault = await request(app)
       .post('/api/tip')
       .set('Authorization', `Bearer ${tokenTipper}`)
-      .send({ streamId: 'hostStreamer', amount: 100 });
+      .send({ streamId: hostUsername, amount: 100 });
 
     expect(resDefault.statusCode).toBe(200);
 
-    const hostCheck = db.prepare('SELECT credits FROM Users WHERE username = ?').get('hostStreamer');
+    const hostCheck = db.prepare('SELECT credits FROM Users WHERE username = ?').get(hostUsername);
     expect(hostCheck.credits).toBe(100.0);
 
-    const tipperCheck = db.prepare('SELECT credits FROM Users WHERE username = ?').get('tipper');
+    const tipperCheck = db.prepare('SELECT credits FROM Users WHERE username = ?').get(tipperUsername);
     expect(tipperCheck.credits).toBe(400.0);
   });
 
@@ -73,7 +81,7 @@ describe('Co-Streaming Revenue Split Logic', () => {
     const resString = await request(app)
       .post('/api/tip')
       .set('Authorization', `Bearer ${tokenTipper}`)
-      .send({ streamId: 'hostStreamer', amount: '10' });
+      .send({ streamId: hostUsername, amount: '10' });
 
     expect(resString.statusCode).toBe(400);
     expect(resString.body.error).toBe('Invalid tip parameters');
@@ -83,7 +91,7 @@ describe('Co-Streaming Revenue Split Logic', () => {
     const resObject = await request(app)
       .post('/api/tip')
       .set('Authorization', `Bearer ${tokenTipper}`)
-      .send({ streamId: 'hostStreamer', amount: { value: 10 } });
+      .send({ streamId: hostUsername, amount: { value: 10 } });
 
     expect(resObject.statusCode).toBe(400);
     expect(resObject.body.error).toBe('Invalid tip parameters');

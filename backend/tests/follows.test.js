@@ -16,11 +16,20 @@ describe('Follows API Endpoints', () => {
     followeeUsername = `followee_${Date.now()}`;
 
     // Insert mock users
-    const insertStmt = db.prepare('INSERT INTO Users (username, password_hash, avatar_url, bio, follower_count, credits) VALUES (?, ?, ?, ?, ?, ?)');
+    const insertStmt = db.prepare('INSERT OR IGNORE INTO Users (username, password_hash, avatar_url, bio, follower_count, credits) VALUES (?, ?, ?, ?, ?, ?)');
     const followerInfo = insertStmt.run(followerUsername, 'hash', null, 'bio', 0, 0);
-    insertStmt.run(followeeUsername, 'hash', null, 'bio', 0, 0);
+    const followeeInfo = insertStmt.run(followeeUsername, 'hash', null, 'bio', 0, 0);
 
-    followerToken = jwt.sign({ id: followerInfo.lastInsertRowid, username: followerUsername }, JWT_SECRET, { expiresIn: '1h' });
+    let followerId = followerInfo.lastInsertRowid;
+    if (followerInfo.changes === 0) {
+      db.prepare('UPDATE Users SET follower_count = 0 WHERE username = ?').run(followerUsername);
+      followerId = db.prepare('SELECT id FROM Users WHERE username = ?').get(followerUsername).id;
+    }
+    if (followeeInfo.changes === 0) {
+      db.prepare('UPDATE Users SET follower_count = 0 WHERE username = ?').run(followeeUsername);
+    }
+
+    followerToken = jwt.sign({ id: followerId, username: followerUsername }, JWT_SECRET, { expiresIn: '1h' });
 
     // Check if server is listening, if not, wait
     if (!server.listening) {
@@ -31,15 +40,6 @@ describe('Follows API Endpoints', () => {
   });
 
   afterAll((done) => {
-    db.prepare('DELETE FROM Users WHERE username IN (?, ?)').run(followerUsername, followeeUsername);
-
-    // Also delete any dangling follows related to these test users
-    db.prepare(`
-        DELETE FROM Follows
-        WHERE follower_id IN (SELECT id FROM Users WHERE username IN (?, ?))
-        OR followee_id IN (SELECT id FROM Users WHERE username IN (?, ?))
-    `).run(followerUsername, followeeUsername, followerUsername, followeeUsername);
-
     io.close();
     if (server.listening) {
       server.close(done);

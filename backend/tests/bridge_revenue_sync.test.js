@@ -11,9 +11,6 @@ describe("Bridge Revenue Real-time Sync", () => {
   let tipperUser, hostUser, guestUser;
 
   beforeAll(async () => {
-    // Clear Users table for isolation
-    db.prepare('DELETE FROM Users').run();
-
     const timestamp = Date.now();
     tipperUser = `tipper_${timestamp}`;
     hostUser = `host_${timestamp}`;
@@ -26,15 +23,19 @@ describe("Bridge Revenue Real-time Sync", () => {
     const insertStmt = db.prepare('INSERT OR IGNORE INTO Users (username, password_hash, credits) VALUES (?, ?, ?)');
 
     const tipperInfo = insertStmt.run(tipperUser, hash, 500.0);
-    insertStmt.run(hostUser, hash, 0.0);
-    insertStmt.run(guestUser, hash, 0.0);
+    const hostInfo = insertStmt.run(hostUser, hash, 0.0);
+    const guestInfo = insertStmt.run(guestUser, hash, 0.0);
 
     let tipperId = tipperInfo.lastInsertRowid;
     if (tipperInfo.changes === 0) {
       db.prepare('UPDATE Users SET credits = 500.0 WHERE username = ?').run(tipperUser);
-      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run(hostUser);
-      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run(guestUser);
       tipperId = db.prepare('SELECT id FROM Users WHERE username = ?').get(tipperUser).id;
+    }
+    if (hostInfo.changes === 0) {
+      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run(hostUser);
+    }
+    if (guestInfo.changes === 0) {
+      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run(guestUser);
     }
 
     // Generate tokens
