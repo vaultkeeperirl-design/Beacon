@@ -1,6 +1,16 @@
 import { render, screen, act } from '@testing-library/react';
 import { FollowingProvider, useFollowing } from './FollowingContext';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { P2PProvider } from './P2PContext';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock axios to avoid network calls during tests
+vi.mock('axios', () => ({
+  default: {
+    get: vi.fn(() => Promise.resolve({ data: [] })),
+    post: vi.fn(() => Promise.resolve({ data: {} })),
+    delete: vi.fn(() => Promise.resolve({ data: {} })),
+  }
+}));
 
 const TestComponent = () => {
   const { followedChannels, follow, unfollow, isFollowing } = useFollowing();
@@ -19,31 +29,38 @@ const TestComponent = () => {
   );
 };
 
+const AllProviders = ({ children }) => (
+  <P2PProvider>
+    <FollowingProvider>
+      {children}
+    </FollowingProvider>
+  </P2PProvider>
+);
+
 describe('FollowingContext', () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.clearAllMocks();
   });
 
   it('provides empty list initially', () => {
     render(
-      <FollowingProvider>
-        <TestComponent />
-      </FollowingProvider>
+      <TestComponent />,
+      { wrapper: AllProviders }
     );
 
     expect(screen.getByTestId('count')).toHaveTextContent('0');
     expect(screen.getByTestId('is-following-jules')).toHaveTextContent('false');
   });
 
-  it('follows a channel', () => {
+  it('follows a channel', async () => {
     render(
-      <FollowingProvider>
-        <TestComponent />
-      </FollowingProvider>
+      <TestComponent />,
+      { wrapper: AllProviders }
     );
 
     const followButton = screen.getByText('Follow Jules');
-    act(() => {
+    await act(async () => {
         followButton.click();
     });
 
@@ -51,20 +68,19 @@ describe('FollowingContext', () => {
     expect(screen.getByTestId('is-following-jules')).toHaveTextContent('true');
   });
 
-  it('unfollows a channel', () => {
+  it('unfollows a channel', async () => {
     render(
-      <FollowingProvider>
-        <TestComponent />
-      </FollowingProvider>
+      <TestComponent />,
+      { wrapper: AllProviders }
     );
 
     const followButton = screen.getByText('Follow Jules');
-    act(() => {
+    await act(async () => {
         followButton.click();
     });
 
     const unfollowButton = screen.getByText('Unfollow Jules');
-    act(() => {
+    await act(async () => {
         unfollowButton.click();
     });
 
@@ -72,15 +88,14 @@ describe('FollowingContext', () => {
     expect(screen.getByTestId('is-following-jules')).toHaveTextContent('false');
   });
 
-  it('persists to localStorage', () => {
+  it('persists to localStorage', async () => {
       const { unmount } = render(
-      <FollowingProvider>
-        <TestComponent />
-      </FollowingProvider>
+      <TestComponent />,
+      { wrapper: AllProviders }
     );
 
     const followButton = screen.getByText('Follow Jules');
-    act(() => {
+    await act(async () => {
         followButton.click();
     });
 
@@ -90,11 +105,12 @@ describe('FollowingContext', () => {
     // Unmount and remount (simulating page reload/navigation)
     unmount();
 
-    render(
-      <FollowingProvider>
-        <TestComponent />
-      </FollowingProvider>
-    );
+    await act(async () => {
+      render(
+        <TestComponent />,
+        { wrapper: AllProviders }
+      );
+    });
 
     expect(screen.getByTestId('count')).toHaveTextContent('1');
   });

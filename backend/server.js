@@ -40,6 +40,28 @@ const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHE
 const deductCreditsStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ?');
 const deductCreditsWithCheckStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ? AND credits >= ?');
 const getCreditsStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
+const getUserStmt = db.prepare('SELECT id, username, avatar_url, bio, follower_count FROM Users WHERE username = ?');
+const getUserWithHashStmt = db.prepare('SELECT * FROM Users WHERE username = ?');
+const updateProfileStmt = db.prepare('UPDATE Users SET bio = ?, avatar_url = ? WHERE username = ?');
+const checkFollowStmt = db.prepare('SELECT * FROM Follows WHERE follower_id = ? AND followee_id = ?');
+const insertFollowStmt = db.prepare('INSERT INTO Follows (follower_id, followee_id) VALUES (?, ?)');
+const deleteFollowStmt = db.prepare('DELETE FROM Follows WHERE follower_id = ? AND followee_id = ?');
+const updateFollowerCountStmt = db.prepare('UPDATE Users SET follower_count = follower_count + ? WHERE id = ?');
+const getFollowersStmt = db.prepare(`
+  SELECT u.id, u.username, u.avatar_url, u.bio, u.follower_count
+  FROM Users u
+  JOIN Follows f ON u.id = f.follower_id
+  JOIN Users followee ON followee.id = f.followee_id
+  WHERE followee.username = ?
+`);
+const getFollowingStmt = db.prepare(`
+  SELECT u.id, u.username, u.avatar_url, u.bio, u.follower_count
+  FROM Users u
+  JOIN Follows f ON u.id = f.followee_id
+  JOIN Users follower ON follower.id = f.follower_id
+  WHERE follower.username = ?
+`);
+const registerUserStmt = db.prepare('INSERT INTO Users (username, password_hash, avatar_url, bio, credits) VALUES (?, ?, ?, ?, ?)');
 
 /**
  * Forcefully ends an active poll for a stream and optionally notifies viewers.
@@ -104,6 +126,37 @@ const tipTx = db.transaction((tipper, amount, squad) => {
   return distributeCredits(squad, amount);
 });
 
+const followTx = db.transaction((followerId, followeeId) => {
+  insertFollowStmt.run(followerId, followeeId);
+  updateFollowerCountStmt.run(1, followeeId);
+});
+
+const unfollowTx = db.transaction((followerId, followeeId) => {
+  deleteFollowStmt.run(followerId, followeeId);
+  updateFollowerCountStmt.run(-1, followeeId);
+});
+
+const distributeCreditsToStreamTx = db.transaction((squad, totalAmount, relayers, relayTotal, squadTotal) => {
+  const results = [];
+
+  // Distribute 80% to squad
+  results.push(...distributeCredits(squad, squadTotal));
+
+  // Distribute 20% split equally among relayers
+  if (relayers.length > 0) {
+    const perRelayerAmount = relayTotal / relayers.length;
+    for (const relayer of relayers) {
+      updateCreditsStmt.run(perRelayerAmount, relayer.username);
+      const row = getCreditsStmt.get(relayer.username);
+      if (row) {
+        results.push({ username: relayer.username, balance: row.credits });
+      }
+    }
+  }
+
+  return results;
+});
+
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -141,26 +194,7 @@ const distributeCreditsToStream = (streamId, amount) => {
   const squadTotal = amount - (relayers.length > 0 ? relayTotal : 0);
 
   try {
-    const updates = db.transaction(() => {
-      const results = [];
-
-      // Distribute 80% to squad
-      results.push(...distributeCredits(squad, squadTotal));
-
-      // Distribute 20% split equally among relayers
-      if (relayers.length > 0) {
-        const perRelayerAmount = relayTotal / relayers.length;
-        for (const relayer of relayers) {
-          updateCreditsStmt.run(perRelayerAmount, relayer.username);
-          const row = getCreditsStmt.get(relayer.username);
-          if (row) {
-            results.push({ username: relayer.username, balance: row.credits });
-          }
-        }
-      }
-
-      return results;
-    })();
+    const updates = distributeCreditsToStreamTx(squad, amount, relayers, relayTotal, squadTotal);
 
     // Emit updates after successful transaction to prevent state desync
     for (const update of updates) {
@@ -225,8 +259,7 @@ app.post('/api/auth/register', async (req, res) => {
     const defaultAvatar = null;
 
     try {
-      const stmt = db.prepare('INSERT INTO Users (username, password_hash, avatar_url, bio, credits) VALUES (?, ?, ?, ?, ?)');
-      const info = stmt.run(username, password_hash, defaultAvatar, 'I love streaming on Beacon!', 0.0);
+      const info = registerUserStmt.run(username, password_hash, defaultAvatar, 'I love streaming on Beacon!', 0.0);
 
       const token = jwt.sign({ id: info.lastInsertRowid, username }, JWT_SECRET, { expiresIn: '24h' });
       res.status(201).json({ token, user: { id: info.lastInsertRowid, username, avatar_url: defaultAvatar, bio: 'I love streaming on Beacon!', follower_count: 0, credits: 0.0 } });
@@ -247,8 +280,7 @@ app.post('/api/auth/login', async (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
 
   try {
-    const stmt = db.prepare('SELECT * FROM Users WHERE username = ?');
-    const user = stmt.get(username);
+    const user = getUserWithHashStmt.get(username);
 
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
@@ -289,8 +321,7 @@ app.patch('/api/users/profile', authenticateToken, (req, res) => {
   }
 
   try {
-    const currentUserStmt = db.prepare('SELECT avatar_url, bio FROM Users WHERE username = ?');
-    const currentUser = currentUserStmt.get(username);
+    const currentUser = getUserStmt.get(username);
 
     if (!currentUser) {
       return res.status(404).json({ error: 'User not found' });
@@ -299,11 +330,9 @@ app.patch('/api/users/profile', authenticateToken, (req, res) => {
     const newBio = bio !== undefined ? bio : currentUser.bio;
     const newAvatarUrl = avatar_url !== undefined ? avatar_url : currentUser.avatar_url;
 
-    const updateStmt = db.prepare('UPDATE Users SET bio = ?, avatar_url = ? WHERE username = ?');
-    updateStmt.run(newBio, newAvatarUrl, username);
+    updateProfileStmt.run(newBio, newAvatarUrl, username);
 
-    const getUpdatedUserStmt = db.prepare('SELECT id, username, avatar_url, bio, follower_count FROM Users WHERE username = ?');
-    const updatedUser = getUpdatedUserStmt.get(username);
+    const updatedUser = getUserStmt.get(username);
 
     res.json({ success: true, user: updatedUser, message: 'Profile updated successfully' });
   } catch (err) {
@@ -315,14 +344,7 @@ app.patch('/api/users/profile', authenticateToken, (req, res) => {
 // Get Followers List
 app.get('/api/users/:username/followers', (req, res) => {
   try {
-    const stmt = db.prepare(`
-      SELECT u.id, u.username, u.avatar_url, u.bio, u.follower_count
-      FROM Users u
-      JOIN Follows f ON u.id = f.follower_id
-      JOIN Users followee ON followee.id = f.followee_id
-      WHERE followee.username = ?
-    `);
-    const followers = stmt.all(req.params.username);
+    const followers = getFollowersStmt.all(req.params.username);
     res.json(followers);
   } catch (err) {
     console.error('Get followers error:', err);
@@ -333,8 +355,7 @@ app.get('/api/users/:username/followers', (req, res) => {
 // Get User Profile
 app.get('/api/users/:username', (req, res) => {
   try {
-    const stmt = db.prepare('SELECT id, username, avatar_url, bio, follower_count FROM Users WHERE username = ?');
-    const user = stmt.get(req.params.username);
+    const user = getUserStmt.get(req.params.username);
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
   } catch (err) {
@@ -352,31 +373,19 @@ app.post('/api/users/:username/follow', authenticateToken, (req, res) => {
   }
 
   try {
-    const followerStmt = db.prepare('SELECT id FROM Users WHERE username = ?');
-    const followeeStmt = db.prepare('SELECT id FROM Users WHERE username = ?');
-
-    const follower = followerStmt.get(followerUsername);
-    const followee = followeeStmt.get(followeeUsername);
+    const follower = getUserStmt.get(followerUsername);
+    const followee = getUserStmt.get(followeeUsername);
 
     if (!followee) return res.status(404).json({ error: 'User to follow not found' });
 
     // Check if already following
-    const checkStmt = db.prepare('SELECT * FROM Follows WHERE follower_id = ? AND followee_id = ?');
-    const existingFollow = checkStmt.get(follower.id, followee.id);
+    const existingFollow = checkFollowStmt.get(follower.id, followee.id);
 
     if (existingFollow) {
       return res.status(409).json({ error: 'Already following this user' });
     }
 
-    const followTx = db.transaction(() => {
-      const insertStmt = db.prepare('INSERT INTO Follows (follower_id, followee_id) VALUES (?, ?)');
-      insertStmt.run(follower.id, followee.id);
-
-      const updateCountStmt = db.prepare('UPDATE Users SET follower_count = follower_count + 1 WHERE id = ?');
-      updateCountStmt.run(followee.id);
-    });
-
-    followTx();
+    followTx(follower.id, followee.id);
 
     res.json({ success: true, message: `Successfully followed ${followeeUsername}` });
   } catch (err) {
@@ -391,31 +400,19 @@ app.delete('/api/users/:username/follow', authenticateToken, (req, res) => {
   const followerUsername = req.user.username;
 
   try {
-    const followerStmt = db.prepare('SELECT id FROM Users WHERE username = ?');
-    const followeeStmt = db.prepare('SELECT id FROM Users WHERE username = ?');
-
-    const follower = followerStmt.get(followerUsername);
-    const followee = followeeStmt.get(followeeUsername);
+    const follower = getUserStmt.get(followerUsername);
+    const followee = getUserStmt.get(followeeUsername);
 
     if (!followee) return res.status(404).json({ error: 'User to unfollow not found' });
 
     // Check if actually following
-    const checkStmt = db.prepare('SELECT * FROM Follows WHERE follower_id = ? AND followee_id = ?');
-    const existingFollow = checkStmt.get(follower.id, followee.id);
+    const existingFollow = checkFollowStmt.get(follower.id, followee.id);
 
     if (!existingFollow) {
       return res.status(400).json({ error: 'Not following this user' });
     }
 
-    const unfollowTx = db.transaction(() => {
-      const deleteStmt = db.prepare('DELETE FROM Follows WHERE follower_id = ? AND followee_id = ?');
-      deleteStmt.run(follower.id, followee.id);
-
-      const updateCountStmt = db.prepare('UPDATE Users SET follower_count = follower_count - 1 WHERE id = ?');
-      updateCountStmt.run(followee.id);
-    });
-
-    unfollowTx();
+    unfollowTx(follower.id, followee.id);
 
     res.json({ success: true, message: `Successfully unfollowed ${followeeUsername}` });
   } catch (err) {
@@ -427,14 +424,7 @@ app.delete('/api/users/:username/follow', authenticateToken, (req, res) => {
 // Get Following List
 app.get('/api/users/:username/following', (req, res) => {
   try {
-    const stmt = db.prepare(`
-      SELECT u.id, u.username, u.avatar_url, u.bio, u.follower_count
-      FROM Users u
-      JOIN Follows f ON u.id = f.followee_id
-      JOIN Users follower ON follower.id = f.follower_id
-      WHERE follower.username = ?
-    `);
-    const following = stmt.all(req.params.username);
+    const following = getFollowingStmt.all(req.params.username);
     res.json(following);
   } catch (err) {
     console.error('Get following error:', err);
@@ -445,8 +435,7 @@ app.get('/api/users/:username/following', (req, res) => {
 // Get Wallet Balance
 app.get('/api/wallet', authenticateToken, (req, res) => {
   try {
-    const stmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
-    const row = stmt.get(req.user.username);
+    const row = getCreditsStmt.get(req.user.username);
     if (!row) return res.status(404).json({ error: 'User not found' });
     res.json({ balance: row.credits });
   } catch (err) {

@@ -1,6 +1,32 @@
 const request = require('supertest');
-const { server, io } = require('../server');
 const db = require('../db');
+const Database = require('better-sqlite3');
+const testDb = new Database(':memory:');
+
+testDb.exec(`
+  CREATE TABLE IF NOT EXISTS Users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    avatar_url TEXT,
+    bio TEXT,
+    follower_count INTEGER DEFAULT 0,
+    credits REAL DEFAULT 0.0
+  );
+  CREATE TABLE IF NOT EXISTS Follows (
+    follower_id INTEGER NOT NULL,
+    followee_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (follower_id, followee_id),
+    FOREIGN KEY (follower_id) REFERENCES Users(id) ON DELETE CASCADE,
+    FOREIGN KEY (followee_id) REFERENCES Users(id) ON DELETE CASCADE
+  );
+`);
+
+jest.spyOn(db, 'prepare').mockImplementation((sql) => testDb.prepare(sql));
+jest.spyOn(db, 'transaction').mockImplementation((fn) => testDb.transaction(fn));
+
+const { server, io } = require('../server');
 const bcrypt = require('bcryptjs');
 
 describe('Auth API', () => {
@@ -23,34 +49,8 @@ describe('Auth API', () => {
   });
 
   beforeEach(() => {
-    // Use an in-memory SQLite database for testing, we should mock out db calls
-    // But since the server.js imports db directly, the easiest way to test without
-    // destroying the real database in this codebase is to use Jest's spyOn on the database object.
-
-    // Let's create an in-memory db instance and replace db.prepare and other methods.
-    const Database = require('better-sqlite3');
-    const testDb = new Database(':memory:');
-
-    testDb.exec(`
-      CREATE TABLE IF NOT EXISTS Users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        avatar_url TEXT,
-        bio TEXT,
-        follower_count INTEGER DEFAULT 0,
-        credits REAL DEFAULT 0.0
-      )
-    `);
-
-    // Mock db.prepare
-    jest.spyOn(db, 'prepare').mockImplementation((sql) => testDb.prepare(sql));
-    // Mock db.transaction
-    jest.spyOn(db, 'transaction').mockImplementation((fn) => testDb.transaction(fn));
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
+    testDb.prepare('DELETE FROM Follows').run();
+    testDb.prepare('DELETE FROM Users').run();
   });
 
   describe('POST /api/auth/register', () => {
@@ -125,6 +125,7 @@ describe('Auth API', () => {
 
   describe('POST /api/auth/login', () => {
     beforeEach(async () => {
+      testDb.prepare('DELETE FROM Users').run();
       // Pre-populate a user for login tests
       const salt = await bcrypt.genSalt(10);
       const password_hash = await bcrypt.hash('password123', salt);
@@ -177,33 +178,10 @@ describe('Auth API', () => {
 });
 
 describe('User Profile API', () => {
-  beforeEach(() => {
-    const Database = require('better-sqlite3');
-    const testDb = new Database(':memory:');
-
-    testDb.exec(`
-      CREATE TABLE IF NOT EXISTS Users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        avatar_url TEXT,
-        bio TEXT,
-        follower_count INTEGER DEFAULT 0,
-        credits REAL DEFAULT 0.0
-      )
-    `);
-
-    jest.spyOn(db, 'prepare').mockImplementation((sql) => testDb.prepare(sql));
-    jest.spyOn(db, 'transaction').mockImplementation((fn) => testDb.transaction(fn));
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
   describe('PATCH /api/users/profile', () => {
     let token;
     beforeEach(async () => {
+      testDb.prepare('DELETE FROM Users').run();
       // Pre-populate a user and generate a token
       const salt = await bcrypt.genSalt(10);
       const password_hash = await bcrypt.hash('password123', salt);
@@ -306,6 +284,7 @@ describe('User Profile API', () => {
 
   describe('GET /api/users/:username', () => {
     beforeEach(async () => {
+      testDb.prepare('DELETE FROM Users').run();
       // Pre-populate a user
       const salt = await bcrypt.genSalt(10);
       const password_hash = await bcrypt.hash('password123', salt);
@@ -331,6 +310,7 @@ describe('User Profile API', () => {
   describe('GET /api/wallet', () => {
     let token;
     beforeEach(async () => {
+      testDb.prepare('DELETE FROM Users').run();
       // Pre-populate a user and generate a token
       const salt = await bcrypt.genSalt(10);
       const password_hash = await bcrypt.hash('password123', salt);
