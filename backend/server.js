@@ -486,6 +486,10 @@ app.post('/api/tip', authenticateToken, (req, res) => {
   }
 });
 
+// Rate limit tracker for Ad Breaks
+// Map<streamId, timestamp>
+const lastAdTrigger = new Map();
+
 // Trigger Ad Break (Distribute Ad Revenue)
 app.post('/api/ads/trigger', authenticateToken, (req, res) => {
   const { streamId } = req.body;
@@ -494,6 +498,15 @@ app.post('/api/ads/trigger', authenticateToken, (req, res) => {
   if (broadcaster !== streamId) {
     return res.status(403).json({ error: 'Only the broadcaster can trigger an ad break' });
   }
+
+  // 🛡️ SECURITY: Add rate limiting to prevent infinite credit exploits
+  const now = Date.now();
+  const lastTrigger = lastAdTrigger.get(streamId) || 0;
+  // Require at least 5 minutes (300,000 ms) between ad breaks
+  if (now - lastTrigger < 300000) {
+    return res.status(429).json({ error: 'Ad break rate limit exceeded. Please wait 5 minutes before triggering another ad.' });
+  }
+  lastAdTrigger.set(streamId, now);
 
   try {
     const viewersCount = io.sockets.adapter.rooms.get(streamId)?.size || 0;

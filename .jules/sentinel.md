@@ -6,3 +6,8 @@
 **Vulnerability:** The backend authentication system used a hardcoded fallback string ('super_secret_beacon_key_123') for the 'JWT_SECRET' if the environment variable was missing.
 **Learning:** Hardcoding fallback secrets allows attackers who can discover or guess the repository source code to trivially forge authentication tokens if a production environment forgets to configure the secret environment variable.
 **Prevention:** Always default to a securely generated random string (e.g., 'crypto.randomBytes(64).toString("hex")') for sensitive cryptographic fallback keys.
+
+## 2024-05-23 - Prevent Infinite Ad Revenue Exploit via Rate Limiting
+**Vulnerability:** The `/api/ads/trigger` endpoint lacked rate limiting, allowing any broadcaster to spam the API and artificially generate infinite ad revenue (CR) for themselves and their relayers out of thin air.
+**Learning:** Revenue-generating endpoints (especially those minting credits instead of transferring them) must always have strict rate limits and bounds to prevent algorithmic exploitation.
+**Prevention:** Always implement server-side rate-limiting using maps or Redis for any endpoint that rewards users or modifies global economy balances, and never rely solely on frontend button disabling.
