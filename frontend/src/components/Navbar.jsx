@@ -63,6 +63,8 @@ const Navbar = memo(function Navbar() {
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 hover:border-beacon-500 transition-colors overflow-hidden"
                 aria-label="Profile Menu"
+                aria-expanded={isDropdownOpen}
+                aria-haspopup="true"
               >
                 {userProfile?.avatar ? (
                   <img src={userProfile.avatar} alt={userProfile.username} className="w-full h-full object-cover" />
