@@ -312,6 +312,24 @@ app.patch('/api/users/profile', authenticateToken, (req, res) => {
   }
 });
 
+// Get Followers List
+app.get('/api/users/:username/followers', (req, res) => {
+  try {
+    const stmt = db.prepare(`
+      SELECT u.id, u.username, u.avatar_url, u.bio, u.follower_count
+      FROM Users u
+      JOIN Follows f ON u.id = f.follower_id
+      JOIN Users followee ON followee.id = f.followee_id
+      WHERE followee.username = ?
+    `);
+    const followers = stmt.all(req.params.username);
+    res.json(followers);
+  } catch (err) {
+    console.error('Get followers error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // Get User Profile
 app.get('/api/users/:username', (req, res) => {
   try {

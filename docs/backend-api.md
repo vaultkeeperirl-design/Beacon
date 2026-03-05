@@ -170,6 +170,24 @@ Retrieves a list of users that the specified user is following. **No authenticat
   ]
   ```
 
+### `GET /api/users/:username/followers`
+Retrieves a list of users that follow the specified user. **No authentication required.**
+
+- **URL Parameters:**
+  - `username`: The username of the followed user.
+- **Response (200 OK):**
+  ```json
+  [
+    {
+      "id": 3,
+      "username": "follower_user",
+      "avatar_url": "https://example.com/follower_avatar.png",
+      "bio": "Huge fan!",
+      "follower_count": 5
+    }
+  ]
+  ```
+
 ## Economy (Wallet & Tipping)
 
 ### `GET /api/wallet`

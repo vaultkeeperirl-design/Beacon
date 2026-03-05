@@ -13,3 +13,7 @@
 ## 2025-02-13 - Implement Persistent Follows API
 **Learning:** The frontend allowed users to "follow" streams, but it was purely relying on `localStorage`. If users cleared their cache or logged in on another device, they lost their followed list. This breaks the expected user experience.
 **Action:** Added a robust `Follows` mapping table to the backend `Users` database and implemented `POST`, `DELETE`, and `GET` endpoints for `/api/users/:username/follow`. This ensures follow states are durable, device-agnostic, and safe.
+
+## 2025-10-25 - Implement Followers API Endpoint
+**Learning:** The backend already supported returning the list of users a specific user was following, but lacked the symmetric endpoint to return who was following them, which is a common community feature.
+**Action:** Implemented `GET /api/users/:username/followers` in `backend/server.js` and verified its correctness with automated integration tests.
