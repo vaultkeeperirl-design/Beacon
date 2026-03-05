@@ -12,9 +12,6 @@ describe("Relay Revenue Split (Forge Implementation)", () => {
   let broadcasterUser, relayerUser, squadUser;
 
   beforeAll(async () => {
-    // Clear Users table
-    db.prepare('DELETE FROM Users').run();
-
     const timestamp = Date.now();
     broadcasterUser = `host_${timestamp}`;
     relayerUser = `relayer_${timestamp}`;
@@ -23,14 +20,31 @@ describe("Relay Revenue Split (Forge Implementation)", () => {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash('password123', salt);
 
-    const insertStmt = db.prepare('INSERT INTO Users (username, password_hash, credits) VALUES (?, ?, ?)');
+    const insertStmt = db.prepare('INSERT OR IGNORE INTO Users (username, password_hash, credits) VALUES (?, ?, ?)');
     const hostInfo = insertStmt.run(broadcasterUser, hash, 0.0);
     const relayerInfo = insertStmt.run(relayerUser, hash, 0.0);
     const squadInfo = insertStmt.run(squadUser, hash, 0.0);
 
-    broadcasterToken = jwt.sign({ id: hostInfo.lastInsertRowid, username: broadcasterUser }, JWT_SECRET, { expiresIn: '1h' });
-    relayerToken = jwt.sign({ id: relayerInfo.lastInsertRowid, username: relayerUser }, JWT_SECRET, { expiresIn: '1h' });
-    squadToken = jwt.sign({ id: squadInfo.lastInsertRowid, username: squadUser }, JWT_SECRET, { expiresIn: '1h' });
+    let hostId = hostInfo.lastInsertRowid;
+    let relayerId = relayerInfo.lastInsertRowid;
+    let squadId = squadInfo.lastInsertRowid;
+
+    if (hostInfo.changes === 0) {
+      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run(broadcasterUser);
+      hostId = db.prepare('SELECT id FROM Users WHERE username = ?').get(broadcasterUser).id;
+    }
+    if (relayerInfo.changes === 0) {
+      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run(relayerUser);
+      relayerId = db.prepare('SELECT id FROM Users WHERE username = ?').get(relayerUser).id;
+    }
+    if (squadInfo.changes === 0) {
+      db.prepare('UPDATE Users SET credits = 0.0 WHERE username = ?').run(squadUser);
+      squadId = db.prepare('SELECT id FROM Users WHERE username = ?').get(squadUser).id;
+    }
+
+    broadcasterToken = jwt.sign({ id: hostId, username: broadcasterUser }, JWT_SECRET, { expiresIn: '1h' });
+    relayerToken = jwt.sign({ id: relayerId, username: relayerUser }, JWT_SECRET, { expiresIn: '1h' });
+    squadToken = jwt.sign({ id: squadId, username: squadUser }, JWT_SECRET, { expiresIn: '1h' });
 
     return new Promise((resolve) => {
       server.listen(0, () => {
