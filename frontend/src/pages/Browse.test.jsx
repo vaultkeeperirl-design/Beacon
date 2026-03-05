@@ -89,4 +89,60 @@ describe('Browse Component', () => {
        expect(screen.getByText(/Building a P2P streaming app from scratch/i)).toBeInTheDocument();
      });
   });
+
+  it('sorts streams by most viewers when selected', async () => {
+    renderWithRouter();
+
+    // Wait for the data to load
+    await waitFor(() => {
+      expect(screen.getByText(/Building a P2P streaming app from scratch/i)).toBeInTheDocument();
+    });
+
+    // Open sort dropdown
+    const sortButton = screen.getByRole('button', { name: /Sort by:/i });
+    fireEvent.click(sortButton);
+
+    // Click "Most Viewers" option
+    const mostViewersOption = screen.getByRole('button', { name: /^Most Viewers$/i });
+    fireEvent.click(mostViewersOption);
+
+    // Assuming StreamCard renders titles as links, we can grab all the titles
+    const titles = screen.getAllByRole('link')
+      .filter(link => link.className.includes('block font-semibold'))
+      .map(link => link.textContent);
+
+    expect(titles).toEqual([
+      'Building a P2P streaming app from scratch', // 12500 viewers
+      'Late Night Valorant Ranked Grind',          // 8200 viewers
+      'Cooking with reckless abandon',             // 5100 viewers
+    ]);
+  });
+
+  it('sorts streams alphabetically when selected', async () => {
+    renderWithRouter();
+
+    // Wait for the data to load
+    await waitFor(() => {
+      expect(screen.getByText(/Building a P2P streaming app from scratch/i)).toBeInTheDocument();
+    });
+
+    // Open sort dropdown
+    const sortButton = screen.getByRole('button', { name: /Sort by:/i });
+    fireEvent.click(sortButton);
+
+    // Click "Alphabetical (A-Z)" option
+    const alphabeticalOption = screen.getByRole('button', { name: /^Alphabetical \(A-Z\)$/i });
+    fireEvent.click(alphabeticalOption);
+
+    // Assuming StreamCard renders titles as links, we can grab all the titles
+    const titles = screen.getAllByRole('link')
+      .filter(link => link.className.includes('block font-semibold'))
+      .map(link => link.textContent);
+
+    expect(titles).toEqual([
+      'Building a P2P streaming app from scratch', // B
+      'Cooking with reckless abandon',             // C
+      'Late Night Valorant Ranked Grind',          // L
+    ]);
+  });
 });
