@@ -33,3 +33,7 @@
 ## 2025-05-27 - [Transactional Integrity and Side Effects]
 **Learning:** Decoupling side effects (like Socket.io emissions) from database transactions is crucial for maintaining consistency. Emitting events inside a transaction can lead to "phantom" updates if the transaction later fails.
 **Action:** Refactor data distribution helpers to return a list of updates, and have the caller perform the broadcasts only after the transaction successfully commits.
+
+## 2025-03-05 - Add sorting to Browse page
+**Learning:** Reusable UI components for filtering/sorting on static datasets. The `streams` array is filtered using `query` first and then we can simply clone the array using `[...result]` and sort it via standard javascript `sort()` capabilities using a React `useMemo` dependency array to update optimally without excessive re-renders.
+**Action:** Can use a very similar approach when tackling other list-oriented views such as the "Following" page or the "Home" page stream feeds.
