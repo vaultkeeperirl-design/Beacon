@@ -27,3 +27,7 @@
 ## 2026-03-06 - Form Accessibility via Label Association
 **Learning:** Simply wrapping text in a `<label>` tag next to an `<input>` is not sufficient for screen readers. The label must be explicitly associated with the input using the `htmlFor` attribute on the label and a matching `id` attribute on the input. This ensures that when a screen reader focuses on the input, it accurately announces the associated label text.
 **Action:** Always verify that every `<label>` has an `htmlFor` attribute that matches the `id` of its corresponding `<input>`, `<select>`, or `<textarea>`, especially on critical forms like Login and Register.
+
+## 2026-03-10 - Sidebar Navigation and Active States
+**Learning:** For application-wide navigation components like the Sidebar, using `NavLink` with a functional `className` provides a standardized way to communicate the user's current location visually. Additionally, purely visual status indicators (like "Live" pulse dots) must be made accessible using `role="img"` and `aria-label`.
+**Action:** Always prefer `NavLink` for navigation menus to handle active states idiomatically, and ensure all visual status indicators have accompanying ARIA labels.
