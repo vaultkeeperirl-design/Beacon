@@ -21,3 +21,7 @@
 ## 2025-03-05 - Broadcasting Guide
 **Learning:** The project had documentation covering the architecture, economy, and general setup, but lacked a step-by-step user guide explaining how to actually stream on the platform. Specifically, it wasn't clear to new streamers that Beacon handles broadcasting natively in the browser via WebRTC without needing third-party tools like OBS.
 **Action:** Created `docs/broadcasting-guide.md` to document the built-in Broadcast Studio. This guide walks users through setting up their stream info, managing camera/mic/screen share, interacting with chat, and using platform-specific features like polls, co-streaming revenue splits, and ad breaks.
+
+## 2025-03-05 - Contribution Guidelines Update
+**Learning:** Developers submitting PRs might not be aware of the built-in `pnpm check` command, which sequentially runs the linter and test suite. Without this check, PRs might fail CI/CD or require more review cycles.
+**Action:** Updated `docs/contributing.md` to explicitly require contributors to run `pnpm check` as a mandatory step before opening a Pull Request.
