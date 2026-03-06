@@ -10,6 +10,8 @@ export default function Following() {
   const { followedChannels } = useFollowing();
   const [liveStreams, setLiveStreams] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState('recently-live');
+  const [isSortOpen, setIsSortOpen] = useState(false);
 
   useEffect(() => {
     const fetchLiveStreams = async () => {
@@ -48,6 +50,18 @@ export default function Following() {
 
     return { liveChannels: live, offlineChannels: offline };
   }, [followedChannels, liveStreams]);
+
+  const sortedOfflineChannels = useMemo(() => {
+    let sorted = [...offlineChannels];
+    if (sortOrder === 'alphabetical') {
+      sorted.sort((a, b) => {
+        const nameA = a.name || a.username || a.id || '';
+        const nameB = b.name || b.username || b.id || '';
+        return nameA.localeCompare(nameB);
+      });
+    }
+    return sorted;
+  }, [offlineChannels, sortOrder]);
 
   return (
     <div>
@@ -99,17 +113,44 @@ export default function Following() {
        <div className="border-t border-neutral-800 pt-8 mb-6">
            <div className="flex items-center justify-between mb-6">
              <h2 className="text-xl font-poppins font-bold text-white">Offline Channels</h2>
-             <div className="flex gap-2">
-                <button className="flex items-center gap-2 px-3 py-1.5 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-neutral-300 hover:text-white hover:border-neutral-700 transition-colors">
-                  <span>Sort by: Recently Live</span>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
+             <div className="flex gap-2 relative">
+                <div className="relative">
+                  <button
+                    onClick={() => setIsSortOpen(!isSortOpen)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-neutral-300 hover:text-white hover:border-neutral-700 transition-colors"
+                    aria-haspopup="true"
+                    aria-expanded={isSortOpen}
+                  >
+                    <span>Sort by: {sortOrder === 'recently-live' ? 'Recently Live' : 'Alphabetical (A-Z)'}</span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${isSortOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isSortOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsSortOpen(false)}></div>
+                      <div className="absolute right-0 mt-2 w-48 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                        <button
+                          onClick={() => { setSortOrder('recently-live'); setIsSortOpen(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-neutral-800 transition-colors ${sortOrder === 'recently-live' ? 'text-beacon-400 font-bold bg-neutral-800/50' : 'text-neutral-300'}`}
+                        >
+                          Recently Live
+                        </button>
+                        <button
+                          onClick={() => { setSortOrder('alphabetical'); setIsSortOpen(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-neutral-800 transition-colors border-t border-neutral-800 ${sortOrder === 'alphabetical' ? 'text-beacon-400 font-bold bg-neutral-800/50' : 'text-neutral-300'}`}
+                        >
+                          Alphabetical (A-Z)
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
              </div>
            </div>
 
-           {offlineChannels.length > 0 ? (
+           {sortedOfflineChannels.length > 0 ? (
              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                 {offlineChannels.map(channel => (
+                 {sortedOfflineChannels.map(channel => (
                      <div key={channel.id} className="flex items-center gap-4 p-4 bg-neutral-900/50 border border-neutral-800 rounded-xl hover:bg-neutral-800/80 hover:border-neutral-700 transition-all cursor-pointer group">
                          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-neutral-700 group-hover:border-beacon-500/50 transition-colors relative flex items-center justify-center text-neutral-400 flex-shrink-0">
                              {channel.avatar ? (
