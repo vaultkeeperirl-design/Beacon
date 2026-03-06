@@ -274,18 +274,58 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
+// 🛡️ SECURITY: Rate limiting for login to prevent brute force
+const loginRateLimit = new Map();
+
+// Cleanup stale rate limit entries every 15 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, data] of loginRateLimit.entries()) {
+    if (now > data.resetTime) {
+      loginRateLimit.delete(ip);
+    }
+  }
+}, 15 * 60 * 1000).unref();
+
 // Login
 app.post('/api/auth/login', async (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000; // 15 minutes
+  const maxAttempts = 5;
+
+  let rateData = loginRateLimit.get(ip);
+  if (!rateData || now > rateData.resetTime) {
+    rateData = { attempts: 0, resetTime: now + windowMs };
+    loginRateLimit.set(ip, rateData);
+  }
+
+  if (rateData.attempts >= maxAttempts) {
+    return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
+  }
+
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+  if (!username || !password) {
+    rateData.attempts++;
+    return res.status(400).json({ error: 'Username and password required' });
+  }
 
   try {
     const user = getUserWithHashStmt.get(username);
 
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!user) {
+      rateData.attempts++;
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
     const validPassword = await bcrypt.compare(password, user.password_hash);
-    if (!validPassword) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!validPassword) {
+      rateData.attempts++;
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Success: clear rate limit
+    loginRateLimit.delete(ip);
 
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
 

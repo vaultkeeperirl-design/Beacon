@@ -11,3 +11,7 @@
 **Vulnerability:** The `/api/ads/trigger` endpoint lacked rate limiting, allowing any broadcaster to spam the API and artificially generate infinite ad revenue (CR) for themselves and their relayers out of thin air.
 **Learning:** Revenue-generating endpoints (especially those minting credits instead of transferring them) must always have strict rate limits and bounds to prevent algorithmic exploitation.
 **Prevention:** Always implement server-side rate-limiting using maps or Redis for any endpoint that rewards users or modifies global economy balances, and never rely solely on frontend button disabling.
+## 2025-03-07 - Rate limit for missing authentication
+**Vulnerability:** The `/api/auth/login` endpoint was missing rate limiting, allowing brute-force attacks.
+**Learning:** Auth endpoints must always have rate limits to prevent brute forcing and password cracking. A memory based rate limit can be implemented for this small application, bounding the attempts for a single IP address.
+**Prevention:** All authentication related routes need to track failed requests and fail securely (delaying or blocking next requests) upon a certain amount of failures.
