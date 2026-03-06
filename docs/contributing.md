@@ -71,6 +71,13 @@ pnpm test:frontend
 
 ## Submitting a Pull Request
 
+Before opening a Pull Request, always verify your code by running the `check` script from the root of the repository. This sequentially runs the linter and the entire test suite to ensure your changes are safe.
+
+```bash
+# Run all linter checks and tests
+pnpm check
+```
+
 1.  **Sync with Upstream**: Ensure your branch is up to date with `upstream/main`.
     ```bash
     git fetch upstream
