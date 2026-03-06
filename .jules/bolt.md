@@ -25,3 +25,7 @@
 ## 2025-07-05 - [Backend] O(N) Greedy Selection vs. O(N log N) Sorting
 **Learning:** Using `Array.sort()` for selecting the best node in a high-frequency tracking Map (like the P2P Mesh) is inefficient. It forces O(N log N) complexity and creates O(N) intermediate objects for every join/leave event, leading to CPU spikes and GC pressure as the viewer count grows.
 **Action:** Implement a single-pass O(N) greedy selection algorithm that tracks the 'best' candidate using primitive variables. This avoids all intermediate allocations and ensures the tracker scales linearly with the number of concurrent viewers.
+
+## 2025-07-15 - [React] Preventing Redundant Re-renders with State Identity
+**Learning:** Even when using a high-frequency context provider, if the stats object returned by a hook (like `useRealP2PStats`) is a new object every second, every subscriber will re-render regardless of whether the values inside the object have changed. React only skips re-renders if the state reference is identical.
+**Action:** Implement shallow equality checks inside the `setStats` functional updates. If the new values match the current state, return the previous state reference (`prev`) instead of a new object. This stops the re-render chain across all context subscribers when network metrics are stable.
