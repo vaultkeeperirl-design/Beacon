@@ -40,3 +40,7 @@
 ## 2026-03-05 - [Optimistic UI Rollback Pattern]
 **Learning:** When implementing optimistic updates for network-bound actions (like follows), rolling back to a consistent state is best achieved by re-fetching the source of truth from the backend API upon failure. This approach avoids stale closures and manual state preservation issues.
 **Action:** Implement a re-fetch of the backend state within the `catch` block of an optimistic update to ensure long-term consistency.
+
+## 2026-03-05 - Add sorting to Following page
+**Learning:** Reusable UI components for filtering/sorting on static datasets in `Following.jsx`. We created a shallow array copy for `offlineChannels` using `[...result]` and sorted it via standard Javascript `sort()` using `a.name.localeCompare(b.name)`, encapsulated in a React `useMemo` block.
+**Action:** When handling data directly returned from APIs, it's safer to provide robust fallback logic inside `sort()` comparisons (e.g., `const nameA = a.name || a.username || '';`) to prevent UI crashes if some entities lack optional attributes.
