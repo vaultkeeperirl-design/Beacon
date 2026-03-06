@@ -5,6 +5,7 @@
 ## 2026-03-02 - Documenting P2PContext Split Hooks
 **Learning:** The `P2PContext` was refactored into two contexts (`P2PStatsContext` and `P2PSettingsContext`) to mitigate excessive app-wide re-renders caused by frequent stat updates. However, the exported hooks (`useP2PStats`, `useP2PSettings`, and the legacy `useP2P`) lacked adequate documentation, making it easy for developers to accidentally use the wrong hook and re-introduce performance bottlenecks by triggering unneeded renders when stable values are desired.
 **Action:** Added comprehensive JSDoc comments to `P2PProvider` and the associated hooks (`useP2PStats`, `useP2PSettings`, `useP2P`), explicitly emphasizing the performance implications and return types to guide safe usage across the application.
+
 ## 2024-03-03 - Documenting Backend REST API Endpoints
 **Learning:** The `backend/server.js` file contained multiple undocumented REST API endpoints (`/api/auth/*`, `/api/users/*`, `/api/wallet`, `/api/tip`, etc.) alongside the Socket.IO signaling logic. Because these endpoints were undocumented, it wasn't immediately clear what payloads were required for authentication, tipping, or fetching profiles.
 **Action:** Created `docs/backend-api.md` to cleanly document the available REST endpoints, including request bodies, authentication requirements, and typical JSON responses. Also updated `docs/Architecture.md` to link to this new documentation file.
@@ -16,3 +17,7 @@
 ## 2024-03-05 - Documenting Missing Backend REST API Endpoints
 **Learning:** The `docs/backend-api.md` file was missing documentation for several endpoints related to streams and following users, and the documentation for the `GET /api/node-stats` endpoint was incorrect compared to the actual implementation in `backend/server.js`. Having incomplete documentation can lead to confusion for developers interacting with the API.
 **Action:** Updated `docs/backend-api.md` to add documentation for `GET /api/streams`, `GET /api/streams/:streamId`, `POST /api/users/:username/follow`, `DELETE /api/users/:username/follow`, and `GET /api/users/:username/following`, and fixed the expected JSON response for `GET /api/node-stats`.
+
+## 2025-03-06 - Documenting FollowingContext Provider and Hooks
+**Learning:** The `FollowingContext.jsx` file implements critical frontend global state for tracking which channels a user follows, handling optimistic UI updates, and persisting to local storage. However, the exported `FollowingProvider` and `useFollowing` hook lacked explicit JSDoc annotations, making it unclear to other developers (or agents) what parameter structures were required (e.g., `follow(channel)` vs `unfollow(channelId)`) and what properties were safely exposed.
+**Action:** Added comprehensive JSDoc comments to `FollowingProvider` and `useFollowing` in `frontend/src/context/FollowingContext.jsx`, explicitly outlining its responsibilities and typing the specific return values and parameters.
