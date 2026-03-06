@@ -1,21 +1,53 @@
+import { useState, useEffect, useMemo } from 'react';
 import StreamCard from '../components/StreamCard';
-import { Filter, ChevronDown, Heart, Activity, User } from 'lucide-react';
+import StreamCardSkeleton from '../components/StreamCardSkeleton';
+import { ChevronDown, Heart, Activity, User } from 'lucide-react';
 import { useFollowing } from '../context/FollowingContext';
-
-// Keep mocks for offline or if needed, but primarily use context
-const MOCK_OFFLINE_CHANNELS = [
-    { id: 101, name: 'TechTalks', lastStream: '2 hours ago', category: 'Talk Shows', avatar: null },
-    { id: 102, name: 'AdventureTime', lastStream: 'Yesterday', category: 'Travel', avatar: null },
-    { id: 103, name: 'CodeWarrior', lastStream: '3 days ago', category: 'Programming', avatar: null },
-    { id: 104, name: 'YogaDaily', lastStream: '5 days ago', category: 'Fitness', avatar: null },
-];
+import axios from 'axios';
+import { API_URL } from '../config/api';
 
 export default function Following() {
   const { followedChannels } = useFollowing();
+  const [liveStreams, setLiveStreams] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // In a real app, we would fetch live status here.
-  // For now, we assume followed channels that are marked 'isLive' are live.
-  const liveChannels = followedChannels.filter(c => c.isLive);
+  useEffect(() => {
+    const fetchLiveStreams = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/streams`);
+        setLiveStreams(res.data);
+      } catch (err) {
+        console.error('Failed to fetch live streams', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLiveStreams();
+  }, []);
+
+  const { liveChannels, offlineChannels } = useMemo(() => {
+    const live = [];
+    const offline = [];
+
+    followedChannels.forEach(channel => {
+      // Check if the followed channel is in the active streams list
+      const activeStream = liveStreams.find(s => s.streamer === channel.id || s.streamer === channel.name);
+      if (activeStream) {
+        live.push({
+          ...channel,
+          ...activeStream, // Override with active stream data (e.g. title, viewers, thumbnail)
+          isLive: true
+        });
+      } else {
+        offline.push({
+          ...channel,
+          isLive: false
+        });
+      }
+    });
+
+    return { liveChannels: live, offlineChannels: offline };
+  }, [followedChannels, liveStreams]);
 
   return (
     <div>
@@ -33,21 +65,27 @@ export default function Following() {
          <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-green-500" />
             <h2 className="text-xl font-poppins font-bold text-white">Live Now</h2>
-            <span className="bg-neutral-800 text-neutral-400 text-xs px-2 py-0.5 rounded-full ml-2">{liveChannels.length}</span>
+            {!isLoading && <span className="bg-beacon-500 text-white font-bold text-xs px-2 py-0.5 rounded-full ml-2">{liveChannels.length}</span>}
          </div>
        </div>
 
-       {liveChannels.length > 0 ? (
+       {isLoading ? (
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+           {Array.from({ length: 4 }).map((_, i) => (
+             <StreamCardSkeleton key={i} />
+           ))}
+         </div>
+       ) : liveChannels.length > 0 ? (
          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
            {liveChannels.map(channel => (
              <StreamCard
                 key={channel.id}
                 id={channel.id}
                 title={channel.title || 'Untitled Stream'}
-                streamer={channel.name}
-                viewers="1.2k" // Mock viewers
-                tags={channel.tags || ['Live']}
-                thumbnail={`https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600`} // Mock thumbnail
+                streamer={channel.streamer || channel.name}
+                viewers={channel.viewers || 0}
+                tags={typeof channel.tags === 'string' ? channel.tags.split(',').map(t => t.trim()) : (channel.tags || ['Live'])}
+                thumbnail={channel.thumbnail || `https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600`}
              />
            ))}
          </div>
@@ -69,24 +107,29 @@ export default function Following() {
              </div>
            </div>
 
-           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-               {MOCK_OFFLINE_CHANNELS.map(channel => (
-                   <div key={channel.id} className="flex items-center gap-4 p-4 bg-neutral-900/50 border border-neutral-800 rounded-xl hover:bg-neutral-800/80 hover:border-neutral-700 transition-all cursor-pointer group">
-                       <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-neutral-700 group-hover:border-beacon-500/50 transition-colors relative flex items-center justify-center text-neutral-400">
-                           {channel.avatar ? (
-                               <img src={channel.avatar} alt={channel.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" />
-                           ) : (
-                               <User className="w-6 h-6 opacity-50 grayscale group-hover:grayscale-0 transition-all" />
-                           )}
-                       </div>
-                       <div>
-                           <h3 className="font-bold text-white group-hover:text-beacon-400 transition-colors">{channel.name}</h3>
-                           <p className="text-xs text-neutral-500">{channel.category}</p>
-                           <p className="text-xs text-neutral-600 mt-1">Last seen: {channel.lastStream}</p>
-                       </div>
-                   </div>
-               ))}
-           </div>
+           {offlineChannels.length > 0 ? (
+             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                 {offlineChannels.map(channel => (
+                     <div key={channel.id} className="flex items-center gap-4 p-4 bg-neutral-900/50 border border-neutral-800 rounded-xl hover:bg-neutral-800/80 hover:border-neutral-700 transition-all cursor-pointer group">
+                         <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-neutral-700 group-hover:border-beacon-500/50 transition-colors relative flex items-center justify-center text-neutral-400 flex-shrink-0">
+                             {channel.avatar ? (
+                                 <img src={channel.avatar} alt={channel.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" />
+                             ) : (
+                                 <User className="w-6 h-6 opacity-50 grayscale group-hover:grayscale-0 transition-all" />
+                             )}
+                         </div>
+                         <div className="min-w-0">
+                             <h3 className="font-bold text-white group-hover:text-beacon-400 transition-colors truncate">{channel.name}</h3>
+                             <p className="text-xs text-neutral-500 truncate">{channel.title || 'Offline'}</p>
+                         </div>
+                     </div>
+                 ))}
+             </div>
+           ) : (
+             <div className="bg-neutral-900/30 border border-neutral-800/50 rounded-xl p-8 text-center">
+                 <p className="text-neutral-500 text-sm">You are not following any offline channels.</p>
+             </div>
+           )}
        </div>
     </div>
   );
