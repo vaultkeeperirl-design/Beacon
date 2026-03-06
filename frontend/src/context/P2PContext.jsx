@@ -60,9 +60,24 @@ export function P2PProvider({ children }) {
     };
   });
 
-  const updateUserProfile = (newProfile) => {
-    setUserProfile(newProfile);
-    localStorage.setItem('beacon_user_profile', JSON.stringify(newProfile));
+  const updateUserProfile = (newProfileOrFn) => {
+    setUserProfile((prev) => (typeof newProfileOrFn === 'function' ? newProfileOrFn(prev) : newProfileOrFn));
+  };
+
+  // Persist user profile to local storage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('beacon_user_profile', JSON.stringify(userProfile));
+  }, [userProfile]);
+
+  // Helper to sync user metadata from backend responses to local profile state
+  const syncProfile = (userData) => {
+    updateUserProfile(prev => ({
+      ...prev,
+      username: userData.username,
+      displayName: userData.username,
+      avatar: userData.avatar_url,
+      bio: userData.bio ?? prev.bio
+    }));
   };
 
   const logout = () => {
@@ -96,6 +111,9 @@ export function P2PProvider({ children }) {
           .then(res => {
             setUser(res.data);
             setUsername(res.data.username);
+
+            // Sync user profile with fetched data
+            syncProfile(res.data);
           })
           .catch(err => {
             console.error('Error fetching user profile:', err);
@@ -126,6 +144,10 @@ export function P2PProvider({ children }) {
       setToken(newToken);
       setUser(newUser);
       setUsername(newUser.username);
+
+      // Sync user profile
+      syncProfile(newUser);
+
       return { success: true };
     } catch (err) {
       return { success: false, error: err.response?.data?.error || 'Login failed' };
@@ -140,6 +162,10 @@ export function P2PProvider({ children }) {
       setToken(newToken);
       setUser(newUser);
       setUsername(newUser.username);
+
+      // Sync user profile
+      syncProfile(newUser);
+
       return { success: true };
     } catch (err) {
       return { success: false, error: err.response?.data?.error || 'Registration failed' };
