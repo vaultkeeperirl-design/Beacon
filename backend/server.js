@@ -1007,6 +1007,23 @@ io.on('connection', (socket) => {
     cleanupPoll(streamId, true);
   });
 
+  socket.on('raid-stream', ({ streamId, targetId }) => {
+    if (!streamId || socket.currentRoom !== streamId) return;
+    if (socket.username !== streamId) return; // Only host can raid
+    if (!targetId || targetId === streamId) return;
+
+    console.log(`[Raid] ${streamId} is raiding ${targetId}`);
+
+    if (activeStreams.has(streamId)) {
+      activeStreams.delete(streamId);
+      streamSquads.delete(streamId);
+      cleanupPoll(streamId, true);
+
+      // Notify viewers to redirect to the target stream
+      socket.to(streamId).emit('stream-ended', { redirect: targetId });
+    }
+  });
+
   // --- Stream Metadata ---
   socket.on('update-stream-info', ({ streamId, title, tags }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
