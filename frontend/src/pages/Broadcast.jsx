@@ -192,6 +192,15 @@ export default function Broadcast() {
     }
   };
 
+  const handleRaid = () => {
+    if (!isLive || !socket) return;
+    const targetId = prompt("Enter the username of the channel you want to raid:");
+    if (targetId && targetId.trim() !== "" && targetId.trim() !== username) {
+      socket.emit('raid-stream', { streamId: username, targetId: targetId.trim() });
+      setIsLive(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -358,7 +367,13 @@ export default function Broadcast() {
             <div className="bg-neutral-900/50 rounded-xl p-6 border border-neutral-800">
                <h3 className="font-poppins font-semibold text-white mb-4 text-sm uppercase tracking-wider text-neutral-400">Quick Actions</h3>
                <div className="grid grid-cols-2 gap-3">
-                  <button className="p-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-medium text-white transition-colors border border-neutral-700">Raid Channel</button>
+                  <button
+                    onClick={handleRaid}
+                    disabled={!isLive}
+                    className="p-3 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium text-white transition-colors border border-neutral-700"
+                  >
+                    Raid Channel
+                  </button>
                   <button
                     onClick={handlePollClick}
                     className={`p-3 rounded-lg text-sm font-medium transition-colors border ${
