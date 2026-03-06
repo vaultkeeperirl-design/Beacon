@@ -1,6 +1,6 @@
 import { memo, useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, User, Radio, LogOut, Settings } from 'lucide-react';
+import { Search, User, Radio, LogOut, Settings, X } from 'lucide-react';
 import WalletBalance from './WalletBalance';
 import { useP2PSettings } from '../context/P2PContext';
 
@@ -57,9 +57,23 @@ const Navbar = memo(function Navbar() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="block w-full pl-10 pr-3 py-2 border border-neutral-800 rounded-full leading-5 bg-neutral-950 text-neutral-300 placeholder-neutral-600 focus:outline-none focus:border-beacon-500/50 focus:ring-1 focus:ring-beacon-500/50 sm:text-sm transition-colors"
+            className="block w-full pl-10 pr-10 py-2 border border-neutral-800 rounded-full leading-5 bg-neutral-950 text-neutral-300 placeholder-neutral-600 focus:outline-none focus:border-beacon-500/50 focus:ring-1 focus:ring-beacon-500/50 sm:text-sm transition-colors"
             placeholder="Search streams... (Press /)"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                searchInputRef.current?.focus();
+              }}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-500 hover:text-white transition-colors"
+              aria-label="Clear search"
+            >
+              {/* ⚡ Aura: Added 'Clear Search' button to allow users to quickly reset their search query with a single click instead of manually deleting text. */}
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </form>
       </div>
 
