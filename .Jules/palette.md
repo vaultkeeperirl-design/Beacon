@@ -23,3 +23,7 @@
 ## 2026-03-05 - Dropdown and Selection Accessibility
 **Learning:** Toggle buttons for menus or dropdowns (e.g., Profile menu, Tip menu) must include `aria-expanded` and `aria-haspopup` to properly signal state to assistive technologies. Similarly, selection buttons in a group should use `aria-pressed` to indicate the active state.
 **Action:** Always include state-reflecting ARIA attributes on interactive elements that control visibility or represent a selection.
+
+## 2026-03-06 - Form Accessibility via Label Association
+**Learning:** Simply wrapping text in a `<label>` tag next to an `<input>` is not sufficient for screen readers. The label must be explicitly associated with the input using the `htmlFor` attribute on the label and a matching `id` attribute on the input. This ensures that when a screen reader focuses on the input, it accurately announces the associated label text.
+**Action:** Always verify that every `<label>` has an `htmlFor` attribute that matches the `id` of its corresponding `<input>`, `<select>`, or `<textarea>`, especially on critical forms like Login and Register.
