@@ -63,7 +63,7 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
     }
 
     const handleWalletUpdate = (data) => {
-        setStats(prev => ({ ...prev, credits: data.balance }));
+        setStats(prev => prev.credits === data.balance ? prev : { ...prev, credits: data.balance });
     };
 
     socket.on('wallet-update', handleWalletUpdate);
@@ -99,6 +99,20 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
         // Corrected calculation: factor in the 2-second polling interval
         // (Mbps * 2s / 8 bits / 1024 MB = GB uploaded in the interval)
         const uploadedInInterval = (realUpload * 2) / 8 / 1024;
+        const newTotalUploaded = parseFloat((prev.totalUploaded + uploadedInInterval).toFixed(4));
+
+        // ⚡ Performance Optimization: Shallow Equality Check
+        // Only return a new object if one of the monitored values has actually changed.
+        // Returning 'prev' prevents unnecessary re-renders in all P2PStatsContext subscribers.
+        if (
+          prev.uploadSpeed === realUpload &&
+          prev.downloadSpeed === realDownload &&
+          prev.peersConnected === connectedPeers &&
+          prev.latency === latency &&
+          prev.totalUploaded === newTotalUploaded
+        ) {
+          return prev;
+        }
 
         return {
           ...prev,
@@ -106,7 +120,7 @@ export function useRealP2PStats(isSharing, settings, streamId, username) {
           downloadSpeed: realDownload,
           peersConnected: connectedPeers,
           latency: latency,
-          totalUploaded: parseFloat((prev.totalUploaded + uploadedInInterval).toFixed(4)),
+          totalUploaded: newTotalUploaded,
           // ⚡ Performance Optimization: Removed Math.random() jitter to prevent unnecessary
           // re-renders when real network data hasn't changed.
           bufferHealth: 5.0
