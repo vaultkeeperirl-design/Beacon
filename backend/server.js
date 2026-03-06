@@ -341,6 +341,36 @@ app.patch('/api/users/profile', authenticateToken, (req, res) => {
   }
 });
 
+// Delete User Account
+app.delete('/api/users/:username', authenticateToken, (req, res) => {
+  const usernameToDelete = req.params.username;
+  const requestingUsername = req.user.username;
+
+  if (usernameToDelete !== requestingUsername) {
+    return res.status(403).json({ error: 'Forbidden: You can only delete your own account' });
+  }
+
+  try {
+    const user = getUserStmt.get(usernameToDelete);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Permanently delete the user account
+    // Since PRAGMA foreign_keys = ON is not explicitly set in db.js,
+    // we manually delete related Follows records to avoid orphaned data.
+    db.transaction(() => {
+      db.prepare('DELETE FROM Follows WHERE follower_id = ? OR followee_id = ?').run(user.id, user.id);
+      db.prepare('DELETE FROM Users WHERE id = ?').run(user.id);
+    })();
+
+    res.json({ success: true, message: 'Account permanently deleted' });
+  } catch (err) {
+    console.error('Account deletion failed:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // Get Followers List
 app.get('/api/users/:username/followers', (req, res) => {
   try {

@@ -282,6 +282,74 @@ describe('User Profile API', () => {
     });
   });
 
+  describe('DELETE /api/users/:username', () => {
+    let token;
+    beforeEach(async () => {
+      testDb.prepare('DELETE FROM Users').run();
+      // Pre-populate a user and generate a token
+      const salt = await bcrypt.genSalt(10);
+      const password_hash = await bcrypt.hash('password123', salt);
+      db.prepare('INSERT INTO Users (username, password_hash, credits, bio) VALUES (?, ?, ?, ?)')
+        .run('deleteuser', password_hash, 10, 'Test bio');
+
+      const response = await request(server)
+        .post('/api/auth/login')
+        .send({ username: 'deleteuser', password: 'password123' });
+
+      token = response.body.token;
+    });
+
+    it('should delete the user successfully', async () => {
+      const response = await request(server)
+        .delete('/api/users/deleteuser')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toBe('Account permanently deleted');
+
+      // Verify user is gone from DB
+      const user = db.prepare('SELECT * FROM Users WHERE username = ?').get('deleteuser');
+      expect(user).toBeUndefined();
+    });
+
+    it('should return 401 if unauthorized', async () => {
+      const response = await request(server)
+        .delete('/api/users/deleteuser');
+
+      expect(response.status).toBe(401);
+    });
+
+    it('should return 403 if trying to delete another user', async () => {
+      // Create another user
+      const salt = await bcrypt.genSalt(10);
+      const password_hash = await bcrypt.hash('password123', salt);
+      db.prepare('INSERT INTO Users (username, password_hash, credits, bio) VALUES (?, ?, ?, ?)')
+        .run('otheruser', password_hash, 10, 'Test bio');
+
+      const response = await request(server)
+        .delete('/api/users/otheruser')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBe('Forbidden: You can only delete your own account');
+
+      // Verify other user still exists
+      const otherUser = db.prepare('SELECT * FROM Users WHERE username = ?').get('otheruser');
+      expect(otherUser).toBeDefined();
+    });
+
+    it('should return 404 if user no longer exists in DB', async () => {
+      db.prepare('DELETE FROM Users WHERE username = ?').run('deleteuser');
+      const response = await request(server)
+        .delete('/api/users/deleteuser')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBe('User not found');
+    });
+  });
+
   describe('GET /api/users/:username', () => {
     beforeEach(async () => {
       testDb.prepare('DELETE FROM Users').run();
