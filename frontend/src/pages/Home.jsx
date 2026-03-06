@@ -1,6 +1,10 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import StreamCard from '../components/StreamCard';
+import StreamCardSkeleton from '../components/StreamCardSkeleton';
 import { Flame } from 'lucide-react';
+import axios from 'axios';
+import { API_URL } from '../config/api';
 
 const MOCK_STREAMS = [
   { id: 1, title: 'Building a P2P streaming app from scratch', streamer: 'JulesDev', viewers: '12.5k', tags: ['Coding', 'React', 'WebRTC'], thumbnail: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600' },
@@ -14,6 +18,25 @@ const MOCK_STREAMS = [
 ];
 
 export default function Home() {
+  const [streams, setStreams] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStreams = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/streams`);
+        // If API returns no streams, fallback to mock data to keep the home page lively
+        setStreams(res.data.length > 0 ? res.data : MOCK_STREAMS);
+      } catch (err) {
+        console.error('Failed to fetch streams', err);
+        setStreams(MOCK_STREAMS); // Fallback on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchStreams();
+  }, []);
+
   return (
     <div>
        {/* Featured Banner */}
@@ -42,11 +65,24 @@ export default function Home() {
           <h2 className="text-2xl font-poppins font-bold text-white">Recommended Channels</h2>
        </div>
 
-       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-         {MOCK_STREAMS.map(stream => (
-           <StreamCard key={stream.id} {...stream} />
-         ))}
-       </div>
+       {isLoading ? (
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+           {Array.from({ length: 8 }).map((_, i) => (
+             <StreamCardSkeleton key={i} />
+           ))}
+         </div>
+       ) : (
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+           {streams.map(stream => (
+             <StreamCard
+               key={stream.id}
+               {...stream}
+               tags={typeof stream.tags === 'string' ? stream.tags.split(',').map(t => t.trim()) : stream.tags}
+               thumbnail={stream.thumbnail || `https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600`}
+             />
+           ))}
+         </div>
+       )}
     </div>
   );
 }
