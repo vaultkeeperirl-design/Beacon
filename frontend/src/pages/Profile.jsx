@@ -1,11 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { Camera, Edit2, Save, X, Github, Twitter, MessageSquare, Globe, Activity, Database, Shield, Twitch, Layout as LayoutIcon, Mail, Plus } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../config/api';
 import { useP2PStats, useP2PSettings } from '../context/P2PContext';
 
-export default function Profile() {
+// ⚡ Performance Optimization: Isolate high-frequency stats to prevent full-tree re-renders
+const ProfileCredits = memo(function ProfileCredits() {
   const stats = useP2PStats();
+  return (
+    <h3 className="text-3xl font-mono font-bold text-white">{stats.credits.toFixed(2)} <span className="text-sm text-beacon-500">CR</span></h3>
+  );
+});
+
+export default function Profile() {
   const { isSharing, userProfile, updateUserProfile, token } = useP2PSettings();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(userProfile);
@@ -416,7 +423,7 @@ export default function Profile() {
           <div className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 flex items-center justify-between group hover:border-beacon-500/30 transition-all">
             <div>
               <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1">Credits / Balance</p>
-              <h3 className="text-3xl font-mono font-bold text-white">{stats.credits.toFixed(2)} <span className="text-sm text-beacon-500">CR</span></h3>
+              <ProfileCredits />
             </div>
             <div className="p-4 bg-beacon-500/10 rounded-2xl text-beacon-500">
                <Database className="w-8 h-8" />
