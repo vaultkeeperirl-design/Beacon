@@ -938,7 +938,7 @@ io.on('connection', (socket) => {
                 io.to(streamId).emit('poll-ended', pollData);
                 activePolls.delete(streamId);
             }
-        }, poll.duration * 1000);
+        }, poll.duration * 1000).unref();
     }
 
     activePolls.set(streamId, poll);
