@@ -5,6 +5,17 @@ import { useP2PSettings } from './P2PContext';
 
 const FollowingContext = createContext();
 
+/**
+ * Provider component that manages the global state for channels the user follows.
+ *
+ * It handles fetching the initial following list from the backend upon authentication,
+ * persisting the list to local storage for quick access (and guest usage), and provides
+ * functions to optimistically follow or unfollow channels while syncing with the backend API.
+ *
+ * @param {Object} props - The component props.
+ * @param {React.ReactNode} props.children - The child components.
+ * @returns {JSX.Element} The context provider wrapping the children.
+ */
 export function FollowingProvider({ children }) {
   const { token, username: currentUsername } = useP2PSettings();
   const [followedChannels, setFollowedChannels] = useState(() => {
@@ -125,6 +136,20 @@ export function FollowingProvider({ children }) {
   );
 }
 
+/**
+ * Hook to consume the global following state and actions.
+ *
+ * Provides access to the list of followed channels and functions to manage them.
+ * This is the authoritative source of truth for follow states across the frontend.
+ *
+ * @returns {{
+ *   followedChannels: Array<{id: string, name: string, avatar: string, title: string, isLive: boolean}>,
+ *   follow: (channel: {id: string|number, [key: string]: any}) => Promise<void>,
+ *   unfollow: (channelId: string|number) => Promise<void>,
+ *   isFollowing: (channelId: string|number) => boolean
+ * }} An object containing the followed channels array and follow management functions.
+ * @throws {Error} If called outside of a FollowingProvider.
+ */
 // eslint-disable-next-line react-refresh/only-export-components
 export function useFollowing() {
   const context = useContext(FollowingContext);
