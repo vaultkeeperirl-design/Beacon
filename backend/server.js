@@ -400,6 +400,13 @@ app.delete('/api/users/:username', authenticateToken, (req, res) => {
     // Since PRAGMA foreign_keys = ON is not explicitly set in db.js,
     // we manually delete related Follows records to avoid orphaned data.
     db.transaction(() => {
+      // 🌉 Bridge: Maintain follower_count integrity for others when this user is deleted.
+      // Find all users this user was following and decrement their follower counts.
+      const following = db.prepare('SELECT followee_id FROM Follows WHERE follower_id = ?').all(user.id);
+      for (const f of following) {
+        updateFollowerCountStmt.run(-1, f.followee_id);
+      }
+
       db.prepare('DELETE FROM Follows WHERE follower_id = ? OR followee_id = ?').run(user.id, user.id);
       db.prepare('DELETE FROM Users WHERE id = ?').run(user.id);
     })();
