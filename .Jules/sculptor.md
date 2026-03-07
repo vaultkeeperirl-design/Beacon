@@ -18,3 +18,7 @@
 ## 2026-03-04 - Centralize API and Socket URL configuration
 **Learning:** The `API_URL` and `SOCKET_URL` string concatenation and environment fallback logic was duplicated across many frontend components (hooks, contexts, pages, components). This duplication creates a high risk of inconsistencies if environment structures or logic change, and litters application logic files with configuration boilerplate.
 **Action:** Extracted these URLs to a centralized `frontend/src/config/api.js` file, creating a single source of truth for API communication paths. Next time, identify environment-dependent constants early and establish a configuration pattern to prevent scattered duplications.
+
+## 2025-03-07 - Extract Repetitive React Router NavLinks
+**Learning:** Repetitive use of React Router's `NavLink` with complex `isActive` render props (especially when combined with Tailwind CSS classes) leads to verbose and hard-to-maintain code blocks, like in `Sidebar.jsx`. Extracting these into small, specialized inner components or helper functions significantly reduces visual noise and duplication, making the UI structure much cleaner.
+**Action:** Always identify identical `className` functions within `.map` loops or structurally similar sibling elements, and extract them into single-responsibility reusable components, passing varying elements (like text and icons) as props or children.
