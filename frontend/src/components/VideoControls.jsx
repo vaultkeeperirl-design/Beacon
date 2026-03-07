@@ -8,6 +8,7 @@ const VideoControls = memo(({
   onMuteToggle,
   volume = 1,
   onVolumeChange = () => {},
+  onVolumeWheel = () => {},
   isFullscreen,
   onFullscreenToggle,
   onSettingsToggle,
@@ -25,7 +26,11 @@ const VideoControls = memo(({
           >
             {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
           </button>
-          <div className="flex items-center group/vol-control">
+          <div
+             className="flex items-center group/vol-control"
+             onWheel={onVolumeWheel}
+             data-testid="volume-control-container"
+          >
              <button
                className="text-white hover:text-beacon-500 transition-colors"
                onClick={onMuteToggle}
