@@ -255,6 +255,7 @@ export default function Broadcast() {
                     onClick={toggleMic}
                     className={`p-2 rounded-full transition-colors tooltip ${isMuted ? 'bg-red-500 text-white hover:bg-red-600' : 'hover:bg-neutral-700 text-white'}`}
                     title={isMuted ? "Unmute Mic" : "Mute Mic"}
+                    aria-label={isMuted ? "Unmute Mic" : "Mute Mic"}
                   >
                     {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                   </button>
@@ -262,6 +263,7 @@ export default function Broadcast() {
                     onClick={toggleCamera}
                     className={`p-2 rounded-full transition-colors tooltip ${isCameraOff ? 'bg-red-500 text-white hover:bg-red-600' : 'hover:bg-neutral-700 text-white'}`}
                     title={isCameraOff ? "Enable Camera" : "Disable Camera"}
+                    aria-label={isCameraOff ? "Enable Camera" : "Disable Camera"}
                   >
                     {isCameraOff ? <CameraOff className="w-5 h-5" /> : <Camera className="w-5 h-5" />}
                   </button>
@@ -269,6 +271,7 @@ export default function Broadcast() {
                     onClick={toggleScreenShare}
                     className={`p-2 rounded-full transition-colors tooltip ${isSharingScreen ? 'bg-beacon-600 text-white shadow-lg shadow-beacon-600/50' : 'hover:bg-neutral-700 text-white'}`}
                     title={isSharingScreen ? "Stop Sharing" : "Share Screen"}
+                    aria-label={isSharingScreen ? "Stop Sharing" : "Share Screen"}
                   >
                     <Monitor className="w-5 h-5" />
                   </button>
@@ -277,6 +280,7 @@ export default function Broadcast() {
                     onClick={() => setIsSettingsOpen(true)}
                     className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-white tooltip"
                     title="Settings"
+                    aria-label="Settings"
                   >
                     <Settings className="w-5 h-5" />
                   </button>
@@ -290,23 +294,35 @@ export default function Broadcast() {
                </h3>
                <div className="space-y-5">
                   <div>
-                    <label htmlFor="stream-title" className="block text-sm font-medium text-neutral-400 mb-2">Title</label>
+                    <div className="flex justify-between items-center mb-2">
+                      <label htmlFor="stream-title" className="block text-sm font-medium text-neutral-400">Title</label>
+                      <span className={`text-[10px] font-mono font-bold ${title.length >= 90 ? 'text-beacon-500' : 'text-neutral-600'}`}>
+                        {title.length}/100
+                      </span>
+                    </div>
                     <input
                       id="stream-title"
                       type="text"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
+                      maxLength={100}
                       className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-beacon-500 outline-none transition-colors shadow-inner"
                       placeholder="Enter a catchy title"
                     />
                   </div>
                   <div>
-                    <label htmlFor="stream-tags" className="block text-sm font-medium text-neutral-400 mb-2">Tags</label>
+                    <div className="flex justify-between items-center mb-2">
+                      <label htmlFor="stream-tags" className="block text-sm font-medium text-neutral-400">Tags</label>
+                      <span className={`text-[10px] font-mono font-bold ${tags.length >= 90 ? 'text-beacon-500' : 'text-neutral-600'}`}>
+                        {tags.length}/100
+                      </span>
+                    </div>
                     <input
                       id="stream-tags"
                       type="text"
                       value={tags}
                       onChange={(e) => setTags(e.target.value)}
+                      maxLength={100}
                       className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-beacon-500 outline-none transition-colors shadow-inner"
                       placeholder="Add tags separated by commas"
                     />

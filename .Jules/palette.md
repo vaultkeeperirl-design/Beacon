@@ -35,3 +35,7 @@
 ## 2026-03-07 - Dynamic List Icon Button Accessibility
 **Learning:** Icon-only buttons rendered within dynamic lists (like a list of squad members or participants) must have `aria-label` attributes that uniquely identify their action in relation to the specific list item (e.g., "Remove User A"). Without this, screen readers will only announce "Button", leaving users unable to distinguish between the multiple identical buttons in the list.
 **Action:** Always include dynamically interpolated `aria-label` attributes (and optionally `title` for sighted users) on icon-only buttons inside mapped arrays or lists.
+
+## 2026-03-12 - Visual Character Constraints
+**Learning:** For fields with backend-enforced length constraints (like stream titles and tags), providing a real-time character counter in the UI is essential for a smooth user experience. This prevents users from being surprised by silent truncation or error messages upon submission.
+**Action:** Always pair `maxLength` attributes on input fields with a visible character counter that provides real-time feedback as the user types.
