@@ -31,3 +31,7 @@
 ## 2026-03-10 - Sidebar Navigation and Active States
 **Learning:** For application-wide navigation components like the Sidebar, using `NavLink` with a functional `className` provides a standardized way to communicate the user's current location visually. Additionally, purely visual status indicators (like "Live" pulse dots) must be made accessible using `role="img"` and `aria-label`.
 **Action:** Always prefer `NavLink` for navigation menus to handle active states idiomatically, and ensure all visual status indicators have accompanying ARIA labels.
+
+## 2026-03-07 - Dynamic List Icon Button Accessibility
+**Learning:** Icon-only buttons rendered within dynamic lists (like a list of squad members or participants) must have `aria-label` attributes that uniquely identify their action in relation to the specific list item (e.g., "Remove User A"). Without this, screen readers will only announce "Button", leaving users unable to distinguish between the multiple identical buttons in the list.
+**Action:** Always include dynamically interpolated `aria-label` attributes (and optionally `title` for sighted users) on icon-only buttons inside mapped arrays or lists.
