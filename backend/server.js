@@ -732,6 +732,36 @@ function removeNodeFromMesh(streamId, socketId) {
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
+  // Allow a socket to authenticate after connection (e.g., after login/register)
+  socket.on('register-auth', ({ token }) => {
+    if (!token) return;
+
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+      if (err) {
+        console.error('[Auth] Socket registration failed: Invalid token');
+        return;
+      }
+
+      const username = decoded.username;
+      console.log(`[Auth] Socket ${socket.id} registered as ${username}`);
+
+      // Update socket identity
+      socket.username = username;
+      socket.accountName = username;
+
+      // Join user-specific room for real-time wallet updates
+      socket.join(`user:${username}`);
+
+      // Retroactively update mesh topology with the new identity
+      for (const [streamId, mesh] of streamMeshTopology.entries()) {
+        if (mesh.has(socket.id)) {
+          mesh.get(socket.id).accountName = username;
+          console.log(`[Mesh] Updated identity for ${socket.id} in stream ${streamId}`);
+        }
+      }
+    });
+  });
+
   socket.on('join-stream', (data) => {
     const streamId = (typeof data === 'string' ? data : data?.streamId) || null;
     const accountName = typeof data === 'object' ? data?.username : null;
