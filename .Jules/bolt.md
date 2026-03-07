@@ -25,3 +25,7 @@
 ## 2025-07-05 - [Backend] O(N) Greedy Selection vs. O(N log N) Sorting
 **Learning:** Using `Array.sort()` for selecting the best node in a high-frequency tracking Map (like the P2P Mesh) is inefficient. It forces O(N log N) complexity and creates O(N) intermediate objects for every join/leave event, leading to CPU spikes and GC pressure as the viewer count grows.
 **Action:** Implement a single-pass O(N) greedy selection algorithm that tracks the 'best' candidate using primitive variables. This avoids all intermediate allocations and ensures the tracker scales linearly with the number of concurrent viewers.
+
+## 2025-07-10 - [React] Array.find() inside a Loop Causes O(N*M) Complexity
+**Learning:** Using `Array.find()` inside an array iteration method like `forEach()` or `map()` introduces an $O(N \times M)$ complexity. In components dealing with large lists (like `Following` channels vs `Live` channels), this can significantly slow down rendering.
+**Action:** Replace the inner `find()` with an $O(N+M)$ Map or Set lookup. Iterate over the target array once to build the Map, then use $O(1)$ Map.get() inside the main loop to keep performance linear.
