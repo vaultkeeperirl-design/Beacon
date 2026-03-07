@@ -106,6 +106,17 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
     setIsPlaying(true);
   };
 
+  const handleWheel = useCallback((e) => {
+    // ⚡ Aura: Scrolling on the volume control area to change volume directly reduces the cognitive load of precisely hovering over the small volume slider thumb.
+    // This provides a frictionless adjustment method without creating a scroll trap over the entire video player.
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      handleVolumeChange(Math.min(1, volume + 0.1));
+    } else {
+      handleVolumeChange(Math.max(0, volume - 0.1));
+    }
+  }, [volume, handleVolumeChange]);
+
   return (
     <div
       ref={containerRef}
@@ -152,6 +163,7 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
         onMuteToggle={handleMuteToggle}
         volume={volume}
         onVolumeChange={handleVolumeChange}
+        onVolumeWheel={handleWheel}
         isFullscreen={isFullscreen}
         onFullscreenToggle={toggleFullscreen}
         onSettingsToggle={() => setIsSettingsOpen(true)}

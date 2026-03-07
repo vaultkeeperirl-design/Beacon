@@ -10,12 +10,13 @@ vi.mock('../context/P2PContext', () => ({
 
 // Mock VideoControls to verify props are passed correctly
 vi.mock('./VideoControls', () => ({
-  default: ({ isPlaying, isMuted, isFullscreen, volume }) => (
+  default: ({ isPlaying, isMuted, isFullscreen, volume, onVolumeWheel }) => (
     <div data-testid="video-controls">
       <span data-testid="is-playing">{isPlaying.toString()}</span>
       <span data-testid="is-muted">{isMuted.toString()}</span>
       <span data-testid="is-fullscreen">{isFullscreen.toString()}</span>
       <span data-testid="volume">{volume.toString()}</span>
+      <div data-testid="volume-control-container" onWheel={onVolumeWheel}></div>
     </div>
   )
 }));
@@ -201,5 +202,23 @@ describe('VideoPlayer Keyboard Shortcuts', () => {
 
     fireEvent.doubleClick(videoElement);
     expect(Element.prototype.requestFullscreen).toHaveBeenCalled();
+  });
+
+  it('changes volume when mouse wheel is scrolled over the volume controls', () => {
+    // ⚡ Aura: Verify scroll-to-change-volume functionality reduces precision friction
+    render(<VideoPlayer />);
+
+    // Initial volume is 1
+    expect(screen.getByTestId('volume')).toHaveTextContent('1');
+
+    const volumeContainer = screen.getByTestId('volume-control-container');
+
+    // Scroll down (decrease volume)
+    fireEvent.wheel(volumeContainer, { deltaY: 100 });
+    expect(screen.getByTestId('volume')).toHaveTextContent('0.9');
+
+    // Scroll up (increase volume)
+    fireEvent.wheel(volumeContainer, { deltaY: -100 });
+    expect(screen.getByTestId('volume')).toHaveTextContent('1');
   });
 });
