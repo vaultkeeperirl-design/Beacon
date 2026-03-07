@@ -1,7 +1,31 @@
 import { memo } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { Home, Users, BarChart2, MessageSquare, Radio, Compass, ShieldCheck, FileText, User } from 'lucide-react';
+import { Home, Users, BarChart2, Compass, ShieldCheck, FileText, User } from 'lucide-react';
 import P2PStats from './P2PStats';
+
+// 🗿 Sculptor: Extracted repetitive NavLink styling logic
+const SidebarLink = memo(function SidebarLink({ to, icon, children }) {
+  const Icon = icon;
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-beacon-500 ${
+          isActive
+            ? 'text-white bg-neutral-800'
+            : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+        }`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-beacon-500' : 'group-hover:text-beacon-500'}`} />
+          <span className="font-medium text-sm">{children}</span>
+        </>
+      )}
+    </NavLink>
+  );
+});
 
 const Sidebar = memo(function Sidebar() {
   const menuItems = [
@@ -16,24 +40,9 @@ const Sidebar = memo(function Sidebar() {
       <div className="sticky top-16 h-[calc(100vh_-_4rem)] flex flex-col">
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
           {menuItems.map((item) => (
-            <NavLink
-              to={item.path}
-              key={item.name}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-beacon-500 ${
-                  isActive
-                    ? 'text-white bg-neutral-800'
-                    : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <item.icon className={`w-5 h-5 transition-colors ${isActive ? 'text-beacon-500' : 'group-hover:text-beacon-500'}`} />
-                  <span className="font-medium text-sm">{item.name}</span>
-                </>
-              )}
-            </NavLink>
+            <SidebarLink key={item.name} to={item.path} icon={item.icon}>
+              {item.name}
+            </SidebarLink>
           ))}
 
           <div className="pt-6 border-t border-neutral-800 mt-4">
@@ -41,40 +50,12 @@ const Sidebar = memo(function Sidebar() {
                Legal
             </h3>
             <div className="space-y-1 mb-6">
-                <NavLink
-                  to="/terms"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-beacon-500 ${
-                      isActive
-                        ? 'text-white bg-neutral-800'
-                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <FileText className={`w-5 h-5 transition-colors ${isActive ? 'text-beacon-500' : 'group-hover:text-beacon-500'}`} />
-                      <span className="font-medium text-sm">Terms of Service</span>
-                    </>
-                  )}
-                </NavLink>
-                <NavLink
-                  to="/guidelines"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-beacon-500 ${
-                      isActive
-                        ? 'text-white bg-neutral-800'
-                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <ShieldCheck className={`w-5 h-5 transition-colors ${isActive ? 'text-beacon-500' : 'group-hover:text-beacon-500'}`} />
-                      <span className="font-medium text-sm">Guidelines</span>
-                    </>
-                  )}
-                </NavLink>
+                <SidebarLink to="/terms" icon={FileText}>
+                  Terms of Service
+                </SidebarLink>
+                <SidebarLink to="/guidelines" icon={ShieldCheck}>
+                  Guidelines
+                </SidebarLink>
             </div>
 
             <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-4 px-3">
