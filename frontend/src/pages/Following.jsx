@@ -31,9 +31,16 @@ export default function Following() {
     const live = [];
     const offline = [];
 
+    // ⚡ Performance Optimization: Replace O(N*M) nested loop with O(N+M) Map lookup
+    // Creates a map of live streams keyed by streamer name/id for O(1) access
+    const liveStreamsMap = new Map();
+    for (const stream of liveStreams) {
+      liveStreamsMap.set(stream.streamer, stream);
+    }
+
     followedChannels.forEach(channel => {
-      // Check if the followed channel is in the active streams list
-      const activeStream = liveStreams.find(s => s.streamer === channel.id || s.streamer === channel.name);
+      // Check if the followed channel is in the active streams list using the Map
+      const activeStream = liveStreamsMap.get(channel.id) || liveStreamsMap.get(channel.name);
       if (activeStream) {
         live.push({
           ...channel,
