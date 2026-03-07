@@ -51,6 +51,14 @@ Ends an active poll early. **Host only.**
 - **Server Actions:**
   - Clears the poll and emits `poll-ended` to all users in the room.
 
+### `raid-stream`
+Ends the current stream and redirects viewers to another active stream. **Host only.**
+- **Payload:** `{ streamId: string, targetId: string }`
+- **Server Actions:**
+  - Validates that the host is initiating the raid and that the target is different from the current stream.
+  - Removes the stream from active streams, clears the squad, and cleans up any active polls.
+  - Emits `stream-ended` to all users in the room with `{ redirect: targetId }`.
+
 ### `update-stream-info`
 Updates the stream's title and tags. **Host only.**
 - **Payload:** `{ streamId: string, title: string, tags: string }`
