@@ -15,6 +15,8 @@ require('dotenv').config();
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
 
 const app = express();
+// 🛡️ SECURITY: Disable x-powered-by header to prevent leaking technology stack info
+app.disable('x-powered-by');
 app.use(express.json());
 app.use(cors());
 
