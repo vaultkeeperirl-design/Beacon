@@ -44,3 +44,6 @@
 ## 2026-03-05 - Add sorting to Following page
 **Learning:** Reusable UI components for filtering/sorting on static datasets in `Following.jsx`. We created a shallow array copy for `offlineChannels` using `[...result]` and sorted it via standard Javascript `sort()` using `a.name.localeCompare(b.name)`, encapsulated in a React `useMemo` block.
 **Action:** When handling data directly returned from APIs, it's safer to provide robust fallback logic inside `sort()` comparisons (e.g., `const nameA = a.name || a.username || '';`) to prevent UI crashes if some entities lack optional attributes.
+## 2024-03-07 - Add settings toggle with proper persistence
+**Learning:** When persisting state to `localStorage` in React (e.g., in Context Providers), use lazy initialization `useState(() => { ... })` with a `try/catch` block around `JSON.parse` to safely handle potentially malformed local data, along with a `useEffect` to synchronize subsequent state changes.
+**Action:** Always wrap `localStorage` JSON parsing in `try/catch` to ensure app stability even if storage gets corrupted.

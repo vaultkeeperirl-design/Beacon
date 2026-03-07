@@ -30,8 +30,23 @@ import { API_URL } from '../config/api';
  * @returns {JSX.Element} The context providers wrapping the children.
  */
 export function P2PProvider({ children }) {
-  const [isSharing, setIsSharing] = useState(true);
+  const [isSharing, setIsSharing] = useState(() => {
+    const saved = localStorage.getItem('beacon_is_sharing');
+    if (saved !== null) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse beacon_is_sharing', e);
+      }
+    }
+    return true; // Default to true
+  });
+
   const [currentStreamId, setCurrentStreamId] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem('beacon_is_sharing', JSON.stringify(isSharing));
+  }, [isSharing]);
 
   // Real Auth State
   const [user, setUser] = useState(null);
@@ -177,12 +192,26 @@ export function P2PProvider({ children }) {
     setUsername(newName);
   };
 
-  const [settings, setSettings] = useState({
-    maxUploadSpeed: 50, // Mbps
-    quality: '1080p60',
-    showStats: false,
-    lowLatency: false,
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem('beacon_stream_settings');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse beacon_stream_settings', e);
+      }
+    }
+    return {
+      maxUploadSpeed: 50, // Mbps
+      quality: '1080p60',
+      showStats: false,
+      lowLatency: false,
+    };
   });
+
+  useEffect(() => {
+    localStorage.setItem('beacon_stream_settings', JSON.stringify(settings));
+  }, [settings]);
 
   const stats = useRealP2PStats(isSharing, settings, currentStreamId, username) || {
     uploadSpeed: 0,
