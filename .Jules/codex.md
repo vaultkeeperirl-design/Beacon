@@ -25,3 +25,7 @@
 ## 2025-03-05 - Contribution Guidelines Update
 **Learning:** Developers submitting PRs might not be aware of the built-in `pnpm check` command, which sequentially runs the linter and test suite. Without this check, PRs might fail CI/CD or require more review cycles.
 **Action:** Updated `docs/contributing.md` to explicitly require contributors to run `pnpm check` as a mandatory step before opening a Pull Request.
+
+## 2025-03-07 - Database Schema Documentation
+**Learning:** The database schema constraints (such as missing `PRAGMA foreign_keys = ON;`) and explicit indexes (like `idx_follows_followee`) were scattered between code comments and manual SQL implementations, leaving a gap for new developers working on the backend architecture.
+**Action:** Created `docs/database-schema.md` to cleanly document the SQLite schema structure, relationships, and performance caveats.
