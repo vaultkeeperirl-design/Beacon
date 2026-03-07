@@ -1,7 +1,9 @@
-import { memo } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { Home, Users, BarChart2, Compass, ShieldCheck, FileText, User } from 'lucide-react';
 import P2PStats from './P2PStats';
+import axios from 'axios';
+import { API_URL } from '../config/api';
 
 // 🗿 Sculptor: Extracted repetitive NavLink styling logic
 const SidebarLink = memo(function SidebarLink({ to, icon, children }) {
@@ -28,6 +30,24 @@ const SidebarLink = memo(function SidebarLink({ to, icon, children }) {
 });
 
 const Sidebar = memo(function Sidebar() {
+  const [recommendedChannels, setRecommendedChannels] = useState([]);
+
+  useEffect(() => {
+    const fetchRecommended = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/streams`);
+        // Limit to 5 recommended channels for the sidebar
+        setRecommendedChannels(res.data.slice(0, 5));
+      } catch (err) {
+        console.error('Failed to fetch recommended channels:', err);
+      }
+    };
+
+    fetchRecommended();
+    const interval = setInterval(fetchRecommended, 60000); // Refresh every 60s
+    return () => clearInterval(interval);
+  }, []);
+
   const menuItems = [
     { name: 'Home', icon: Home, path: '/' },
     { name: 'Browse', icon: Compass, path: '/browse' },
@@ -58,34 +78,44 @@ const Sidebar = memo(function Sidebar() {
                 </SidebarLink>
             </div>
 
-            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-4 px-3">
-              Recommended Channels
-            </h3>
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Link
-                  to={`/channel/Streamer_${i}`}
-                  key={i}
-                  className="flex items-center gap-3 px-3 py-1 cursor-pointer hover:bg-neutral-800/50 rounded-lg group transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-beacon-500"
-                >
-                  <div className="w-8 h-8 rounded-full bg-neutral-800 overflow-hidden relative border border-neutral-700 group-hover:border-beacon-500 transition-colors flex items-center justify-center text-neutral-400">
-                    <User className="w-4 h-4 opacity-50" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-neutral-300 truncate group-hover:text-white transition-colors">Streamer_{i}</p>
-                    <p className="text-xs text-neutral-500 truncate">Just Chatting</p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                     <div
-                       className="w-2 h-2 rounded-full bg-red-500 animate-pulse"
-                       role="img"
-                       aria-label="Live"
-                     ></div>
-                     <span className="text-xs text-neutral-500">{((i * 0.8 + 0.5) % 5).toFixed(1)}k</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            {recommendedChannels.length > 0 && (
+              <>
+                <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-4 px-3">
+                  Recommended Channels
+                </h3>
+                <div className="space-y-3">
+                  {recommendedChannels.map((channel) => (
+                    <Link
+                      to={`/watch/${channel.id}`}
+                      key={channel.id}
+                      className="flex items-center gap-3 px-3 py-1 cursor-pointer hover:bg-neutral-800/50 rounded-lg group transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-beacon-500"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-neutral-800 overflow-hidden relative border border-neutral-700 group-hover:border-beacon-500 transition-colors flex items-center justify-center text-neutral-400">
+                        {channel.avatar ? (
+                          <img src={channel.avatar} alt={channel.streamer} className="w-full h-full object-cover" />
+                        ) : (
+                          <User className="w-4 h-4 opacity-50" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-neutral-300 truncate group-hover:text-white transition-colors">{channel.streamer}</p>
+                        <p className="text-xs text-neutral-500 truncate">{channel.title}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div
+                          className="w-2 h-2 rounded-full bg-red-500 animate-pulse"
+                          role="img"
+                          aria-label="Live"
+                        ></div>
+                        <span className="text-xs text-neutral-500">
+                          {channel.viewers >= 1000 ? (channel.viewers / 1000).toFixed(1) + 'k' : channel.viewers}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
 

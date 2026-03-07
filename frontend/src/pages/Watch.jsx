@@ -118,12 +118,11 @@ export default function Watch() {
     } else {
       follow({
         id: id,
-        name: id,
-        // Using a generic avatar icon if we don't have real data yet in this context
-        avatar: null,
-        title: 'Building a P2P streaming app from scratch', // Mock title for now
+        name: streamInfo.streamer || id,
+        avatar: streamInfo.avatar || null,
+        title: streamInfo.title || 'Live Stream',
         isLive: true,
-        category: 'Software Development' // Mock category
+        category: 'Software Development'
       });
     }
   };
@@ -150,7 +149,11 @@ export default function Watch() {
                <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-400">
                  <div className="flex items-center gap-2">
                     <Link to={`/channel/${id}`} className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center overflow-hidden border border-neutral-700 hover:ring-2 hover:ring-beacon-500 transition-all text-neutral-400">
-                       <UserPlus className="w-5 h-5 opacity-50" />
+                       {streamInfo.avatar ? (
+                         <img src={streamInfo.avatar} alt={id} className="w-full h-full object-cover" />
+                       ) : (
+                         <UserPlus className="w-5 h-5 opacity-50" />
+                       )}
                     </Link>
                     <Link to={`/channel/${id}`} className="text-white font-bold hover:text-beacon-400 cursor-pointer transition-colors">{id}</Link>
                  </div>

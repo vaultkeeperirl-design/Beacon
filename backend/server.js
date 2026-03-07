@@ -374,6 +374,13 @@ app.patch('/api/users/profile', authenticateToken, (req, res) => {
 
     const updatedUser = getUserStmt.get(username);
 
+    // Sync active stream metadata if live
+    if (activeStreams.has(username)) {
+      const info = activeStreams.get(username);
+      info.avatar = updatedUser.avatar_url;
+      io.to(username).emit('stream-info-updated', info);
+    }
+
     res.json({ success: true, user: updatedUser, message: 'Profile updated successfully' });
   } catch (err) {
     console.error('Profile update failed:', err);
@@ -789,10 +796,12 @@ io.on('connection', (socket) => {
 
         // If the user is the host, mark stream as active
         if (socket.username === streamId && !activeStreams.has(streamId)) {
+          const user = getUserStmt.get(socket.username);
           activeStreams.set(streamId, {
             title: 'Welcome to my stream!',
             tags: 'Beacon, P2P, Streaming',
-            streamer: socket.username
+            streamer: socket.username,
+            avatar: user ? user.avatar_url : null
           });
         }
 
@@ -1075,7 +1084,9 @@ io.on('connection', (socket) => {
     const safeTitle = (typeof title === 'string') ? title.trim().substring(0, 100) : 'Beacon Stream';
     const safeTags = (typeof tags === 'string') ? tags.trim().substring(0, 100) : '';
 
+    const existing = activeStreams.get(streamId) || {};
     const streamInfo = {
+      ...existing,
       title: safeTitle,
       tags: safeTags,
       streamer: socket.username
