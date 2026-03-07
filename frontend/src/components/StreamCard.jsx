@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, User } from 'lucide-react';
 
-const StreamCard = memo(function StreamCard({ id, title, streamer, viewers, thumbnail, tags, isLive = true }) {
+const StreamCard = memo(function StreamCard({ id, title, streamer, viewers, thumbnail, tags, avatar, isLive = true }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   return (
@@ -31,7 +31,11 @@ const StreamCard = memo(function StreamCard({ id, title, streamer, viewers, thum
 
       <div className="flex gap-3">
         <Link to={`/channel/${streamer}`} className="block w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center flex-shrink-0 overflow-hidden border border-neutral-800 hover:ring-2 hover:ring-beacon-500 transition-all text-neutral-400">
-          <User className="w-5 h-5 opacity-50" />
+          {avatar ? (
+            <img src={avatar} alt={streamer} className="w-full h-full object-cover" />
+          ) : (
+            <User className="w-5 h-5 opacity-50" />
+          )}
         </Link>
 
         <div className="min-w-0 flex-1">

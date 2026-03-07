@@ -44,3 +44,7 @@
 ## 2026-03-05 - Add sorting to Following page
 **Learning:** Reusable UI components for filtering/sorting on static datasets in `Following.jsx`. We created a shallow array copy for `offlineChannels` using `[...result]` and sorted it via standard Javascript `sort()` using `a.name.localeCompare(b.name)`, encapsulated in a React `useMemo` block.
 **Action:** When handling data directly returned from APIs, it's safer to provide robust fallback logic inside `sort()` comparisons (e.g., `const nameA = a.name || a.username || '';`) to prevent UI crashes if some entities lack optional attributes.
+
+## 2026-03-07 - [Hydrating Transient Mesh Metadata]
+**Learning:** Live stream metadata in `activeStreams` (backend) is transient and initialized from the database during the `join-stream` socket event. To avoid UI placeholders, this metadata must include all required fields (like `avatar_url`) and be preserved during updates or synchronized if the user's profile changes while live.
+**Action:** Always include a metadata hydration step when a node joins the mesh to pull full user details into the transient mesh state.

@@ -105,6 +105,7 @@ export default function Following() {
                 title={channel.title || 'Untitled Stream'}
                 streamer={channel.streamer || channel.name}
                 viewers={channel.viewers || 0}
+                avatar={channel.avatar}
                 tags={typeof channel.tags === 'string' ? channel.tags.split(',').map(t => t.trim()) : (channel.tags || ['Live'])}
                 thumbnail={channel.thumbnail || `https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600`}
              />
