@@ -246,8 +246,6 @@ describe('useRealP2PStats', () => {
 
     const { result } = renderHook(() => useRealP2PStats(true, settings, 'test-stream', 'viewer'));
 
-    const initialStats = result.current;
-
     // Emit the exact same stats (totalUploaded calculation needs to be identical, so we pass 0 for uploadSpeed to prevent it from growing)
     act(() => {
         mockSubscribeCallback({

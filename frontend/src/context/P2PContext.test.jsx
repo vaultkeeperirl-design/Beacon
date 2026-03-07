@@ -1,4 +1,4 @@
-import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import { P2PProvider, useP2P, useP2PSettings, useP2PStats } from './P2PContext';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
@@ -52,16 +52,20 @@ const SettingsOnlyComponent = () => {
   return <div data-testid="settings-quality">{settings.settings.quality}</div>;
 };
 
-const OutsideProviderTestComponent = ({ componentType }) => {
-  if (componentType === 'stats') {
-      useP2PStats();
-  } else if (componentType === 'settings') {
-      useP2PSettings();
-  } else if (componentType === 'combined') {
-      useP2P();
-  }
-  return null;
-}
+const StatsOutsideProviderTestComponent = () => {
+    useP2PStats();
+    return null;
+};
+
+const SettingsOutsideProviderTestComponent = () => {
+    useP2PSettings();
+    return null;
+};
+
+const CombinedOutsideProviderTestComponent = () => {
+    useP2P();
+    return null;
+};
 
 // Create a valid dummy JWT token
 const createDummyToken = (username) => {
@@ -93,15 +97,15 @@ describe('P2PContext', () => {
     });
 
     it('throws error if useP2PStats is used outside provider', () => {
-       expect(() => render(<OutsideProviderTestComponent componentType="stats" />)).toThrow('useP2PStats must be used within a P2PProvider');
+       expect(() => render(<StatsOutsideProviderTestComponent />)).toThrow('useP2PStats must be used within a P2PProvider');
     });
 
     it('throws error if useP2PSettings is used outside provider', () => {
-       expect(() => render(<OutsideProviderTestComponent componentType="settings" />)).toThrow('useP2PSettings must be used within a P2PProvider');
+       expect(() => render(<SettingsOutsideProviderTestComponent />)).toThrow('useP2PSettings must be used within a P2PProvider');
     });
 
     it('throws error if useP2P is used outside provider', () => {
-       expect(() => render(<OutsideProviderTestComponent componentType="combined" />)).toThrow('useP2PStats must be used within a P2PProvider');
+       expect(() => render(<CombinedOutsideProviderTestComponent />)).toThrow('useP2PStats must be used within a P2PProvider');
     });
   });
 
