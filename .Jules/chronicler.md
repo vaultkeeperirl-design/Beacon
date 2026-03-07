@@ -9,3 +9,7 @@
 ## 2026-03-04 - Refresh README Screenshots
 **Learning:** Running the test automation scripts regularly captures the latest state of the UI which may have been changed, so the README screenshots stay fresh.
 **Action:** Ran `python scripts/generate_readme_screenshots.py` to capture the newest screenshots for the README.
+
+## 2026-03-07 - Refresh README Screenshots
+**Learning:** Running the test automation scripts regularly captures the latest state of the UI which may have been changed, so the README screenshots stay fresh.
+**Action:** Ran `python scripts/generate_readme_screenshots.py` to capture the newest screenshots for the README.
