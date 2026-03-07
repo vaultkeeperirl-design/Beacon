@@ -365,6 +365,8 @@ describe('User Profile API', () => {
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('username', 'profileuser');
       expect(response.body).toHaveProperty('bio', 'Test bio');
+      expect(response.body).toHaveProperty('follower_count', 0);
+      expect(response.body).toHaveProperty('following_count', 0);
       expect(response.body).not.toHaveProperty('password_hash');
     });
 

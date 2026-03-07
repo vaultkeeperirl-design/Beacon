@@ -40,7 +40,7 @@ const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHE
 const deductCreditsStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ?');
 const deductCreditsWithCheckStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ? AND credits >= ?');
 const getCreditsStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
-const getUserStmt = db.prepare('SELECT id, username, avatar_url, bio, follower_count FROM Users WHERE username = ?');
+const getUserStmt = db.prepare('SELECT id, username, avatar_url, bio, follower_count, (SELECT COUNT(*) FROM Follows WHERE follower_id = Users.id) AS following_count FROM Users WHERE username = ?');
 const getUserWithHashStmt = db.prepare('SELECT * FROM Users WHERE username = ?');
 const updateProfileStmt = db.prepare('UPDATE Users SET bio = ?, avatar_url = ? WHERE username = ?');
 const checkFollowStmt = db.prepare('SELECT * FROM Follows WHERE follower_id = ? AND followee_id = ?');
