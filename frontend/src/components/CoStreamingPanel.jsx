@@ -117,7 +117,12 @@ export default function CoStreamingPanel({ username, isLive, socket }) {
                         <span className="text-sm font-mono font-bold text-white">{member.split}%</span>
                      </div>
                      {!member.isHost && (
-                       <button onClick={() => removeSquadMember(member.id)} className="p-1.5 hover:bg-red-500/10 text-neutral-500 hover:text-red-500 rounded transition-colors">
+                       <button
+                         onClick={() => removeSquadMember(member.id)}
+                         className="p-1.5 hover:bg-red-500/10 text-neutral-500 hover:text-red-500 rounded transition-colors"
+                         aria-label={`Remove ${member.name} from squad`}
+                         title={`Remove ${member.name}`}
+                       >
                          <Trash2 className="w-4 h-4" />
                        </button>
                      )}
