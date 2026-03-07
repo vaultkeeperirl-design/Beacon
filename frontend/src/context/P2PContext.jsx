@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { useRealP2PStats } from '../hooks/useRealP2PStats';
+import { getSocket } from '../hooks/useSocket';
 // Performance Optimization:
 // We split the context into two providers:
 // 1. P2PStatsContext: For frequently changing P2P metrics (updates every 1s)
@@ -105,6 +106,10 @@ export function P2PProvider({ children }) {
         // Actually, the simplest fix to the new linter rule in React 19 is:
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setUsername(storedUsername);
+
+        // Authenticate socket for this session
+        const socket = getSocket();
+        socket.emit('register-auth', { token });
 
         // Fetch full profile
         axios.get(`${API_URL}/users/${storedUsername}`)
