@@ -23,3 +23,6 @@
 ## 2026-03-05 - Global Following State Consistency
 - **Learning**: In `Channel.jsx`, the follow button was relying on local component state instead of integrating with the global `FollowingContext`. This caused a fragmented experience where following a user on their channel page did not actually update the global state or reflect in other parts of the application like the Following page.
 - **Action**: Refactored `Channel.jsx` to consume `useFollowing` context, mapping the follow/unfollow actions properly so that user state is immediately and globally consistent.
+2024-03-08
+Learning: Missing loading states for dependent data structures (like `offlineChannels` which is calculated after `liveStreams` are fetched) causes premature empty states and jarring layout shifts when the API resolves.
+Action: Implemented a matching skeleton loading grid for the offline channels section on the Following page that displays while `isLoading` is true, ensuring a smooth, flicker-free initial render.
