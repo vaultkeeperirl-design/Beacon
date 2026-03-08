@@ -27,7 +27,7 @@ describe('StreamCard Component', () => {
 
     expect(screen.getByText('Awesome Stream')).toBeInTheDocument();
     expect(screen.getByText('cool_streamer')).toBeInTheDocument();
-    expect(screen.getByText('1500')).toBeInTheDocument();
+    expect(screen.getByText('1,500')).toBeInTheDocument();
   });
 
   it('renders thumbnail with correct attributes', () => {

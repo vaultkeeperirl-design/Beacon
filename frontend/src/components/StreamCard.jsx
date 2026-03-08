@@ -1,9 +1,31 @@
-import { memo, useState } from 'react';
+import { memo, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, User } from 'lucide-react';
 
-const StreamCard = memo(function StreamCard({ id, title, streamer, viewers, thumbnail, tags, avatar, isLive = true }) {
+// ⚡ Performance Optimization: StreamCard is a high-frequency component used in lists.
+// By processing tags and thumbnails internally with useMemo, we allow the parent
+// to pass raw data (like a comma-separated string for tags). This ensures that
+// React.memo can bail out on re-renders since it will receive the same string
+// reference instead of a new array created by .split() in the parent's render loop.
+const StreamCard = memo(function StreamCard({ id, title = 'Untitled Stream', streamer, viewers = 0, thumbnail, tags, avatar, isLive = true }) {
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Memoize tag processing to avoid re-calculating on every render
+  // and to provide a stable reference if tags haven't changed.
+  const processedTags = useMemo(() => {
+    if (!tags) return ['Live'];
+    if (Array.isArray(tags)) return tags.length > 0 ? tags : ['Live'];
+    if (typeof tags === 'string') {
+      const split = tags.split(',').map(t => t.trim()).filter(Boolean);
+      return split.length > 0 ? split : ['Live'];
+    }
+    return ['Live'];
+  }, [tags]);
+
+  // Memoize thumbnail with fallback
+  const displayThumbnail = useMemo(() => {
+    return thumbnail || `https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600`;
+  }, [thumbnail]);
 
   return (
     <div className="group block space-y-3">
@@ -12,7 +34,7 @@ const StreamCard = memo(function StreamCard({ id, title, streamer, viewers, thum
           <div className="absolute inset-0 bg-neutral-800 animate-pulse" />
         )}
         <img
-          src={thumbnail}
+          src={displayThumbnail}
           alt={title}
           onLoad={() => setIsLoaded(true)}
           className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
@@ -25,7 +47,7 @@ const StreamCard = memo(function StreamCard({ id, title, streamer, viewers, thum
         )}
         <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded flex items-center gap-1">
           <Eye className="w-3 h-3 text-beacon-400" />
-          <span>{viewers}</span>
+          <span>{(viewers || 0).toLocaleString()}</span>
         </div>
       </Link>
 
@@ -46,9 +68,9 @@ const StreamCard = memo(function StreamCard({ id, title, streamer, viewers, thum
             {streamer}
           </Link>
 
-          {tags && tags.length > 0 && (
+          {processedTags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {tags.map(tag => (
+              {processedTags.map(tag => (
                 <span key={tag} className="px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 text-[10px] font-medium hover:bg-neutral-700 transition-colors">
                   {tag}
                 </span>
