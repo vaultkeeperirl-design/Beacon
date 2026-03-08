@@ -1,0 +1,1 @@
+## 2024-05-24 - Extract ToggleButton from StreamSettings\n**Learning:** The `StreamSettings` component has duplicated markup for toggle switches.\n**Action:** Extracted the toggle switch logic into a reusable `ToggleButton` component to reduce duplication and improve maintainability.

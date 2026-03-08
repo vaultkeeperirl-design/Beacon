@@ -2,6 +2,33 @@ import React, { memo, useRef, useEffect } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import { X, Server, Wifi, Zap, Activity } from 'lucide-react';
 
+const ToggleButton = memo(function ToggleButton({ label, icon, iconColorClass, iconBgClass, checked, onChange }) {
+  const IconComponent = icon;
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <div className={`p-1.5 rounded-lg ${iconBgClass} ${iconColorClass}`}>
+          <IconComponent className="w-3.5 h-3.5" />
+        </div>
+        <p className="text-xs font-semibold text-white">{label}</p>
+      </div>
+      <button
+        onClick={onChange}
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center ${
+          checked ? 'bg-beacon-600' : 'bg-neutral-700'
+        }`}
+      >
+        <div className={`w-3.5 h-3.5 bg-white rounded-full absolute transition-transform ${
+          checked ? 'left-[18px]' : 'left-0.5'
+        }`} />
+      </button>
+    </div>
+  );
+});
+
 const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
   // Using useP2PSettings instead of useP2P to avoid unnecessary re-renders when stats update.
   // Settings only change when the user interacts with this modal.
@@ -105,71 +132,30 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
 
           {/* Toggles */}
           <div className="space-y-3 pt-3 border-t border-neutral-800">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-yellow-500/10 rounded-lg text-yellow-500">
-                  <Zap className="w-3.5 h-3.5" />
-                </div>
-                <p className="text-xs font-semibold text-white">Low Latency Mode</p>
-              </div>
-              <button
-                onClick={() => updateSettings({ lowLatency: !settings.lowLatency })}
-                role="switch"
-                aria-checked={settings.lowLatency}
-                aria-label="Low Latency Mode"
-                className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center ${
-                  settings.lowLatency ? 'bg-beacon-600' : 'bg-neutral-700'
-                }`}
-              >
-                <div className={`w-3.5 h-3.5 bg-white rounded-full absolute transition-transform ${
-                  settings.lowLatency ? 'left-[18px]' : 'left-0.5'
-                }`} />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-purple-500/10 rounded-lg text-purple-500">
-                  <Activity className="w-3.5 h-3.5" />
-                </div>
-                <p className="text-xs font-semibold text-white">Stats for Nerds</p>
-              </div>
-              <button
-                onClick={() => updateSettings({ showStats: !settings.showStats })}
-                role="switch"
-                aria-checked={settings.showStats}
-                aria-label="Show Stats"
-                className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center ${
-                  settings.showStats ? 'bg-beacon-600' : 'bg-neutral-700'
-                }`}
-              >
-                <div className={`w-3.5 h-3.5 bg-white rounded-full absolute transition-transform ${
-                  settings.showStats ? 'left-[18px]' : 'left-0.5'
-                }`} />
-              </button>
-            </div>
-
-             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-green-500/10 rounded-lg text-green-500">
-                  <Server className="w-3.5 h-3.5" />
-                </div>
-                <p className="text-xs font-semibold text-white">P2P Sharing</p>
-              </div>
-              <button
-                onClick={() => setIsSharing(!isSharing)}
-                role="switch"
-                aria-checked={isSharing}
-                aria-label="P2P Sharing"
-                className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center ${
-                  isSharing ? 'bg-beacon-600' : 'bg-neutral-700'
-                }`}
-              >
-                <div className={`w-3.5 h-3.5 bg-white rounded-full absolute transition-transform ${
-                  isSharing ? 'left-[18px]' : 'left-0.5'
-                }`} />
-              </button>
-            </div>
+            <ToggleButton
+              label="Low Latency Mode"
+              icon={Zap}
+              iconColorClass="text-yellow-500"
+              iconBgClass="bg-yellow-500/10"
+              checked={settings.lowLatency}
+              onChange={() => updateSettings({ lowLatency: !settings.lowLatency })}
+            />
+            <ToggleButton
+              label="Stats for Nerds"
+              icon={Activity}
+              iconColorClass="text-purple-500"
+              iconBgClass="bg-purple-500/10"
+              checked={settings.showStats}
+              onChange={() => updateSettings({ showStats: !settings.showStats })}
+            />
+            <ToggleButton
+              label="P2P Sharing"
+              icon={Server}
+              iconColorClass="text-green-500"
+              iconBgClass="bg-green-500/10"
+              checked={isSharing}
+              onChange={() => setIsSharing(!isSharing)}
+            />
           </div>
         </div>
     </div>
