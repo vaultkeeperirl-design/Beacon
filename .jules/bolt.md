@@ -29,3 +29,7 @@
 ## 2025-07-15 - [React] Preventing Redundant Re-renders with State Identity
 **Learning:** Even when using a high-frequency context provider, if the stats object returned by a hook (like `useRealP2PStats`) is a new object every second, every subscriber will re-render regardless of whether the values inside the object have changed. React only skips re-renders if the state reference is identical.
 **Action:** Implement shallow equality checks inside the `setStats` functional updates. If the new values match the current state, return the previous state reference (`prev`) instead of a new object. This stops the re-render chain across all context subscribers when network metrics are stable.
+
+## 2025-07-20 - [React] Stable Prop References for List Rendering
+**Learning:** Performing inline data transformations (e.g., `.split(',')` on tags or template literals for URLs) inside a parent's `.map()` loop creates new array/string references on every render. This forces `React.memo`'d children (like `StreamCard`) to re-render even if the underlying data is identical, causing O(N) reconciliation overhead.
+**Action:** Move data normalization and formatting logic inside the child component using `useMemo`. This allows the child to receive stable, raw props from the parent and effectively bail out of redundant re-renders.

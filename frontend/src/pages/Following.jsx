@@ -100,16 +100,7 @@ export default function Following() {
        ) : liveChannels.length > 0 ? (
          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
            {liveChannels.map(channel => (
-             <StreamCard
-                key={channel.id}
-                id={channel.id}
-                title={channel.title || 'Untitled Stream'}
-                streamer={channel.streamer || channel.name}
-                viewers={channel.viewers || 0}
-                avatar={channel.avatar}
-                tags={typeof channel.tags === 'string' ? channel.tags.split(',').map(t => t.trim()) : (channel.tags || ['Live'])}
-                thumbnail={channel.thumbnail || `https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600`}
-             />
+             <StreamCard key={channel.id} {...channel} streamer={channel.streamer || channel.name} />
            ))}
          </div>
        ) : (

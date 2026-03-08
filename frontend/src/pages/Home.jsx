@@ -74,12 +74,7 @@ export default function Home() {
        ) : (
          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
            {streams.map(stream => (
-             <StreamCard
-               key={stream.id}
-               {...stream}
-               tags={typeof stream.tags === 'string' ? stream.tags.split(',').map(t => t.trim()) : stream.tags}
-               thumbnail={stream.thumbnail || `https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600`}
-             />
+             <StreamCard key={stream.id} {...stream} />
            ))}
          </div>
        )}
