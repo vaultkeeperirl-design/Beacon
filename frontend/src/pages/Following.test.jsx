@@ -43,7 +43,7 @@ describe('Following Page - Offline Channels Sorting', () => {
       expect(screen.getByText('UserC')).toBeInTheDocument();
     });
 
-    const channelNames = screen.getAllByRole('heading', { level: 3 }).map(el => el.textContent);
+    const channelNames = screen.getAllByRole('heading', { level: 3 }).map(el => el.textContent).filter(name => name !== 'No live channels' && name !== 'No offline channels');
 
     // We expect them in the exact order they were provided
     expect(channelNames).toEqual(['UserC', 'UserA', 'UserB']);
@@ -65,7 +65,7 @@ describe('Following Page - Offline Channels Sorting', () => {
     fireEvent.click(alphaOption);
 
     // Verify order is now Alphabetical
-    const channelNames = screen.getAllByRole('heading', { level: 3 }).map(el => el.textContent);
+    const channelNames = screen.getAllByRole('heading', { level: 3 }).map(el => el.textContent).filter(name => name !== 'No live channels' && name !== 'No offline channels');
     expect(channelNames).toEqual(['UserA', 'UserB', 'UserC']);
   });
 });

@@ -39,3 +39,7 @@
 ## 2026-03-12 - Visual Character Constraints
 **Learning:** For fields with backend-enforced length constraints (like stream titles and tags), providing a real-time character counter in the UI is essential for a smooth user experience. This prevents users from being surprised by silent truncation or error messages upon submission.
 **Action:** Always pair `maxLength` attributes on input fields with a visible character counter that provides real-time feedback as the user types.
+
+## 2024-05-18 - Added CTA to Following page empty state
+**Learning:** The "Following" page had plain text empty states that didn't provide a clear next step for users. Using empty states as an opportunity to guide users (e.g., to the "Browse" page to discover channels) improves user flow and retention.
+**Action:** Always include a relevant Call-to-Action (CTA) and clear icons in empty states to make them helpful and engaging, reducing dead-ends in the application flow.

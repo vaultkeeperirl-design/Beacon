@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import StreamCard from '../components/StreamCard';
 import StreamCardSkeleton from '../components/StreamCardSkeleton';
-import { ChevronDown, Heart, Activity, User } from 'lucide-react';
+import { ChevronDown, Heart, Activity, User, Compass } from 'lucide-react';
 import { useFollowing } from '../context/FollowingContext';
 import axios from 'axios';
 import { API_URL } from '../config/api';
@@ -112,9 +113,19 @@ export default function Following() {
            ))}
          </div>
        ) : (
-         <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-12 text-center mb-12">
-            <p className="text-neutral-400 mb-4">You are not following any live channels.</p>
-            <p className="text-sm text-neutral-500">Go explore and follow some streamers!</p>
+         <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-12 text-center mb-12 flex flex-col items-center justify-center">
+            <div className="bg-neutral-800/50 p-4 rounded-full mb-4">
+              <Compass className="w-8 h-8 text-neutral-500" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">No live channels</h3>
+            <p className="text-neutral-400 mb-6 max-w-md">You are not following any live channels right now. Go explore and follow some streamers!</p>
+            <Link
+              to="/browse"
+              className="flex items-center gap-2 px-6 py-2.5 bg-beacon-600 hover:bg-beacon-500 text-white rounded-lg font-bold transition-all shadow-lg shadow-beacon-600/20"
+            >
+              <Compass className="w-4 h-4" />
+              Browse Channels
+            </Link>
          </div>
        )}
 
@@ -175,8 +186,19 @@ export default function Following() {
                  ))}
              </div>
            ) : (
-             <div className="bg-neutral-900/30 border border-neutral-800/50 rounded-xl p-8 text-center">
-                 <p className="text-neutral-500 text-sm">You are not following any offline channels.</p>
+             <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-12 text-center flex flex-col items-center justify-center">
+                 <div className="bg-neutral-800/50 p-4 rounded-full mb-4">
+                   <User className="w-8 h-8 text-neutral-500" />
+                 </div>
+                 <h3 className="text-xl font-bold text-white mb-2">No offline channels</h3>
+                 <p className="text-neutral-400 mb-6 max-w-md">You haven't followed any channels yet. Discover new creators and build your community!</p>
+                 <Link
+                   to="/browse"
+                   className="flex items-center gap-2 px-6 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg font-bold transition-all border border-neutral-700"
+                 >
+                   <Compass className="w-4 h-4" />
+                   Discover Creators
+                 </Link>
              </div>
            )}
        </div>
