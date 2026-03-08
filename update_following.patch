@@ -1,0 +1,23 @@
+--- frontend/src/pages/Following.jsx
++++ frontend/src/pages/Following.jsx
+@@ -165,7 +165,19 @@
+              </div>
+            </div>
+
+-           {sortedOfflineChannels.length > 0 ? (
++           {isLoading ? (
++             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
++                 {Array.from({ length: 4 }).map((_, i) => (
++                     <div key={i} className="flex items-center gap-4 p-4 bg-neutral-900/50 border border-neutral-800 rounded-xl animate-pulse">
++                         <div className="w-12 h-12 rounded-full bg-neutral-800 flex-shrink-0"></div>
++                         <div className="flex-1 space-y-2 py-1">
++                             <div className="h-4 bg-neutral-800 rounded w-1/2"></div>
++                             <div className="h-3 bg-neutral-800 rounded w-1/3"></div>
++                         </div>
++                     </div>
++                 ))}
++             </div>
++           ) : sortedOfflineChannels.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {sortedOfflineChannels.map(channel => (
+                      <div key={channel.id} className="flex items-center gap-4 p-4 bg-neutral-900/50 border border-neutral-800 rounded-xl hover:bg-neutral-800/80 hover:border-neutral-700 transition-all cursor-pointer group">
