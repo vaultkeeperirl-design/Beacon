@@ -9,6 +9,7 @@ const Navbar = memo(function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const searchInputRef = useRef(null);
+  const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
   // Global '/' listener to automatically focus search input
@@ -25,6 +26,31 @@ const Navbar = memo(function Navbar() {
     document.addEventListener('keydown', handleGlobalKeyDown);
     return () => document.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
+
+  // Handle click outside and Escape key for profile dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isDropdownOpen]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -69,6 +95,7 @@ const Navbar = memo(function Navbar() {
               }}
               className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-500 hover:text-white transition-colors"
               aria-label="Clear search"
+              title="Clear search"
             >
               {/* ⚡ Aura: Added 'Clear Search' button to allow users to quickly reset their search query with a single click instead of manually deleting text. */}
               <X className="h-4 w-4" />
@@ -90,11 +117,12 @@ const Navbar = memo(function Navbar() {
               <span>Go Live</span>
             </Link>
 
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 hover:border-beacon-500 transition-colors overflow-hidden"
                 aria-label="Profile Menu"
+                title="Profile Menu"
                 aria-expanded={isDropdownOpen}
                 aria-haspopup="true"
               >
