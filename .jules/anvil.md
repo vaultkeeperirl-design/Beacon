@@ -1,7 +1,5 @@
-# 2025-03-07
+# 2024-05-24
 
-## Learning
-I noticed that when running parallel development commands (like `pnpm dev:web` or `pnpm test:watch`) using `concurrently`, the terminal output was a massive wall of interleaved text with no clear distinction between the frontend and backend logs. This lack of visual separation creates friction when debugging or monitoring dev servers.
-
-## Action
-I updated the root `package.json` and the `launcher/package.json` scripts that utilize `concurrently` (specifically `dev:web`, `test:watch`, and the launcher's `dev`). I added the `-n` flag to provide named prefixes (e.g., "API,WEB", "REACT,ELECTRON") and the `-c` flag to apply distinct background colors (e.g., `bgBlue.bold`, `bgMagenta.bold`) to those prefixes. This makes it instantly obvious which process is logging what, significantly improving the developer experience.
+## Learning: Continuous Integration (CI) Workflow Added
+-   **Context:** The repository lacked an automated way to verify Pull Requests, requiring manual execution of `pnpm check`.
+-   **Action:** Added a GitHub Actions workflow (`.github/workflows/pr-check.yml`) that triggers on PRs against `main`, checking out code, installing dependencies, and running `pnpm check`. Updated the README.md to reflect this behavior.

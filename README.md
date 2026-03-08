@@ -72,7 +72,7 @@ Detailed setup instructions can be found in [docs/Installation.md](docs/Installa
 
 ## 🧪 Testing
 
-We use standardized commands to run tests across the codebase.
+We use standardized commands to run tests across the codebase. Any Pull Request targeting the `main` branch will automatically run the full test suite and linter via GitHub Actions.
 
 ```bash
 # Run all tests (Frontend + Backend)
