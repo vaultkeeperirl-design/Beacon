@@ -121,6 +121,21 @@ Updates the authenticated user's profile information. **Authentication Required.
   }
   ```
 
+### `DELETE /api/users/:username`
+Deletes the specified user account permanently. **Authentication Required.**
+
+- **URL Parameters:**
+  - `username`: The username of the account to delete.
+- **Response (200 OK):**
+  ```json
+  {
+    "success": true,
+    "message": "Account permanently deleted"
+  }
+  ```
+- **Response (403 Forbidden):** If attempting to delete an account other than your own.
+- **Response (404 Not Found):** If the user does not exist.
+
 ### `POST /api/users/:username/follow`
 Follows a specific user. **Authentication Required.**
 
