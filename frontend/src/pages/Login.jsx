@@ -45,6 +45,7 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="login-username" className="block text-sm font-medium text-neutral-400 mb-2">Username</label>
+              {/* ✨ Aura: Auto-focusing the first input field eliminates the need for an initial mouse click, allowing users to start typing their credentials immediately upon page load. */}
               <input
                 id="login-username"
                 type="text"
@@ -53,6 +54,7 @@ export default function Login() {
                 className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-beacon-500 outline-none transition-colors shadow-inner"
                 placeholder="Enter your username"
                 required
+                autoFocus
               />
             </div>
             <div>
