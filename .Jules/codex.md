@@ -29,3 +29,7 @@
 ## 2025-03-07 - Database Schema Documentation
 **Learning:** The database schema constraints (such as missing `PRAGMA foreign_keys = ON;`) and explicit indexes (like `idx_follows_followee`) were scattered between code comments and manual SQL implementations, leaving a gap for new developers working on the backend architecture.
 **Action:** Created `docs/database-schema.md` to cleanly document the SQLite schema structure, relationships, and performance caveats.
+
+## 2025-03-08 - Environment Variables Documentation
+**Learning:** The project relies on specific backend environment variables (`PORT`, `JWT_SECRET`, `SERVE_STATIC`, `BEACON_USER_DATA`) but this information was not explicitly documented, making it unclear how developers could override defaults.
+**Action:** Created `docs/environment-variables.md` to document the available environment variables, their defaults, and instructions for how to configure them during development using a `.env` file in the `backend/` directory.
