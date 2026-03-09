@@ -1077,7 +1077,7 @@ io.on('connection', (socket) => {
         return; // Already voted
     }
 
-    if (optionIndex >= 0 && optionIndex < poll.options.length) {
+    if (Number.isInteger(optionIndex) && optionIndex >= 0 && optionIndex < poll.options.length) {
       poll.options[optionIndex].votes++;
       poll.totalVotes++;
       poll.voters.add(voterId);
