@@ -42,12 +42,20 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
       }
     };
 
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
 
@@ -61,8 +69,8 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-neutral-400 hover:text-white transition-colors"
-          aria-label="Close"
-          title="Close Settings"
+          aria-label="Close Stream Settings"
+          title="Close Stream Settings"
         >
           <X className="w-4 h-4" />
         </button>
