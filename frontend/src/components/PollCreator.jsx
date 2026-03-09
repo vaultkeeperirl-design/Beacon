@@ -1,10 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, PieChart } from 'lucide-react';
 
 export default function PollCreator({ isOpen, onClose, onStartPoll }) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [duration, setDuration] = useState(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -43,13 +53,19 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-neutral-400 hover:text-white transition-colors"
-          aria-label="Close"
-          title="Close"
+          aria-label="Close Poll Creator"
+          title="Close Poll Creator"
         >
           <X className="w-5 h-5" />
         </button>
@@ -97,8 +113,8 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
                     type="button"
                     onClick={() => handleRemoveOption(idx)}
                     className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                    aria-label="Remove option"
-                    title="Remove option"
+                    aria-label={`Remove option ${idx + 1}`}
+                    title={`Remove option ${idx + 1}`}
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>

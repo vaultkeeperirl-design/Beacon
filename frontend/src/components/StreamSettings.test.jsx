@@ -55,7 +55,7 @@ describe('StreamSettings', () => {
       </P2PProvider>
     );
 
-    const closeBtn = screen.getByLabelText('Close');
+    const closeBtn = screen.getByLabelText('Close Stream Settings');
     fireEvent.click(closeBtn);
     expect(onClose).toHaveBeenCalled();
   });
