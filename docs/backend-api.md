@@ -57,7 +57,7 @@ Creates a new user account.
   ```json
   {
     "token": "ey...",
-    "user": { "id": 1, "username": "new_user", "credits": 0.0, "avatar_url": null, "bio": null, "follower_count": 0 }
+    "user": { "id": 1, "username": "new_user", "credits": 0.0, "avatar_url": null, "bio": null, "follower_count": 0, "following_count": 0 }
   }
   ```
 - **Response (400 Bad Request):** If username or password is missing, or if the username already exists.
@@ -77,7 +77,7 @@ Authenticates an existing user.
   ```json
   {
     "token": "ey...",
-    "user": { "id": 1, "username": "existing_user", "credits": 10.5, "avatar_url": null, "bio": null, "follower_count": 0 }
+    "user": { "id": 1, "username": "existing_user", "credits": 10.5, "avatar_url": null, "bio": null, "follower_count": 0, "following_count": 5 }
   }
   ```
 - **Response (400 Bad Request):** If username or password is missing.
@@ -97,7 +97,8 @@ Fetches the public profile of a user. **No authentication required.**
     "username": "target_user",
     "avatar_url": "https://example.com/avatar.png",
     "bio": "Streamer bio...",
-    "follower_count": 42
+    "follower_count": 42,
+    "following_count": 10
   }
   ```
 - **Response (404 Not Found):** If the user does not exist.
@@ -116,7 +117,7 @@ Updates the authenticated user's profile information. **Authentication Required.
   ```json
   {
     "success": true,
-    "user": { "id": 1, "username": "current_user", "bio": "New bio", "avatar_url": "https://example.com/new_avatar.png", "follower_count": 0 },
+    "user": { "id": 1, "username": "current_user", "bio": "New bio", "avatar_url": "https://example.com/new_avatar.png", "follower_count": 0, "following_count": 5 },
     "message": "Profile updated successfully"
   }
   ```
