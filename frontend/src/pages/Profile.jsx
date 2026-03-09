@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, memo } from 'react';
-import { Camera, Edit2, Save, X, Github, Twitter, MessageSquare, Globe, Activity, Database, Shield, Twitch, Layout as LayoutIcon, Mail, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Camera, Edit2, Save, X, Github, Twitter, MessageSquare, Globe, Activity, Database, Shield, Twitch, Layout as LayoutIcon, Mail, Plus, Trash2, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../config/api';
 import { useP2PStats, useP2PSettings } from '../context/P2PContext';
@@ -13,7 +14,8 @@ const ProfileCredits = memo(function ProfileCredits() {
 });
 
 export default function Profile() {
-  const { isSharing, userProfile, updateUserProfile, token } = useP2PSettings();
+  const { isSharing, userProfile, updateUserProfile, token, logout } = useP2PSettings();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(userProfile);
   const [interestInput, setInterestInput] = useState('');
@@ -113,6 +115,30 @@ export default function Profile() {
     } catch (err) {
       console.error('Failed to update profile:', err);
       setToast('Failed to update profile. Please try again.');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!token || !userProfile.username) return;
+
+    const confirmed = window.confirm(
+      "Are you absolutely sure you want to delete your account? This action is permanent and cannot be undone. All your credits, follows, and profile data will be lost forever."
+    );
+
+    if (confirmed) {
+      try {
+        await axios.delete(`${API_URL}/users/${userProfile.username}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setToast('Account deleted successfully. Goodbye! 👋');
+        setTimeout(() => {
+          logout();
+          navigate('/');
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to delete account:', err);
+        setToast(err.response?.data?.error || 'Failed to delete account. Please try again.');
+      }
     }
   };
 
@@ -479,6 +505,24 @@ export default function Profile() {
                 <p className="text-neutral-500 italic text-sm">No interests added yet.</p>
               )}
             </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="bg-red-900/10 p-8 rounded-2xl border border-red-900/30">
+            <h2 className="text-xl font-bold text-red-500 mb-4 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" />
+              Danger Zone
+            </h2>
+            <p className="text-neutral-400 text-sm mb-6 leading-relaxed">
+              Once you delete your account, there is no going back. Please be certain.
+            </p>
+            <button
+              onClick={handleDeleteAccount}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-xl font-bold transition-all border border-red-600/30 hover:border-red-600"
+            >
+              <Trash2 className="w-4 h-4" />
+              Permanently Delete Account
+            </button>
           </div>
         </div>
       </div>
