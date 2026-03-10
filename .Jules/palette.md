@@ -47,3 +47,7 @@
 ## 2026-03-20 - Dropdown Interaction Polish
 **Learning:** Standard dropdowns (like the profile menu) feel "broken" if they don't respond to the 'Escape' key or clicks outside their container. These interactions are expected by users and are standard accessibility patterns.
 **Action:** Always implement 'Escape' and 'click-outside' listeners for custom dropdown components to ensure a professional and accessible user experience.
+
+## 2026-03-22 - Enhanced Form Accessibility and Dynamic Context
+**Learning:** For forms with side-by-side icons and inputs (like social media links), wrapping icons in a `<label htmlFor="...">` significantly improves UX by allowing the icon to act as a focus trigger. Additionally, when rendering lists of removable items (like interests), buttons must include dynamic `aria-label` and `title` attributes that specify which item is being affected to provide clear context for assistive technologies.
+**Action:** Always wrap decorative/functional icons adjacent to inputs in `<label>` tags with matching `id`s, and ensure list-based actions have item-specific accessibility descriptions.
