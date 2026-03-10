@@ -24,7 +24,7 @@ export default function Home() {
   useEffect(() => {
     const fetchStreams = async () => {
       try {
-        const res = await axios.get(`${API_URL}/streams`);
+        const res = await axios.get(`${API_URL}/streams?limit=24`);
         // If API returns no streams, fallback to mock data to keep the home page lively
         setStreams(res.data.length > 0 ? res.data : MOCK_STREAMS);
       } catch (err) {
