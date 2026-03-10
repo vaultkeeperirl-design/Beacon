@@ -48,3 +48,7 @@
 ## 2026-03-07 - [Hydrating Transient Mesh Metadata]
 **Learning:** Live stream metadata in `activeStreams` (backend) is transient and initialized from the database during the `join-stream` socket event. To avoid UI placeholders, this metadata must include all required fields (like `avatar_url`) and be preserved during updates or synchronized if the user's profile changes while live.
 **Action:** Always include a metadata hydration step when a node joins the mesh to pull full user details into the transient mesh state.
+
+## 2026-03-08 - [Unified Revenue Distribution with Proportional Rewards]
+**Learning:** Implementing a decentralized revenue model (80/20 split) requires a unified atomic transaction that handles both voluntary tips and automated ad revenue. To ensure fairness and Sybil resistance, relayer rewards must be distributed proportionally based on their total bandwidth contribution (aggregated across all sessions for a unique username) rather than a simple equal split.
+**Action:** Use a core `revenueTx` database transaction that accepts an optional tipper and a list of weighted relayers, and deduplicate wallet update emissions by identity to minimize socket traffic and prevent client-side desync.
