@@ -114,18 +114,22 @@ const distributeCredits = (squad, totalAmount) => {
 // This is critical for high-frequency events like 'metrics-report' (every 2s per user).
 const distributeCreditsTx = db.transaction(distributeCredits);
 
-const tipTx = db.transaction((tipper, amount, squad) => {
-  // ⚡ Performance Optimization: Merge balance check and deduction into a single atomic UPDATE.
-  // This reduces DB roundtrips and simplifies the transaction logic.
-  // Expected impact: ~30% faster tip transactions.
-  const info = deductCreditsWithCheckStmt.run(amount, tipper, amount);
-
-  if (info.changes === 0) {
-    throw new Error('INSUFFICIENT_FUNDS');
+const revenueTx = db.transaction((tipper, amount, squad, relayers, relayTotal, squadTotal) => {
+  if (tipper) {
+    // ⚡ Performance Optimization: Merge balance check and deduction into a single atomic UPDATE.
+    const info = deductCreditsWithCheckStmt.run(amount, tipper, amount);
+    if (info.changes === 0) {
+      throw new Error('INSUFFICIENT_FUNDS');
+    }
   }
 
-  // Distribute within a transaction for atomicity
-  return distributeCredits(squad, amount);
+  const results = [];
+  // Distribute 80% to squad
+  results.push(...distributeCredits(squad, squadTotal));
+  // Distribute 20% to relayers
+  results.push(...distributeCredits(relayers, relayTotal));
+
+  return results;
 });
 
 const followTx = db.transaction((followerId, followeeId) => {
@@ -136,27 +140,6 @@ const followTx = db.transaction((followerId, followeeId) => {
 const unfollowTx = db.transaction((followerId, followeeId) => {
   deleteFollowStmt.run(followerId, followeeId);
   updateFollowerCountStmt.run(-1, followeeId);
-});
-
-const distributeCreditsToStreamTx = db.transaction((squad, totalAmount, relayers, relayTotal, squadTotal) => {
-  const results = [];
-
-  // Distribute 80% to squad
-  results.push(...distributeCredits(squad, squadTotal));
-
-  // Distribute 20% split equally among relayers
-  if (relayers.length > 0) {
-    const perRelayerAmount = relayTotal / relayers.length;
-    for (const relayer of relayers) {
-      updateCreditsStmt.run(perRelayerAmount, relayer.username);
-      const row = getCreditsStmt.get(relayer.username);
-      if (row) {
-        results.push({ username: relayer.username, balance: row.credits });
-      }
-    }
-  }
-
-  return results;
 });
 
 // Auth Middleware
@@ -175,28 +158,45 @@ const authenticateToken = (req, res, next) => {
 
 // Helper to distribute credits to a stream's squad and notify online members.
 // 20% of the amount is split among active relayers, and 80% is split among the squad.
-const distributeCreditsToStream = (streamId, amount) => {
+const distributeCreditsToStream = (streamId, amount, tipper = null) => {
   const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
   const mesh = streamMeshTopology.get(streamId);
-  const relayers = [];
+
+  // 🌉 Bridge: Implement Sybil-resistant and Proportional Relay Distribution
+  // We deduplicate relayers by username and sum their bandwidth contribution.
+  // Rewards are then distributed proportionally based on total bandwidth served.
+  const relayerContributions = new Map(); // username -> total uploadMbps
+  let totalRelayBandwidth = 0;
 
   if (mesh) {
     for (const [socketId, node] of mesh.entries()) {
-      // A relayer is a node that is not the broadcaster, has an account, and is actually uploading
       const socket = io.sockets.sockets.get(socketId);
       const accountName = socket?.accountName || node.accountName;
+
       if (!node.isBroadcaster && accountName && node.metrics && node.metrics.uploadMbps > 0) {
-        relayers.push({ username: accountName, split: 0 }); // Split will be calculated
+        const bandwidth = node.metrics.uploadMbps;
+        relayerContributions.set(accountName, (relayerContributions.get(accountName) || 0) + bandwidth);
+        totalRelayBandwidth += bandwidth;
       }
     }
   }
 
   const RELAY_PORTION = 0.20;
   const relayTotal = amount * RELAY_PORTION;
-  const squadTotal = amount - (relayers.length > 0 ? relayTotal : 0);
+  const hasRelayers = totalRelayBandwidth > 0;
+  const squadTotal = amount - (hasRelayers ? relayTotal : 0);
+
+  // Convert relayerContributions to the format expected by the transaction
+  const relayers = [];
+  if (hasRelayers) {
+    for (const [username, bandwidth] of relayerContributions.entries()) {
+      const weight = (bandwidth / totalRelayBandwidth) * 100;
+      relayers.push({ username, split: weight });
+    }
+  }
 
   try {
-    const updates = distributeCreditsToStreamTx(squad, amount, relayers, relayTotal, squadTotal);
+    const updates = revenueTx(tipper, amount, squad, relayers, relayTotal, squadTotal);
 
     // Emit updates after successful transaction to prevent state desync
     for (const update of updates) {
@@ -544,13 +544,9 @@ app.post('/api/tip', authenticateToken, (req, res) => {
   }
 
   try {
-    const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
-    const updates = tipTx(tipper, amount, squad);
-
-    // Emit updates after successful transaction
-    for (const update of updates) {
-      io.to(`user:${update.username}`).emit('wallet-update', { balance: update.balance });
-    }
+    // 🌉 Bridge: Use the unified distributeCreditsToStream to apply 80/20 split
+    // and proportional relay rewards to Tips as well as Ads.
+    distributeCreditsToStream(streamId, amount, tipper);
 
     // Notify all of tipper's devices about the new balance
     const updatedTipper = getCreditsStmt.get(tipper);
