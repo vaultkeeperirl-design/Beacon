@@ -215,16 +215,28 @@ app.get('/api/streams', (req, res) => {
   const limit = parseInt(req.query.limit) || 100;
   const offset = parseInt(req.query.offset) || 0;
 
-  const streams = Array.from(activeStreams.entries())
-    .slice(offset, offset + limit)
-    .map(([id, info]) => {
-      const viewersCount = io.sockets.adapter.rooms.get(id)?.size || 0;
-      return {
-        id,
-        ...info,
-        viewers: viewersCount
-      };
+  const streams = [];
+  let skipped = 0;
+
+  // ⚡ Performance Optimization: Iterator-based pagination
+  // Using Array.from(activeStreams.entries()) creates a full intermediate array (O(N)),
+  // which causes memory pressure and CPU spikes as the number of streams grows.
+  // This for...of loop iterates only up to (offset + limit), achieving O(offset + limit).
+  for (const [id, info] of activeStreams) {
+    if (skipped < offset) {
+      skipped++;
+      continue;
+    }
+    if (streams.length >= limit) break;
+
+    const viewersCount = io.sockets.adapter.rooms.get(id)?.size || 0;
+    streams.push({
+      id,
+      ...info,
+      viewers: viewersCount
     });
+  }
+
   res.json(streams);
 });
 
