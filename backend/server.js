@@ -723,6 +723,11 @@ function removeNodeFromMesh(streamId, socketId) {
   const orphans = Array.from(node.children);
   mesh.delete(socketId);
 
+  // 🌉 Bridge: Clean up empty mesh maps to prevent memory leaks
+  if (mesh.size === 0) {
+    streamMeshTopology.delete(streamId);
+  }
+
   for (const orphanId of orphans) {
     if (mesh.has(orphanId)) {
       mesh.get(orphanId).parent = null;
@@ -809,6 +814,7 @@ io.on('connection', (socket) => {
        if (socket.username === prevRoom && activeStreams.has(prevRoom)) {
           activeStreams.delete(prevRoom);
           streamSquads.delete(prevRoom);
+          lastAdTrigger.delete(prevRoom);
           // Check for active poll and clear its timeout
           cleanupPoll(prevRoom, true);
           const otherStreams = Array.from(activeStreams.keys());
@@ -817,6 +823,8 @@ io.on('connection', (socket) => {
        }
 
        socket.leave(prevRoom);
+       // 🌉 Bridge: Ensure node is removed from previous mesh during room switch
+       removeNodeFromMesh(prevRoom, socket.id);
        // Notify previous room
        const prevCount = io.sockets.adapter.rooms.get(prevRoom)?.size || 0;
        io.to(prevRoom).emit('room-users-update', prevCount);
@@ -869,6 +877,7 @@ io.on('connection', (socket) => {
        if (socket.username === room && activeStreams.has(room)) {
           activeStreams.delete(room);
           streamSquads.delete(room);
+          lastAdTrigger.delete(room);
           // Check for active poll and clear its timeout
           cleanupPoll(room, true);
           const otherStreams = Array.from(activeStreams.keys());
@@ -1190,6 +1199,7 @@ io.on('connection', (socket) => {
       if (socket.username === streamId && activeStreams.has(streamId)) {
           activeStreams.delete(streamId);
           streamSquads.delete(streamId);
+          lastAdTrigger.delete(streamId);
 
           cleanupPoll(streamId, true);
 
