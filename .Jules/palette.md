@@ -51,3 +51,7 @@
 ## 2026-03-22 - Enhanced Form Accessibility and Dynamic Context
 **Learning:** For forms with side-by-side icons and inputs (like social media links), wrapping icons in a `<label htmlFor="...">` significantly improves UX by allowing the icon to act as a focus trigger. Additionally, when rendering lists of removable items (like interests), buttons must include dynamic `aria-label` and `title` attributes that specify which item is being affected to provide clear context for assistive technologies.
 **Action:** Always wrap decorative/functional icons adjacent to inputs in `<label>` tags with matching `id`s, and ensure list-based actions have item-specific accessibility descriptions.
+
+## 2026-03-25 - Keyboard Navigation via Skip Link
+**Learning:** In applications with persistent navigation bars and sidebars, keyboard users are forced to tab through numerous links before reaching the page's primary content. A "Skip to Main Content" link provides a significant UX boost for accessibility by allowing users to bypass repetitive navigation.
+**Action:** Always include a "Skip to Main Content" link in the root layout, ensuring it targets a `<main>` element with a corresponding ID and `tabIndex="-1"` for reliable focus management.

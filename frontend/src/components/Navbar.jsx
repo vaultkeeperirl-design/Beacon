@@ -85,6 +85,7 @@ const Navbar = memo(function Navbar() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="block w-full pl-10 pr-10 py-2 border border-neutral-800 rounded-full leading-5 bg-neutral-950 text-neutral-300 placeholder-neutral-600 focus:outline-none focus:border-beacon-500/50 focus:ring-1 focus:ring-beacon-500/50 sm:text-sm transition-colors"
             placeholder="Search streams... (Press /)"
+            aria-label="Search streams"
           />
           {searchQuery && (
             <button
