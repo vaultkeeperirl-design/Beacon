@@ -18,7 +18,7 @@ try {
   dbPath = path.resolve(__dirname, 'beacon.db');
 }
 
-const db = new Database(dbPath, { verbose: console.log });
+const db = new Database(dbPath);
 
 // Initialize database schema
 db.exec(`

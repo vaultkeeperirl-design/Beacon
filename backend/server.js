@@ -212,14 +212,19 @@ const distributeCreditsToStream = (streamId, amount) => {
 
 // Get Active Streams
 app.get('/api/streams', (req, res) => {
-  const streams = Array.from(activeStreams.entries()).map(([id, info]) => {
-    const viewersCount = io.sockets.adapter.rooms.get(id)?.size || 0;
-    return {
-      id,
-      ...info,
-      viewers: viewersCount
-    };
-  });
+  const limit = parseInt(req.query.limit) || 100;
+  const offset = parseInt(req.query.offset) || 0;
+
+  const streams = Array.from(activeStreams.entries())
+    .slice(offset, offset + limit)
+    .map(([id, info]) => {
+      const viewersCount = io.sockets.adapter.rooms.get(id)?.size || 0;
+      return {
+        id,
+        ...info,
+        viewers: viewersCount
+      };
+    });
   res.json(streams);
 });
 

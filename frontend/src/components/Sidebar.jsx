@@ -35,9 +35,9 @@ const Sidebar = memo(function Sidebar() {
   useEffect(() => {
     const fetchRecommended = async () => {
       try {
-        const res = await axios.get(`${API_URL}/streams`);
+        const res = await axios.get(`${API_URL}/streams?limit=5`);
         // Limit to 5 recommended channels for the sidebar
-        setRecommendedChannels(res.data.slice(0, 5));
+        setRecommendedChannels(res.data);
       } catch (err) {
         console.error('Failed to fetch recommended channels:', err);
       }

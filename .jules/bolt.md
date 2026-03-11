@@ -33,3 +33,11 @@
 ## 2025-07-20 - [React] Stable Prop References for List Rendering
 **Learning:** Performing inline data transformations (e.g., `.split(',')` on tags or template literals for URLs) inside a parent's `.map()` loop creates new array/string references on every render. This forces `React.memo`'d children (like `StreamCard`) to re-render even if the underlying data is identical, causing O(N) reconciliation overhead.
 **Action:** Move data normalization and formatting logic inside the child component using `useMemo`. This allows the child to receive stable, raw props from the parent and effectively bail out of redundant re-renders.
+
+## 2025-08-05 - [Backend] Synchronous I/O in Database Operations
+**Learning:** Initializing `better-sqlite3` with `{ verbose: console.log }` can lead to an 80%+ performance degradation in high-frequency database operations. Synchronous console logging blocks the Node.js event loop for every single query executed.
+**Action:** Always disable `verbose` logging in production-like environments or high-traffic backends. Use a non-blocking logging strategy if query tracing is required.
+
+## 2025-08-05 - [Backend] Reducing Serialization Overhead with Pagination
+**Learning:** Fetching and serializing all active streams on every sidebar or home page mount creates a linear $O(N)$ bottleneck in both network payload and JSON parsing. As the number of streams grows, this leads to increased Time to Interactive (TTI).
+**Action:** Implement server-side pagination (`limit`/`offset`) even for internal components like sidebars. This caps the serialization and transmission cost, ensuring the UI remains responsive regardless of total system load.
