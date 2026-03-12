@@ -1,0 +1,46 @@
+
+> beacon-monorepo@1.4.0 dev:web /app
+> concurrently -n "API,WEB" -c "bgBlue.bold,bgMagenta.bold" "cd backend && pnpm dev" "cd frontend && pnpm dev"
+
+[WEB]
+[WEB] > frontend@1.3.0 dev /app/frontend
+[WEB] > vite
+[WEB]
+[API]
+[API] > backend@1.0.5 dev /app/backend
+[API] > nodemon server.js
+[API]
+[API] [33m[nodemon] 3.1.14[39m
+[API] [33m[nodemon] to restart at any time, enter `rs`[39m
+[API] [33m[nodemon] watching path(s): *.*[39m
+[API] [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[API] [32m[nodemon] starting `node server.js`[39m
+[WEB]
+[WEB]   VITE v7.3.1  ready in 265 ms
+[WEB]
+[WEB]   ➜  Local:   http://localhost:5173/
+[WEB]   ➜  Network: use --host to expose
+[API] Database tables ready.
+[API] Server running on port 3000
+[API] New client connected: GM9_jME3a5ookOM7AAAB
+[API] [Join] User Guest joining stream Alice
+[API] Socket GM9_jME3a5ookOM7AAAB (Guest) joined stream Alice
+[API] [Mesh] Warning: Could not find parent for GM9_jME3a5ookOM7AAAB in stream Alice
+[API] [Join] User Guest joining stream Alice
+[API] [Mesh] Warning: Could not find parent for GM9_jME3a5ookOM7AAAB in stream Alice
+[API] Socket GM9_jME3a5ookOM7AAAB left stream Alice
+[API] [Join] User Guest joining stream Alice
+[API] Socket GM9_jME3a5ookOM7AAAB (Guest) joined stream Alice
+[API] [Mesh] Warning: Could not find parent for GM9_jME3a5ookOM7AAAB in stream Alice
+[API] [Join] User Guest joining stream Alice
+[API] [Mesh] Warning: Could not find parent for GM9_jME3a5ookOM7AAAB in stream Alice
+[API] [Join] User Guest joining stream Alice
+[API] [Mesh] Warning: Could not find parent for GM9_jME3a5ookOM7AAAB in stream Alice
+[API] Client disconnected: GM9_jME3a5ookOM7AAAB
+[WEB] 10:23:55 PM [vite] (client) hmr update /src/index.css
+[API] New client connected: 95elGnKINXEHcpwHAAAD
+[API] [Auth] Socket registration failed: Invalid token
+[API] [Auth] Socket registration failed: Invalid token
+[API] [Auth] Socket registration failed: Invalid token
+[API] [Auth] Socket registration failed: Invalid token
+[API] Client disconnected: 95elGnKINXEHcpwHAAAD

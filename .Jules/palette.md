@@ -55,3 +55,7 @@
 ## 2026-03-25 - Keyboard Navigation via Skip Link
 **Learning:** In applications with persistent navigation bars and sidebars, keyboard users are forced to tab through numerous links before reaching the page's primary content. A "Skip to Main Content" link provides a significant UX boost for accessibility by allowing users to bypass repetitive navigation.
 **Action:** Always include a "Skip to Main Content" link in the root layout, ensuring it targets a `<main>` element with a corresponding ID and `tabIndex="-1"` for reliable focus management.
+
+## 2024-05-28 - Chat Message UX and Emote Picker
+**Learning:** Enforcing character limits with a visible counter prevents silent truncation at the backend. Managing focus programmatically (refocusing the input after selecting an emote) is a critical "delight" factor that maintains the user's flow.
+**Action:** Always provide visual character counters for limited inputs and ensure focus is correctly managed when secondary UI elements (like pickers) interact with a primary input field.
