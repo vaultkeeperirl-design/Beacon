@@ -102,4 +102,32 @@ describe('Chat Component - Optimistic UI', () => {
     const messages = screen.getAllByText('Instant Message');
     expect(messages.length).toBe(1);
   });
+
+  it('should show character counter when message is long', () => {
+    render(<Chat streamId="test-stream" />);
+    const input = screen.getByPlaceholderText(/Send a message/i);
+
+    // Initial state: no counter
+    expect(screen.queryByText(/\/ 500/)).not.toBeInTheDocument();
+
+    // Change to 400 characters
+    fireEvent.change(input, { target: { value: 'a'.repeat(400) } });
+    expect(screen.getByText('400')).toBeInTheDocument();
+    expect(screen.getByText('/ 500')).toBeInTheDocument();
+  });
+
+  it('should append emote when selected and restore focus', () => {
+    render(<Chat streamId="test-stream" />);
+    const input = screen.getByPlaceholderText(/Send a message/i);
+    const emoteButton = screen.getByRole('button', { name: /Open emotes menu/i });
+
+    fireEvent.change(input, { target: { value: 'Hello ' } });
+    fireEvent.click(emoteButton);
+
+    const fireEmote = screen.getByText('🔥');
+    fireEvent.click(fireEmote);
+
+    expect(input.value).toBe('Hello 🔥');
+    expect(document.activeElement).toBe(input);
+  });
 });
