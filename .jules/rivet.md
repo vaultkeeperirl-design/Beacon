@@ -1,7 +1,1 @@
-YYYY-MM-DD
-Learning: Discovered that `setTimeout` durations for active polls in `backend/server.js` were preventing the test suites from cleanly exiting if the host did not manually end them, leading to `force exited` error outputs. Node's `setTimeout` open handles will keep the main process alive until completed.
-Action: Appended `.unref()` to `setTimeout` when creating poll timers, signaling to Node.js that the event loop can terminate naturally even if the timer has not fired. Tests now exit successfully without hanging.
-
-2024-05-18
-Learning: To avoid ESLint `react-hooks/rules-of-hooks` errors in test files, never call React hooks conditionally inside generic or shared testing wrapper components.
-Action: Defined and rendered completely isolated dummy components for each specific hook being tested.
+# YYYY-MM-DD\n\n## Learning\nIf `localStorage` holds an explicit `"null"` string (which is valid JSON), `JSON.parse('null')` returns primitive `null`. Passing this `null` primitive into React state, when downstream components expect an object with defaults, can cause the application to crash due to null property accesses.\n\n## Action\nAdded an explicit truthiness check `if (parsed) return parsed;` inside the `JSON.parse` try/catch block for `beacon_user_profile` in `P2PContext.jsx`. This ensures that if `parsed` is falsy (like `null`), execution continues and falls back to the default profile object defined in the code. Also added a regression test to verify this behavior.
