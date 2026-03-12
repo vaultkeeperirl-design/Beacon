@@ -1127,6 +1127,7 @@ io.on('connection', (socket) => {
     if (activeStreams.has(streamId)) {
       activeStreams.delete(streamId);
       streamSquads.delete(streamId);
+      lastAdTrigger.delete(streamId);
       cleanupPoll(streamId, true);
 
       // Notify viewers to redirect to the target stream
