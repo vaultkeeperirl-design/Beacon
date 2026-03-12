@@ -44,7 +44,8 @@ export function P2PProvider({ children }) {
     const saved = localStorage.getItem('beacon_user_profile');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed) return parsed;
       } catch (e) {
         console.error('Failed to parse beacon_user_profile', e);
       }

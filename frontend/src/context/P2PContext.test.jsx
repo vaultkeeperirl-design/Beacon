@@ -375,6 +375,23 @@ describe('P2PContext', () => {
     });
   });
 
+  describe('Profile localStorage parsing edge cases', () => {
+    it('handles explicit "null" string in localStorage gracefully', () => {
+      // Set localStorage directly to mimic a corrupted or explicitly "null" profile
+      localStorage.setItem('beacon_user_profile', 'null');
+
+      render(
+        <P2PProvider>
+          <AuthTestComponent />
+        </P2PProvider>
+      );
+
+      // Verify that it doesn't crash and falls back to default empty state
+      expect(screen.getByTestId('username')).toHaveTextContent('Guest');
+      expect(screen.getByTestId('profile-bio')).toHaveTextContent('no-bio');
+    });
+  });
+
   describe('useP2PStats edge cases', () => {
       it('returns fallback values if not all context values are defined', () => {
           // It's hard to mock useContext directly to return a partial object without complex module mocking,
