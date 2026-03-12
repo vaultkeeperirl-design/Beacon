@@ -14,6 +14,8 @@ const ChatMessage = memo(({ msg }) => (
 
 ChatMessage.displayName = 'ChatMessage';
 
+const EMOTES = ['🔥', '🚀', '💎', '🙌', '👀', '✨', '⚡', '🌉', '🛠️', '🏗️'];
+
 const Chat = memo(function Chat({
   streamId,
   className = "fixed right-0 top-16 bottom-0 w-80 z-40 hidden lg:flex shadow-xl border-l border-neutral-800",
@@ -21,9 +23,11 @@ const Chat = memo(function Chat({
 }) {
   const { messages, sendMessage, isConnected } = useChat(streamId);
   const [input, setInput] = useState('');
+  const [isEmotePickerOpen, setIsEmotePickerOpen] = useState(false);
 
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
+  const emotePickerRef = useRef(null);
 
   // Note: Resetting of messages when streamId changes is now handled by a 'key' on
   // the component in Watch.jsx, which is more idiomatic and avoids cascading renders.
@@ -49,6 +53,24 @@ const Chat = memo(function Chat({
     document.addEventListener('keydown', handleGlobalKeyDown);
     return () => document.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (emotePickerRef.current && !emotePickerRef.current.contains(e.target)) {
+        setIsEmotePickerOpen(false);
+      }
+    };
+    if (isEmotePickerOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isEmotePickerOpen]);
+
+  const addEmote = (emote) => {
+    setInput(prev => prev + emote);
+    setIsEmotePickerOpen(false);
+    inputRef.current?.focus();
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -78,7 +100,13 @@ const Chat = memo(function Chat({
         <div ref={chatEndRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="p-4 border-t border-neutral-800 bg-neutral-900/80 backdrop-blur-md">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-neutral-800 bg-neutral-900/80 backdrop-blur-md relative">
+        {input.length >= 400 && (
+          <div className="absolute -top-6 right-4 text-[10px] font-bold font-mono text-neutral-500 bg-neutral-950/80 px-2 py-0.5 rounded border border-neutral-800/50">
+            <span className={input.length >= 500 ? 'text-red-500' : ''}>{input.length}</span> / 500
+          </div>
+        )}
+
         <div className="relative group focus-within:ring-1 focus-within:ring-beacon-500 rounded-lg transition-all">
           <input
             ref={inputRef}
@@ -90,6 +118,7 @@ const Chat = memo(function Chat({
                 e.target.blur();
               }
             }}
+            maxLength={500}
             className="w-full bg-neutral-800/50 text-white rounded-lg pl-3 pr-10 py-2.5 text-sm focus:outline-none placeholder-neutral-600 transition-colors border border-transparent focus:border-beacon-500/50"
             placeholder={isConnected ? "Send a message... (Press Enter)" : "Connecting..."}
             disabled={!isConnected}
@@ -106,14 +135,35 @@ const Chat = memo(function Chat({
           </button>
         </div>
         <div className="flex justify-between items-center mt-3 text-[10px] text-neutral-600 font-medium">
-           <button
-             type="button"
-             className="flex items-center gap-1.5 cursor-pointer hover:text-neutral-400 transition-colors focus-visible:ring-1 focus-visible:ring-beacon-500 rounded outline-none"
-             aria-label="Open emotes menu"
-           >
-             <Smile className="w-3.5 h-3.5" />
-             <span>Emotes</span>
-           </button>
+           <div className="relative" ref={emotePickerRef}>
+             <button
+               type="button"
+               onClick={() => setIsEmotePickerOpen(!isEmotePickerOpen)}
+               className="flex items-center gap-1.5 cursor-pointer hover:text-neutral-400 transition-colors focus-visible:ring-1 focus-visible:ring-beacon-500 rounded outline-none"
+               aria-label="Open emotes menu"
+               title="Open emotes menu"
+               aria-expanded={isEmotePickerOpen}
+               aria-haspopup="true"
+             >
+               <Smile className="w-3.5 h-3.5" />
+               <span>Emotes</span>
+             </button>
+
+             {isEmotePickerOpen && (
+               <div className="absolute bottom-full mb-2 left-0 bg-neutral-900 border border-neutral-800 rounded-lg p-2 shadow-2xl grid grid-cols-5 gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                 {EMOTES.map(emote => (
+                   <button
+                     key={emote}
+                     type="button"
+                     onClick={() => addEmote(emote)}
+                     className="w-8 h-8 flex items-center justify-center hover:bg-neutral-800 rounded transition-colors text-lg"
+                   >
+                     {emote}
+                   </button>
+                 ))}
+               </div>
+             )}
+           </div>
            <span>Chat rules apply</span>
         </div>
       </form>
