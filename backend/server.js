@@ -88,6 +88,25 @@ const cleanupPoll = (streamId, notifyViewers = false) => {
 };
 
 /**
+ * Selects a random stream ID from active streams without creating an intermediate array.
+ * ⚡ Performance Optimization: This reduces GC pressure and memory usage to O(1) by avoiding
+ * Array.from(). While it maintains O(N) time complexity for the traversal, it is
+ * significantly more efficient for the Node.js heap in high-concurrency environments.
+ * @returns {string|null} A random stream ID, or null if no streams are active.
+ */
+const getRandomStreamId = () => {
+  const size = activeStreams.size;
+  if (size === 0) return null;
+  const randomIndex = Math.floor(Math.random() * size);
+  let i = 0;
+  for (const id of activeStreams.keys()) {
+    if (i === randomIndex) return id;
+    i++;
+  }
+  return null;
+};
+
+/**
  * Distributes credits to a list of squad members and emits wallet updates.
  * Should be called within a database transaction for atomicity.
  * @param {Array<{username: string, split: number}>} squad - List of members and their percentage splits.
@@ -170,8 +189,15 @@ const distributeCreditsToStream = (streamId, amount, tipper = null) => {
 
   if (mesh) {
     for (const [socketId, node] of mesh.entries()) {
-      const socket = io.sockets.sockets.get(socketId);
-      const accountName = socket?.accountName || node.accountName;
+      // ⚡ Performance Optimization: Prioritize the accountName already stored in the node object.
+      // This avoids the O(N) overhead of looking up every socket in the global Map on every distribution.
+      let accountName = node.accountName;
+
+      if (!accountName) {
+        const socket = io.sockets.sockets.get(socketId);
+        accountName = socket?.accountName;
+        if (accountName) node.accountName = accountName; // Cache for next time
+      }
 
       if (!node.isBroadcaster && accountName && node.metrics && node.metrics.uploadMbps > 0) {
         const bandwidth = node.metrics.uploadMbps;
@@ -773,7 +799,12 @@ io.on('connection', (socket) => {
       socket.join(`user:${username}`);
 
       // Retroactively update mesh topology with the new identity
-      for (const [streamId, mesh] of streamMeshTopology.entries()) {
+      // ⚡ Performance Optimization: Using socket.currentRoom for targeted update (O(1))
+      // instead of iterating over all active streams (O(N)).
+      // Note: socket.currentRoom is maintained by the join/leave-stream handlers.
+      const streamId = socket.currentRoom;
+      if (streamId && streamMeshTopology.has(streamId)) {
+        const mesh = streamMeshTopology.get(streamId);
         if (mesh.has(socket.id)) {
           mesh.get(socket.id).accountName = username;
           console.log(`[Mesh] Updated identity for ${socket.id} in stream ${streamId}`);
@@ -829,8 +860,7 @@ io.on('connection', (socket) => {
           lastAdTrigger.delete(prevRoom);
           // Check for active poll and clear its timeout
           cleanupPoll(prevRoom, true);
-          const otherStreams = Array.from(activeStreams.keys());
-          const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
+          const redirect = getRandomStreamId();
           socket.to(prevRoom).emit('stream-ended', { redirect });
        }
 
@@ -892,8 +922,7 @@ io.on('connection', (socket) => {
           lastAdTrigger.delete(room);
           // Check for active poll and clear its timeout
           cleanupPoll(room, true);
-          const otherStreams = Array.from(activeStreams.keys());
-          const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
+          const redirect = getRandomStreamId();
           socket.to(room).emit('stream-ended', { redirect });
        }
 
@@ -1127,6 +1156,7 @@ io.on('connection', (socket) => {
     if (activeStreams.has(streamId)) {
       activeStreams.delete(streamId);
       streamSquads.delete(streamId);
+      lastAdTrigger.delete(streamId);
       cleanupPoll(streamId, true);
 
       // Notify viewers to redirect to the target stream
@@ -1215,8 +1245,7 @@ io.on('connection', (socket) => {
 
           cleanupPoll(streamId, true);
 
-          const otherStreams = Array.from(activeStreams.keys());
-          const redirect = otherStreams.length > 0 ? otherStreams[Math.floor(Math.random() * otherStreams.length)] : null;
+          const redirect = getRandomStreamId();
           socket.to(streamId).emit('stream-ended', { redirect });
       }
 
