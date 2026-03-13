@@ -71,9 +71,15 @@ const StreamCard = memo(function StreamCard({ id, title = 'Untitled Stream', str
           {processedTags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-1.5">
               {processedTags.map(tag => (
-                <span key={tag} className="px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 text-[10px] font-medium hover:bg-neutral-700 transition-colors">
+                <Link
+                  key={tag}
+                  to={`/browse?q=${encodeURIComponent(tag)}`}
+                  aria-label={`Search for tag: ${tag}`}
+                  title={`Search for tag: ${tag}`}
+                  className="px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 text-[10px] font-medium hover:bg-neutral-700 hover:text-beacon-400 transition-colors"
+                >
                   {tag}
-                </span>
+                </Link>
               ))}
             </div>
           )}

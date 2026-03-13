@@ -220,7 +220,15 @@ export default function Watch() {
               </p>
               <div className="mt-5 flex flex-wrap gap-2 relative z-10">
                  {typeof streamInfo.tags === 'string' && streamInfo.tags.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => (
-                    <span key={tag} className="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 transition-colors rounded-full text-xs text-neutral-400 font-medium border border-neutral-700 cursor-pointer">#{tag}</span>
+                    <Link
+                      key={tag}
+                      to={`/browse?q=${encodeURIComponent(tag)}`}
+                      aria-label={`Search for tag: ${tag}`}
+                      title={`Search for tag: ${tag}`}
+                      className="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 hover:text-beacon-400 transition-colors rounded-full text-xs text-neutral-400 font-medium border border-neutral-700"
+                    >
+                      #{tag}
+                    </Link>
                  ))}
               </div>
            </div>

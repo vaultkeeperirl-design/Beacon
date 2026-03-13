@@ -133,7 +133,15 @@ describe('Watch Page', () => {
 
     expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('/streams/test-stream'));
     expect(screen.getByText('Test Stream Title')).toBeInTheDocument();
+
+    const testTagLink = screen.getByRole('link', { name: /Search for tag: test/i });
+    expect(testTagLink).toBeInTheDocument();
+    expect(testTagLink).toHaveAttribute('href', '/browse?q=test');
     expect(screen.getByText('#test')).toBeInTheDocument();
+
+    const tagsTagLink = screen.getByRole('link', { name: /Search for tag: tags/i });
+    expect(tagsTagLink).toBeInTheDocument();
+    expect(tagsTagLink).toHaveAttribute('href', '/browse?q=tags');
     expect(screen.getByText('#tags')).toBeInTheDocument();
   });
 
