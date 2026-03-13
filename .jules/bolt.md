@@ -42,6 +42,10 @@
 **Learning:** Fetching and serializing all active streams on every sidebar or home page mount creates a linear $O(N)$ bottleneck in both network payload and JSON parsing. As the number of streams grows, this leads to increased Time to Interactive (TTI).
 **Action:** Implement server-side pagination (`limit`/`offset`) even for internal components like sidebars. This caps the serialization and transmission cost, ensuring the UI remains responsive regardless of total system load.
 
+## 2025-09-10 - [React] Decoupling Socket Listeners from High-Frequency State
+**Learning:** Including a frequently-updated state object (like an active poll with live vote counts) in a `useEffect` dependency array that manages socket listeners causes those listeners to be torn down and re-registered on every update. This creates unnecessary overhead and can lead to race conditions or missed events.
+**Action:** Use the functional state update pattern (`setState(prev => ...)`) inside the listener callback. This allows removing the state object from the effect's dependency array, keeping the socket listeners stable throughout the component's lifecycle.
+
 ## 2025-05-15 - [Backend] Efficient Map Pagination
 **Learning:** Using `Array.from(map.entries()).slice()` for paginating large in-memory Maps is extremely inefficient as it creates a full intermediate array copy ($O(N)$ memory and time) before slicing.
 **Action:** Use a `for...of` loop to iterate over the Map directly, skipping the `offset` and breaking after the `limit` is reached. This ensures $O(\text{offset} + \text{limit})$ performance and zero intermediate array allocations, significantly reducing GC pressure.

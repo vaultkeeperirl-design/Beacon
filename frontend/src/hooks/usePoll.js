@@ -41,12 +41,13 @@ export function usePoll(streamId) {
     };
 
     const handlePollUpdate = (poll) => {
-      if (activePoll && activePoll.id === poll.id) {
-         setActivePoll(prev => ({ ...prev, ...poll }));
-      } else {
-         // New poll or initial sync
-         setActivePoll(poll);
-      }
+      setActivePoll(prev => {
+        if (prev && prev.id === poll.id) {
+          return { ...prev, ...poll };
+        }
+        // New poll or initial sync
+        return poll;
+      });
     };
 
     const handlePollEnded = () => {
@@ -63,7 +64,7 @@ export function usePoll(streamId) {
       socket.off('poll-update', handlePollUpdate);
       socket.off('poll-ended', handlePollEnded);
     };
-  }, [socket, streamId, activePoll]);
+  }, [socket, streamId]);
 
   const startPoll = useCallback((question, options, duration) => {
     if (!socket || !streamId) return;
