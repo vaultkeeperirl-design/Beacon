@@ -106,7 +106,7 @@ describe("Mesh Network Tree Healing and Routing", () => {
             viewer3.emit("join-stream", { streamId, username: "viewer3" });
           });
 
-        }, 100);
+        }, 500); // Wait 500ms to ensure metrics report is processed
       });
     }, 100);
   }, 10000);
