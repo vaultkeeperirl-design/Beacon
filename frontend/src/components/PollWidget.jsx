@@ -7,19 +7,19 @@ const PollWidget = memo(function PollWidget({ streamId }) {
   const [localVote, setLocalVote] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
 
+  // Extract stable values for the timer to avoid re-running the effect on every vote update
+  const pollId = activePoll?.id;
+  const pollDuration = activePoll?.duration;
+
   useEffect(() => {
     const calculateTimeLeft = () => {
-      if (!activePoll || !activePoll.duration) {
+      if (!pollId || !pollDuration) {
         setTimeLeft(null);
         return;
       }
 
-      const start = activePoll.id;
-      const durationMs = activePoll.duration * 1000;
-      const end = start + durationMs;
+      const end = pollId + (pollDuration * 1000);
       const remaining = Math.max(0, Math.floor((end - Date.now()) / 1000));
-      // Use functional update to avoid stale closure and wrap in timeout
-      // to avoid synchronous setState in effect warning if it's the first render
       setTimeLeft(remaining);
     };
 
@@ -30,7 +30,7 @@ const PollWidget = memo(function PollWidget({ streamId }) {
       clearTimeout(timer);
       clearInterval(interval);
     };
-  }, [activePoll]);
+  }, [pollId, pollDuration]);
 
   if (!activePoll) return null;
 
