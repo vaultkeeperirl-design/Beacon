@@ -48,9 +48,17 @@ describe('StreamCard Component', () => {
     expect(screen.queryByText('Live')).not.toBeInTheDocument();
   });
 
-  it('renders tags correctly', () => {
+  it('renders tags correctly as search links', () => {
     renderComponent();
+
+    const gamingLink = screen.getByRole('link', { name: /Search for tag: gaming/i });
+    expect(gamingLink).toBeInTheDocument();
+    expect(gamingLink).toHaveAttribute('href', '/browse?q=gaming');
     expect(screen.getByText('gaming')).toBeInTheDocument();
+
+    const chattingLink = screen.getByRole('link', { name: /Search for tag: chatting/i });
+    expect(chattingLink).toBeInTheDocument();
+    expect(chattingLink).toHaveAttribute('href', '/browse?q=chatting');
     expect(screen.getByText('chatting')).toBeInTheDocument();
   });
 
