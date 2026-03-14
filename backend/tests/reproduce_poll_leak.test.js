@@ -1,7 +1,8 @@
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 const Client = require("socket.io-client");
-const { server, io } = require("../server");
+const jwt = require("jsonwebtoken");
+const { server, io, JWT_SECRET } = require("../server");
 
 describe("Poll Leak Reproduction", () => {
   let port;
@@ -27,10 +28,12 @@ describe("Poll Leak Reproduction", () => {
 
   test("Poll should be removed when host leaves", (done) => {
     const streamId = "host_user_123";
+    const token = jwt.sign({ username: streamId }, JWT_SECRET);
 
     // 1. Host Connects
     clientSocketHost = Client(`http://localhost:${port}`);
     clientSocketHost.on("connect", () => {
+      clientSocketHost.emit("register-auth", { token });
       clientSocketHost.emit("join-stream", { streamId, username: streamId });
 
       // 2. Host Creates Poll immediately after joining

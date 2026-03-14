@@ -40,7 +40,7 @@ describe("Socket Authentication (register-auth)", () => {
         // 2. Verify guest state in backend
         const sockets = Array.from(io.sockets.sockets.values());
         const socket = sockets.find(s => s.id === clientSocket.id);
-        expect(socket.username).toBeUndefined();
+        expect(socket.username).toBe("Guest");
 
         // 3. Emit register-auth
         clientSocket.emit("register-auth", { token });

@@ -1,5 +1,6 @@
 const Client = require("socket.io-client");
-const { server, io } = require("../server");
+const jwt = require("jsonwebtoken");
+const { server, io, JWT_SECRET } = require("../server");
 
 describe("Raid Functionality", () => {
   let hostSocket;
@@ -48,8 +49,10 @@ describe("Raid Functionality", () => {
   test("should redirect viewers when host triggers a raid", async () => {
     const streamId = "host-user";
     const targetId = "target-user";
+    const token = jwt.sign({ username: streamId }, JWT_SECRET);
 
     // Host joins and becomes the streamer
+    hostSocket.emit("register-auth", { token });
     hostSocket.emit("join-stream", { streamId, username: streamId });
     await waitFor(hostSocket, "room-users-update");
 
