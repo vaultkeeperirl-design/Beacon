@@ -133,6 +133,13 @@ const distributeCredits = (squad, totalAmount) => {
 // This is critical for high-frequency events like 'metrics-report' (every 2s per user).
 const distributeCreditsTx = db.transaction(distributeCredits);
 
+// ⚡ Performance Optimization: Specialized transaction for high-frequency single-user credit updates.
+// This avoids the overhead of creating 'squad' and 'updates' arrays in metrics-report.
+const updateSingleUserCreditsTx = db.transaction((username, amount) => {
+  updateCreditsStmt.run(amount, username);
+  return getCreditsStmt.get(username);
+});
+
 const revenueTx = db.transaction((tipper, amount, squad, relayers, relayTotal, squadTotal) => {
   if (tipper) {
     // ⚡ Performance Optimization: Merge balance check and deduction into a single atomic UPDATE.
@@ -989,15 +996,14 @@ io.on('connection', (socket) => {
       // Security: Cap uploadMbps to realistic maximum (100 Mbps) to prevent infinite credit exploits
       const validUploadMbps = Math.min(Number(uploadMbps) || 0, 100);
       const earnedCredits = validUploadMbps * 0.01; // Match frontend logic
-      const squad = [{ username: socket.accountName, split: 100 }];
 
       // ⚡ Performance Optimization:
-      // Use pre-hoisted transaction instead of creating one on every 2s poll.
-      // This reduces CPU overhead and memory churn for high-frequency events.
+      // Use specialized single-user transaction to avoid 'squad' and 'updates' array allocations.
+      // This significantly reduces GC pressure for this high-frequency (2s) event.
       try {
-        const updates = distributeCreditsTx(squad, earnedCredits);
-        for (const update of updates) {
-          io.to(`user:${update.username}`).emit('wallet-update', { balance: update.balance });
+        const row = updateSingleUserCreditsTx(socket.accountName, earnedCredits);
+        if (row) {
+          io.to(`user:${socket.accountName}`).emit('wallet-update', { balance: row.credits });
         }
       } catch (err) {
         console.error('[Metrics] Failed to update credits:', err);
@@ -1008,8 +1014,10 @@ io.on('connection', (socket) => {
       const mesh = streamMeshTopology.get(streamId);
       const node = mesh.get(socket.id);
 
-      if (node) {
-        node.metrics = { latency, uploadMbps };
+      if (node && node.metrics) {
+        // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
+        node.metrics.latency = latency;
+        node.metrics.uploadMbps = uploadMbps;
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
