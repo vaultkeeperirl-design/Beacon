@@ -107,6 +107,48 @@ const getRandomStreamId = () => {
 };
 
 /**
+ * Traverses the mesh topology upwards from a given node to verify if it has a
+ * valid path to an active broadcaster. This prevents cycles and ensures
+ * that viewers only connect to viable branches of the P2P tree.
+ * @param {Map} mesh - The mesh topology Map for a specific stream.
+ * @param {string} nodeId - The socket ID of the node to check.
+ * @returns {boolean} True if a path to a broadcaster exists.
+ */
+const hasPathToBroadcaster = (mesh, nodeId) => {
+  let currentId = nodeId;
+  const visited = new Set();
+  while (currentId && mesh.has(currentId)) {
+    if (visited.has(currentId)) return false; // Cycle safety
+    visited.add(currentId);
+    const node = mesh.get(currentId);
+    if (node.isBroadcaster) return true;
+    currentId = node.parent;
+  }
+  return false;
+};
+
+/**
+ * Checks if there is at least one other authenticated broadcaster active
+ * in the same stream room, excluding the current socket. This allows
+ * for session stability during host reconnections.
+ * @param {string} streamId - The ID of the stream room.
+ * @param {string} currentSocketId - The ID of the socket to exclude.
+ * @returns {boolean} True if another broadcaster is present.
+ */
+const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
+  const room = io.sockets.adapter.rooms.get(streamId);
+  if (!room) return false;
+  for (const socketId of room) {
+    if (socketId === currentSocketId) continue;
+    const socket = io.sockets.sockets.get(socketId);
+    if (socket && socket.isAuthenticated && socket.username === streamId) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
  * Distributes credits to a list of squad members and emits wallet updates.
  * Should be called within a database transaction for atomicity.
  * @param {Array<{username: string, split: number}>} squad - List of members and their percentage splits.
@@ -707,6 +749,12 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
 
   for (const [id, node] of mesh.entries()) {
     if (id !== socketId && node.children.size < MAX_CHILDREN_PER_NODE) {
+      // 🌉 Bridge: Verify the potential parent actually has an upstream path to the broadcaster.
+      // This prevents viewers from connecting to "dead" branches during rapid mesh churn.
+      if (!node.isBroadcaster && !hasPathToBroadcaster(mesh, id)) {
+        continue;
+      }
+
       // Prioritize broadcaster, then use metrics
       let score = 0;
       if (node.isBroadcaster) {
@@ -794,6 +842,7 @@ io.on('connection', (socket) => {
       // Update socket identity
       socket.username = username;
       socket.accountName = username;
+      socket.isAuthenticated = true;
 
       // Join user-specific room for real-time wallet updates
       socket.join(`user:${username}`);
@@ -815,16 +864,16 @@ io.on('connection', (socket) => {
 
   socket.on('join-stream', (data) => {
     const streamId = (typeof data === 'string' ? data : data?.streamId) || null;
-    const accountName = typeof data === 'object' ? data?.username : null;
+    // 🛡️ SECURITY: Use verified identity if authenticated, otherwise fallback to provided guest name.
+    const accountName = socket.isAuthenticated ? socket.username : (typeof data === 'object' ? data?.username : null);
     let username = accountName;
 
-    console.log(`[Join] User ${username} joining stream ${streamId}`);
+    console.log(`[Join] User ${username || 'Guest'} joining stream ${streamId}`);
 
     if (username) {
       // Security: Prevent users from impersonating the host
-      // If the stream is active, the real host is already connected.
-      // Anyone else claiming to be the host gets a fallback name.
-      if (username === streamId && activeStreams.has(streamId)) {
+      // Only authenticated users whose username matches the streamId can be the host.
+      if (username === streamId && !socket.isAuthenticated) {
         username = `${username}-viewer`;
       }
 
@@ -854,7 +903,8 @@ io.on('connection', (socket) => {
        const prevRoom = socket.currentRoom;
 
        // activeStreams logic: If host leaves, redirect viewers
-       if (socket.username === prevRoom && activeStreams.has(prevRoom)) {
+       // 🌉 Bridge: Multi-session stability. Only terminate stream if this is the last active broadcaster session.
+       if (socket.isAuthenticated && socket.username === prevRoom && activeStreams.has(prevRoom) && !isAnotherBroadcasterActive(prevRoom, socket.id)) {
           activeStreams.delete(prevRoom);
           streamSquads.delete(prevRoom);
           lastAdTrigger.delete(prevRoom);
@@ -885,7 +935,7 @@ io.on('connection', (socket) => {
         }
 
         // If the user is the host, mark stream as active
-        if (socket.username === streamId && !activeStreams.has(streamId)) {
+        if (socket.isAuthenticated && socket.username === streamId && !activeStreams.has(streamId)) {
           const user = getUserStmt.get(socket.username);
           activeStreams.set(streamId, {
             title: 'Welcome to my stream!',
@@ -916,7 +966,8 @@ io.on('connection', (socket) => {
        const room = socket.currentRoom;
 
        // activeStreams logic: If host leaves, redirect viewers
-       if (socket.username === room && activeStreams.has(room)) {
+       // 🌉 Bridge: Multi-session stability. Only terminate stream if this is the last active broadcaster session.
+       if (socket.isAuthenticated && socket.username === room && activeStreams.has(room) && !isAnotherBroadcasterActive(room, socket.id)) {
           activeStreams.delete(room);
           streamSquads.delete(room);
           lastAdTrigger.delete(room);
@@ -1238,7 +1289,8 @@ io.on('connection', (socket) => {
 
     if (streamId) {
       // activeStreams logic: If host leaves, redirect viewers
-      if (socket.username === streamId && activeStreams.has(streamId)) {
+      // 🌉 Bridge: Multi-session stability. Only terminate stream if this is the last active broadcaster session.
+      if (socket.isAuthenticated && socket.username === streamId && activeStreams.has(streamId) && !isAnotherBroadcasterActive(streamId, socket.id)) {
           activeStreams.delete(streamId);
           streamSquads.delete(streamId);
           lastAdTrigger.delete(streamId);

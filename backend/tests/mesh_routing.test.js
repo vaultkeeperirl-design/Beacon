@@ -1,7 +1,8 @@
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 const Client = require("socket.io-client");
-const { server, io } = require("../server");
+const { server, io, JWT_SECRET } = require("../server");
+const jwt = require('jsonwebtoken');
 
 describe("Mesh Network Tree Healing and Routing", () => {
   let port;
@@ -34,10 +35,12 @@ describe("Mesh Network Tree Healing and Routing", () => {
 
   test("Should route Viewers based on latency and reparent them when Viewer 1 disconnects", (done) => {
     const streamId = "test_stream_healing";
+    const token = jwt.sign({ username: streamId }, JWT_SECRET);
 
     // 1. Broadcaster connects
     broadcaster = Client(`http://localhost:${port}`);
     broadcaster.on("connect", () => {
+      broadcaster.emit("register-auth", { token });
       broadcaster.emit("join-stream", { streamId, username: streamId });
     });
 

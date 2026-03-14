@@ -49,6 +49,9 @@ describe('Security: Squad Split Infinite Money Vulnerability', () => {
     clientSocket = new Client(`http://localhost:${port}`);
 
     clientSocket.on('connect', () => {
+      const jwt = require('jsonwebtoken');
+      const hostToken = jwt.sign({ username: hostUser }, JWT_SECRET);
+      clientSocket.emit('register-auth', { token: hostToken });
       clientSocket.emit('join-stream', { streamId: hostUser, username: hostUser });
 
       // Attempt to exploit by setting negative split

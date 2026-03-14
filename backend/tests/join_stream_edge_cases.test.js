@@ -1,5 +1,6 @@
 const Client = require("socket.io-client");
-const { server, io } = require("../server");
+const { server, io, JWT_SECRET } = require("../server");
+const jwt = require('jsonwebtoken');
 
 describe("Bug Reproduction: socket.currentRoom desync", () => {
   let clientSocket;
@@ -84,12 +85,14 @@ describe("Bug Reproduction: socket.currentRoom desync", () => {
   test("should update activeStreams when re-joining as host", async () => {
     const streamId = "host-transition-room";
     const username = streamId; // Host username equals streamId
+    const token = jwt.sign({ username }, JWT_SECRET);
 
     // 1. Join as anonymous viewer
     clientSocket.emit("join-stream", streamId);
     await waitFor(clientSocket, "room-users-update");
 
-    // 2. Re-join as host (same streamId, but providing username)
+    // 2. Re-join as host (same streamId, but providing username and authentication)
+    clientSocket.emit("register-auth", { token });
     const updatePromise = waitFor(clientSocket, "room-users-update");
     clientSocket.emit("join-stream", { streamId, username });
     await updatePromise;

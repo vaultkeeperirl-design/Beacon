@@ -1,5 +1,6 @@
 const Client = require("socket.io-client");
-const { server, io } = require("../server");
+const { server, io, JWT_SECRET } = require("../server");
+const jwt = require('jsonwebtoken');
 
 describe("Poll Integrity and Security", () => {
   let hostSocket;
@@ -41,7 +42,9 @@ describe("Poll Integrity and Security", () => {
 
   test("should NOT leak internal poll state (voters, timeoutId) to new joiners", (done) => {
     const streamId = "leak-test-stream";
+    const token = jwt.sign({ username: streamId }, JWT_SECRET);
     console.log("Test 1: Joining as host");
+    hostSocket.emit("register-auth", { token });
     hostSocket.emit("join-stream", { streamId, username: streamId });
 
     setTimeout(() => {
@@ -83,8 +86,10 @@ describe("Poll Integrity and Security", () => {
   test("should prevent double voting by the same user across different socket sessions", (done) => {
     const streamId = "multi-session-vote-test";
     const username = "persistent-user";
+    const hostToken = jwt.sign({ username: streamId }, JWT_SECRET);
 
     console.log("Test 2: Joining as host");
+    hostSocket.emit("register-auth", { token: hostToken });
     hostSocket.emit("join-stream", { streamId, username: streamId });
 
     setTimeout(() => {

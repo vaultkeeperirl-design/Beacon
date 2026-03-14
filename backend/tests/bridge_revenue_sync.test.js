@@ -69,6 +69,8 @@ describe("Bridge Revenue Real-time Sync", () => {
     clientSocketGuest = Client(`http://localhost:${port}`);
 
     clientSocketHost.on("connect", () => {
+      const hostToken = jwt.sign({ username: hostUser }, JWT_SECRET);
+      clientSocketHost.emit("register-auth", { token: hostToken });
       clientSocketHost.emit("join-stream", { streamId, username: hostUser });
 
       // 2. Set the squad
@@ -81,6 +83,8 @@ describe("Bridge Revenue Real-time Sync", () => {
       });
 
       clientSocketGuest.on("connect", () => {
+        const guestToken = jwt.sign({ username: guestUser }, JWT_SECRET);
+        clientSocketGuest.emit("register-auth", { token: guestToken });
         clientSocketGuest.emit("join-stream", { streamId, username: guestUser });
 
         // Listen for wallet updates

@@ -1,5 +1,6 @@
 const Client = require("socket.io-client");
-const { server, io } = require("../server");
+const { server, io, JWT_SECRET } = require("../server");
+const jwt = require('jsonwebtoken');
 
 describe("Mesh Cleanup Bridge", () => {
   let port;
@@ -26,10 +27,12 @@ describe("Mesh Cleanup Bridge", () => {
   test("Should remove node from mesh and re-parent children when switching rooms", (done) => {
     const streamA = "stream-A";
     const streamB = "stream-B";
+    const tokenA = jwt.sign({ username: streamA }, JWT_SECRET);
 
     // 1. Setup Stream A with Host, Viewer 1, and Viewer 2 (child of Viewer 1)
     hostSocket = Client(`http://localhost:${port}`);
     hostSocket.on("connect", () => {
+      hostSocket.emit("register-auth", { token: tokenA });
       hostSocket.emit("join-stream", { streamId: streamA, username: streamA });
 
       setTimeout(() => {
