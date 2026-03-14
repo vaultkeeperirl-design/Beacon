@@ -672,6 +672,31 @@ const streamMeshTopology = new Map();
 // Configuration
 const MAX_CHILDREN_PER_NODE = 2; // Keep it low for browser WebRTC stability
 
+/**
+ * Verifies if a node has a valid upstream path to the broadcaster.
+ * Prevents mesh cycles and ensures viewers only connect to viable nodes.
+ * @param {Map} mesh - The mesh topology for the stream.
+ * @param {string} startNodeId - The ID of the node to check from.
+ * @returns {boolean} True if a path to the broadcaster exists.
+ */
+function hasPathToBroadcaster(mesh, startNodeId) {
+  let currentId = startNodeId;
+  const visited = new Set();
+
+  while (currentId) {
+    if (visited.has(currentId)) return false; // Cycle detected
+    visited.add(currentId);
+
+    const node = mesh.get(currentId);
+    if (!node) return false;
+    if (node.isBroadcaster) return true;
+
+    currentId = node.parent;
+  }
+
+  return false;
+}
+
 function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   if (!streamMeshTopology.has(streamId)) {
     streamMeshTopology.set(streamId, new Map());
@@ -714,6 +739,13 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
 
   for (const [id, node] of mesh.entries()) {
     if (id !== socketId && node.children.size < MAX_CHILDREN_PER_NODE) {
+      // 🌉 Bridge: Ensure potential parent has a valid path to the broadcaster.
+      // This prevents cycles and ensures the tree is always connected to the root.
+      if (!node.isBroadcaster && !hasPathToBroadcaster(mesh, id)) {
+        console.log(`[Mesh] Skipping potential parent ${id} for ${socketId} - no path to broadcaster`);
+        continue;
+      }
+
       // Prioritize broadcaster, then use metrics
       let score = 0;
       if (node.isBroadcaster) {
