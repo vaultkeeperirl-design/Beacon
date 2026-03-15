@@ -1191,13 +1191,30 @@ io.on('connection', (socket) => {
     if (socket.username !== streamId) return; // Only host can raid
     if (!targetId || targetId === streamId) return;
 
+    // 🌉 Bridge: Validate that the target stream is actually online
+    if (!activeStreams.has(targetId)) {
+      console.log(`[Raid] ${streamId} attempted to raid offline target ${targetId}`);
+      return;
+    }
+
     console.log(`[Raid] ${streamId} is raiding ${targetId}`);
 
     if (activeStreams.has(streamId)) {
+      const viewersCount = io.sockets.adapter.rooms.get(streamId)?.size || 0;
+
       activeStreams.delete(streamId);
       streamSquads.delete(streamId);
       lastAdTrigger.delete(streamId);
       cleanupPoll(streamId, true);
+
+      // 🌉 Bridge: Notify the target stream's chat about the incoming raid
+      io.to(targetId).emit('chat-message', {
+        id: Date.now(),
+        user: 'System',
+        text: `${socket.username} is raiding with ${viewersCount} viewers! Welcome!`,
+        color: 'text-beacon-400 font-bold',
+        senderId: 'system'
+      });
 
       // Notify viewers to redirect to the target stream
       socket.to(streamId).emit('stream-ended', { redirect: targetId });
