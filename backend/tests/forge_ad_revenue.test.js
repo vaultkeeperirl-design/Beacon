@@ -117,6 +117,7 @@ describe("Relay Revenue Split (Forge Implementation)", () => {
     };
 
     broadcasterSocket.on("connect", () => {
+      broadcasterSocket.emit("register-auth", { token: broadcasterToken });
       broadcasterSocket.emit("join-stream", { streamId, username: broadcasterUser });
 
       // Set squad: Host 50%, Squad 50%
@@ -133,6 +134,7 @@ describe("Relay Revenue Split (Forge Implementation)", () => {
     });
 
     relayerSocket.on("connect", () => {
+      relayerSocket.emit("register-auth", { token: relayerToken });
       relayerSocket.emit("join-stream", { streamId, username: relayerUser });
 
       // Report metrics to be considered an active relayer

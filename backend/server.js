@@ -817,6 +817,9 @@ function removeNodeFromMesh(streamId, socketId) {
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
+  // Initialize authentication state
+  socket.isAuthenticated = false;
+
   // Allow a socket to authenticate after connection (e.g., after login/register)
   socket.on('register-auth', ({ token }) => {
     if (!token) return;
@@ -831,6 +834,7 @@ io.on('connection', (socket) => {
       console.log(`[Auth] Socket ${socket.id} registered as ${username}`);
 
       // Update socket identity
+      socket.isAuthenticated = true;
       socket.username = username;
       socket.accountName = username;
 
@@ -854,16 +858,21 @@ io.on('connection', (socket) => {
 
   socket.on('join-stream', (data) => {
     const streamId = (typeof data === 'string' ? data : data?.streamId) || null;
-    const accountName = typeof data === 'object' ? data?.username : null;
+
+    // Only trust accountName from unauthenticated users if it is not a host name.
+    // If authenticated, we always use the verified accountName.
+    const requestedAccountName = typeof data === 'object' ? data?.username : null;
+    const accountName = socket.isAuthenticated ? socket.accountName : requestedAccountName;
     let username = accountName;
 
-    console.log(`[Join] User ${username} joining stream ${streamId}`);
+    console.log(`[Join] User ${username} joining stream ${streamId} (Auth: ${socket.isAuthenticated})`);
 
     if (username) {
-      // Security: Prevent users from impersonating the host
-      // If the stream is active, the real host is already connected.
-      // Anyone else claiming to be the host gets a fallback name.
-      if (username === streamId && activeStreams.has(streamId)) {
+      // Security: Prevent unauthenticated users from impersonating the host.
+      // Even if authenticated, if the stream is already active with another host session,
+      // we append a viewer suffix to prevent session conflicts.
+      const isTryingToHost = username === streamId;
+      if (isTryingToHost && (!socket.isAuthenticated || activeStreams.has(streamId))) {
         username = `${username}-viewer`;
       }
 
@@ -1024,7 +1033,7 @@ io.on('connection', (socket) => {
     socket.lastMetricsTime = now;
 
     // Credit Economy Calculation
-    if (socket.accountName && uploadMbps > 0) {
+    if (socket.isAuthenticated && socket.accountName && uploadMbps > 0) {
       // Security: Cap uploadMbps to realistic maximum (100 Mbps) to prevent infinite credit exploits
       const validUploadMbps = Math.min(Number(uploadMbps) || 0, 100);
       const earnedCredits = validUploadMbps * 0.01; // Match frontend logic
@@ -1081,7 +1090,7 @@ io.on('connection', (socket) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
     // Only host can update squad
-    if (socket.username !== streamId) return;
+    if (!socket.isAuthenticated || socket.username !== streamId) return;
 
     if (!Array.isArray(squad)) return;
 
@@ -1109,8 +1118,8 @@ io.on('connection', (socket) => {
   socket.on('create-poll', ({ streamId, question, options, duration }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
-    // Only host can create polls (simple check: username matches streamId)
-    if (socket.username !== streamId) return;
+    // Only host can create polls
+    if (!socket.isAuthenticated || socket.username !== streamId) return;
 
     // Validation
     if (!question || typeof question !== 'string' || question.trim().length === 0 || question.length > 200) return;
@@ -1181,14 +1190,14 @@ io.on('connection', (socket) => {
 
   socket.on('end-poll', ({ streamId }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
-    if (socket.username !== streamId) return;
+    if (!socket.isAuthenticated || socket.username !== streamId) return;
 
     cleanupPoll(streamId, true);
   });
 
   socket.on('raid-stream', ({ streamId, targetId }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
-    if (socket.username !== streamId) return; // Only host can raid
+    if (!socket.isAuthenticated || socket.username !== streamId) return; // Only host can raid
     if (!targetId || targetId === streamId) return;
 
     console.log(`[Raid] ${streamId} is raiding ${targetId}`);
@@ -1209,7 +1218,7 @@ io.on('connection', (socket) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
     // Only host can update stream info
-    if (socket.username !== streamId) return;
+    if (!socket.isAuthenticated || socket.username !== streamId) return;
 
     // Basic Validation
     const safeTitle = (typeof title === 'string') ? title.trim().substring(0, 100) : 'Beacon Stream';

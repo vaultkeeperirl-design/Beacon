@@ -1,5 +1,6 @@
 const Client = require("socket.io-client");
-const { server, io } = require("../server");
+const { server, io, JWT_SECRET } = require("../server");
+const jwt = require('jsonwebtoken');
 
 describe("Poll Feature", () => {
   let hostSocket;
@@ -43,6 +44,10 @@ describe("Poll Feature", () => {
   test("should allow host to create a poll and broadcast it", (done) => {
     const streamId = "poll-stream-1";
 
+    // 0. Host authenticates
+    const token = jwt.sign({ username: streamId }, JWT_SECRET);
+    hostSocket.emit("register-auth", { token });
+
     // Join logic
     hostSocket.emit("join-stream", { streamId, username: streamId });
     viewerSocket.emit("join-stream", { streamId, username: "viewer1" });
@@ -69,6 +74,10 @@ describe("Poll Feature", () => {
 
   test("should allow voting and broadcast updates", (done) => {
     const streamId = "poll-stream-2";
+
+    // 0. Host authenticates
+    const token = jwt.sign({ username: streamId }, JWT_SECRET);
+    hostSocket.emit("register-auth", { token });
 
     hostSocket.emit("join-stream", { streamId, username: streamId });
     viewerSocket.emit("join-stream", { streamId, username: "viewer1" });
@@ -105,6 +114,10 @@ describe("Poll Feature", () => {
   test("should sync active poll to new joiners", (done) => {
     const streamId = "poll-stream-3";
 
+    // 0. Host authenticates
+    const token = jwt.sign({ username: streamId }, JWT_SECRET);
+    hostSocket.emit("register-auth", { token });
+
     hostSocket.emit("join-stream", { streamId, username: streamId });
 
     setTimeout(() => {
@@ -140,6 +153,10 @@ describe("Poll Feature", () => {
   test("should allow host to end poll", (done) => {
     const streamId = "poll-stream-4";
 
+    // 0. Host authenticates
+    const token = jwt.sign({ username: streamId }, JWT_SECRET);
+    hostSocket.emit("register-auth", { token });
+
     hostSocket.emit("join-stream", { streamId, username: streamId });
     viewerSocket.emit("join-stream", { streamId, username: "viewer" });
 
@@ -170,6 +187,10 @@ describe("Poll Feature", () => {
 
   test("should automatically end poll after duration", (done) => {
     const streamId = "poll-stream-5";
+
+    // 0. Host authenticates
+    const token = jwt.sign({ username: streamId }, JWT_SECRET);
+    hostSocket.emit("register-auth", { token });
 
     hostSocket.emit("join-stream", { streamId, username: streamId });
     viewerSocket.emit("join-stream", { streamId, username: "viewer" });
