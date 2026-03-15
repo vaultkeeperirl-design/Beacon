@@ -49,6 +49,11 @@ describe("Raid Functionality", () => {
     const streamId = "host-user";
     const targetId = "target-user";
 
+    // Target joins to become active
+    const targetSocket = new Client(`http://localhost:${port}`);
+    targetSocket.emit("join-stream", { streamId: targetId, username: targetId });
+    await waitFor(targetSocket, "room-users-update");
+
     // Host joins and becomes the streamer
     hostSocket.emit("join-stream", { streamId, username: streamId });
     await waitFor(hostSocket, "room-users-update");
@@ -63,6 +68,7 @@ describe("Raid Functionality", () => {
 
     const data = await raidPromise;
     expect(data.redirect).toBe(targetId);
+    targetSocket.disconnect();
   });
 
   test("should not allow non-host to trigger a raid", async () => {
