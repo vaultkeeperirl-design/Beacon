@@ -47,8 +47,8 @@ describe("Poll Feature", () => {
     hostSocket.emit("join-stream", { streamId, username: streamId });
     viewerSocket.emit("join-stream", { streamId, username: "viewer1" });
 
-    // Wait slightly for join to process
-    setTimeout(() => {
+    // Wait for the viewer to join completely so room is established
+    viewerSocket.once("room-users-update", () => {
       const question = "Best language?";
       const options = ["JS", "Python", "Rust"];
 
@@ -64,7 +64,7 @@ describe("Poll Feature", () => {
       });
 
       hostSocket.emit("create-poll", { streamId, question, options });
-    }, 50);
+    });
   });
 
   test("should allow voting and broadcast updates", (done) => {
@@ -73,7 +73,7 @@ describe("Poll Feature", () => {
     hostSocket.emit("join-stream", { streamId, username: streamId });
     viewerSocket.emit("join-stream", { streamId, username: "viewer1" });
 
-    setTimeout(() => {
+    viewerSocket.once("room-users-update", () => {
       // 1. Host creates Poll
       hostSocket.emit("create-poll", {
         streamId,
@@ -99,7 +99,7 @@ describe("Poll Feature", () => {
 
         viewerSocket.emit("vote-poll", { streamId, pollId, optionIndex: 0 });
       });
-    }, 50);
+    });
   });
 
   test("should sync active poll to new joiners", (done) => {
@@ -107,7 +107,7 @@ describe("Poll Feature", () => {
 
     hostSocket.emit("join-stream", { streamId, username: streamId });
 
-    setTimeout(() => {
+    hostSocket.once("room-users-update", () => {
       // 1. Host creates poll
       hostSocket.emit("create-poll", {
         streamId,
@@ -115,8 +115,8 @@ describe("Poll Feature", () => {
         options: ["Yes", "No"]
       });
 
-      // Wait a bit, then join new client
-      setTimeout(() => {
+      // Join new client only after poll is created
+      hostSocket.once("poll-started", () => {
         const lateSocket = new Client(`http://localhost:${port}`);
 
         lateSocket.on("poll-update", (poll) => {
@@ -133,8 +133,8 @@ describe("Poll Feature", () => {
         lateSocket.on("connect", () => {
            lateSocket.emit("join-stream", { streamId, username: "late" });
         });
-      }, 100);
-    }, 50);
+      });
+    });
   });
 
   test("should allow host to end poll", (done) => {
@@ -143,7 +143,7 @@ describe("Poll Feature", () => {
     hostSocket.emit("join-stream", { streamId, username: streamId });
     viewerSocket.emit("join-stream", { streamId, username: "viewer" });
 
-    setTimeout(() => {
+    viewerSocket.once("room-users-update", () => {
       hostSocket.emit("create-poll", {
         streamId,
         question: "End me",
@@ -151,21 +151,18 @@ describe("Poll Feature", () => {
       });
 
       viewerSocket.once("poll-started", () => {
-        // Wait for the poll started event to be processed
-        setTimeout(() => {
-            viewerSocket.on("poll-ended", (poll) => {
-              try {
-                expect(poll.isActive).toBe(false);
-                done();
-              } catch (error) {
-                done(error);
-              }
-            });
+        viewerSocket.on("poll-ended", (poll) => {
+          try {
+            expect(poll.isActive).toBe(false);
+            done();
+          } catch (error) {
+            done(error);
+          }
+        });
 
-            hostSocket.emit("end-poll", { streamId });
-        }, 50);
+        hostSocket.emit("end-poll", { streamId });
       });
-    }, 50);
+    });
   });
 
   test("should automatically end poll after duration", (done) => {
@@ -174,7 +171,7 @@ describe("Poll Feature", () => {
     hostSocket.emit("join-stream", { streamId, username: streamId });
     viewerSocket.emit("join-stream", { streamId, username: "viewer" });
 
-    setTimeout(() => {
+    viewerSocket.once("room-users-update", () => {
       hostSocket.emit("create-poll", {
         streamId,
         question: "Auto End?",
@@ -193,6 +190,6 @@ describe("Poll Feature", () => {
           }
         });
       });
-    }, 50);
+    });
   });
 });
