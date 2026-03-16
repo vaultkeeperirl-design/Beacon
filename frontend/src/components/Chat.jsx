@@ -1,13 +1,24 @@
-import { useState, useRef, useEffect, memo } from 'react';
+import { useState, useRef, useEffect, memo, useCallback } from 'react';
 import { Send, Smile } from 'lucide-react';
 import { useChat } from '../hooks/useChat';
 import PollWidget from './PollWidget';
 
 // Performance Optimization: Extract individual message to a memoized component.
 // This prevents all messages from re-rendering when a single new message is added.
-const ChatMessage = memo(({ msg }) => (
+const ChatMessage = memo(({ msg, onMention }) => (
   <div className={`text-sm break-words leading-relaxed group hover:bg-neutral-900/50 -mx-2 px-2 py-1 rounded transition-colors ${msg.isPending ? 'opacity-50' : ''}`}>
-    <span className={`font-bold ${msg.color || 'text-neutral-400'} mr-2 cursor-pointer hover:underline text-xs uppercase tracking-wide opacity-90`}>{msg.user}:</span>
+    {msg.user === 'System' ? (
+      <span className={`font-bold ${msg.color || 'text-neutral-400'} mr-2 text-xs uppercase tracking-wide opacity-90`}>{msg.user}:</span>
+    ) : (
+      <button
+        onClick={() => onMention?.(msg.user)}
+        className={`font-bold ${msg.color || 'text-neutral-400'} mr-2 hover:underline text-xs uppercase tracking-wide opacity-90 transition-all active:scale-95 focus:outline-none focus-visible:ring-1 focus-visible:ring-beacon-500 rounded px-0.5`}
+        aria-label={`Mention ${msg.user}`}
+        title={`Mention ${msg.user}`}
+      >
+        {msg.user}:
+      </button>
+    )}
     <span className="text-neutral-300 group-hover:text-white transition-colors">{msg.text}</span>
   </div>
 ));
@@ -72,6 +83,15 @@ const Chat = memo(function Chat({
     inputRef.current?.focus();
   };
 
+  const handleMention = useCallback((targetUser) => {
+    const mention = `@${targetUser} `;
+    setInput(prev => {
+      if (prev.endsWith(' ') || prev.length === 0) return prev + mention;
+      return prev + ' ' + mention;
+    });
+    inputRef.current?.focus();
+  }, []);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     // Use the return value to determine if the message was "sent" (optimistically added)
@@ -95,7 +115,7 @@ const Chat = memo(function Chat({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
         {messages.map((msg) => (
-          <ChatMessage key={msg.id} msg={msg} />
+          <ChatMessage key={msg.id} msg={msg} onMention={handleMention} />
         ))}
         <div ref={chatEndRef} />
       </div>
