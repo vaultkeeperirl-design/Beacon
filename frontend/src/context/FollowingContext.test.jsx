@@ -70,6 +70,9 @@ describe('FollowingContext', () => {
   });
 
   it('rolls back optimistic unfollow if API fails', async () => {
+    const consoleError = console.error;
+    console.error = vi.fn();
+
     render(
       <TestComponent />,
       { wrapper: AllProviders }
@@ -110,6 +113,7 @@ describe('FollowingContext', () => {
 
     expect(screen.getByTestId('count')).toHaveTextContent('1');
     expect(screen.getByTestId('is-following-jules')).toHaveTextContent('true');
+    console.error = consoleError;
   });
 
   it('follows a channel', async () => {
@@ -138,6 +142,9 @@ describe('FollowingContext', () => {
   });
 
   it('rolls back optimistic follow if API fails', async () => {
+    const consoleError = console.error;
+    console.error = vi.fn();
+
     // Mock the post request to fail
     axios.post.mockRejectedValueOnce(new Error('API failure'));
 
@@ -166,6 +173,7 @@ describe('FollowingContext', () => {
     // The rollback should have happened
     expect(screen.getByTestId('count')).toHaveTextContent('0');
     expect(screen.getByTestId('is-following-jules')).toHaveTextContent('false');
+    console.error = consoleError;
   });
 
   it('unfollows a channel', async () => {
