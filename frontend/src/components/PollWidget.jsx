@@ -57,28 +57,45 @@ const PollWidget = memo(function PollWidget({ streamId }) {
           <div className="flex flex-col">
             <span>{activePoll.question}</span>
             {timeLeft !== null && (
-              <span className="text-[10px] text-beacon-400 flex items-center gap-1 mt-0.5">
-                <Clock className="w-3 h-3" />
+              <span
+                className="text-[10px] text-beacon-400 flex items-center gap-1 mt-0.5"
+                aria-label={`Time remaining: ${Math.floor(timeLeft / 60)} minutes and ${timeLeft % 60} seconds`}
+              >
+                <Clock className="w-3 h-3" aria-hidden="true" />
                 {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')} remaining
               </span>
             )}
           </div>
-          <span className="text-[10px] font-mono text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded self-start">{totalVotes} VOTES</span>
+          <span
+            className="text-[10px] font-mono text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded self-start"
+            aria-label={`Total votes: ${totalVotes}`}
+          >
+            {totalVotes} VOTES
+          </span>
         </h3>
 
-        <div className="space-y-2">
+        <div className="space-y-2" aria-live="polite">
           {activePoll.options.map((option, idx) => {
             const percent = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
-
             const isDisabled = hasVoted || !activePoll.isActive || (timeLeft !== null && timeLeft === 0);
+            const isUserVote = hasVoted && localVote === idx;
+
+            const getOptionAriaLabel = () => {
+              if (hasVoted) {
+                return `${option.text}: ${percent}% of votes${isUserVote ? ' (Your vote)' : ''}`;
+              }
+              return `Vote for ${option.text}`;
+            };
 
             return (
               <button
                 key={idx}
                 onClick={() => handleVote(idx)}
                 disabled={isDisabled}
+                aria-label={getOptionAriaLabel()}
+                aria-pressed={isUserVote}
                 className={`w-full relative h-9 rounded-lg overflow-hidden group/opt transition-all ${
-                  isDisabled ? 'cursor-default' : 'hover:ring-1 hover:ring-beacon-500/50 cursor-pointer'
+                  isDisabled ? 'cursor-default' : 'hover:ring-1 hover:ring-beacon-500/50 cursor-pointer active:scale-[0.98]'
                 }`}
               >
                 {/* Background Bar */}

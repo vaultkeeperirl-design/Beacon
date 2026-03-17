@@ -157,4 +157,57 @@ describe('PollWidget', () => {
     // Clean up
     vi.useRealTimers();
   });
+
+  it('should have correct accessibility attributes', () => {
+    usePollModule.usePoll.mockReturnValue({
+      activePoll: {
+        id: 'poll-1',
+        question: 'Best OS?',
+        options: [
+          { text: 'Linux', votes: 10 },
+          { text: 'Windows', votes: 5 }
+        ],
+        totalVotes: 15,
+        isActive: true
+      },
+      hasVoted: false,
+      submitVote: mockSubmitVote,
+    });
+
+    const { rerender } = render(<PollWidget streamId="stream-1" />);
+
+    // Initial state (not voted)
+    const linuxBtn = screen.getByLabelText('Vote for Linux');
+    expect(linuxBtn).toBeInTheDocument();
+    expect(linuxBtn).toHaveAttribute('aria-pressed', 'false');
+
+    // Simulate voting
+    usePollModule.usePoll.mockReturnValue({
+      activePoll: {
+        id: 'poll-1',
+        question: 'Best OS?',
+        options: [
+          { text: 'Linux', votes: 11 },
+          { text: 'Windows', votes: 5 }
+        ],
+        totalVotes: 16,
+        isActive: true
+      },
+      hasVoted: true,
+      submitVote: mockSubmitVote,
+    });
+
+    // We need to trigger the local state update in the component too
+    // In the real app, handleVote is called.
+    fireEvent.click(linuxBtn);
+
+    rerender(<PollWidget streamId="stream-1" />);
+
+    // Voted state
+    expect(screen.getByLabelText('Linux: 69% of votes (Your vote)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Windows: 31% of votes')).toBeInTheDocument();
+    expect(screen.getByLabelText('Linux: 69% of votes (Your vote)')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Windows: 31% of votes')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByLabelText('Total votes: 16')).toBeInTheDocument();
+  });
 });

@@ -59,3 +59,7 @@
 ## 2026-03-26 - Chat Mention System Accessibility
 **Learning:** Interactive usernames in a chat stream must be implemented as semantic `<button>` elements rather than simple `<span>` or `<a>` tags. This ensures they are keyboard-navigable and allows for the addition of descriptive `aria-label` attributes (e.g., "Mention [username]").
 **Action:** Always use `<button>` elements for usernames in chat if they trigger interactive features like mentions or profile overlays, providing clear ARIA labels to describe the specific action.
+
+## 2026-03-27 - Accessible Polling Pattern
+**Learning:** For interactive poll widgets, using dynamic `aria-label` attributes on option buttons allows screen readers to distinguish between the 'voting' phase and the 'results' phase. Additionally, applying `aria-live="polite"` to the options container ensures that as votes roll in, the updated percentages and counts are announced without interrupting the user.
+**Action:** Always implement context-aware ARIA labels and live regions for components that transition from input to data visualization, ensuring the state change is clear to assistive technologies.
