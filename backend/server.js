@@ -673,6 +673,30 @@ const streamMeshTopology = new Map();
 const MAX_CHILDREN_PER_NODE = 2; // Keep it low for browser WebRTC stability
 
 /**
+ * Checks if there is another authenticated socket for the same broadcaster currently
+ * in the stream room. This ensures multi-session stability, preventing a stream
+ * from ending if the host has multiple tabs or devices connected.
+ * @param {string} streamId - The ID of the stream to check.
+ * @param {string} excludeSocketId - The ID of the socket currently disconnecting.
+ * @returns {boolean} True if another active broadcaster session exists.
+ */
+function isAnotherBroadcasterActive(streamId, excludeSocketId) {
+  const room = io.sockets.adapter.rooms.get(streamId);
+  if (!room) return false;
+
+  for (const socketId of room) {
+    if (socketId === excludeSocketId) continue;
+    const socket = io.sockets.sockets.get(socketId);
+    // A socket counts as an active broadcaster if it's authenticated and
+    // its username matches the stream ID.
+    if (socket && socket.isAuthenticated && socket.username === streamId) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Verifies if a node has a valid upstream path to the broadcaster.
  * Prevents mesh cycles and ensures viewers only connect to viable nodes.
  * @param {Map} mesh - The mesh topology for the stream.
@@ -817,6 +841,10 @@ function removeNodeFromMesh(streamId, socketId) {
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
+  // 🛡️ SECURITY: Sockets default to unauthenticated state upon connection.
+  // Host-level actions (broadcasting, raiding, polls) require this to be upgraded via 'register-auth'.
+  socket.isAuthenticated = false;
+
   // Allow a socket to authenticate after connection (e.g., after login/register)
   socket.on('register-auth', ({ token }) => {
     if (!token) return;
@@ -833,6 +861,7 @@ io.on('connection', (socket) => {
       // Update socket identity
       socket.username = username;
       socket.accountName = username;
+      socket.isAuthenticated = true;
 
       // Join user-specific room for real-time wallet updates
       socket.join(`user:${username}`);
@@ -892,8 +921,9 @@ io.on('connection', (socket) => {
     if (socket.currentRoom && socket.currentRoom !== streamId) {
        const prevRoom = socket.currentRoom;
 
-       // activeStreams logic: If host leaves, redirect viewers
-       if (socket.username === prevRoom && activeStreams.has(prevRoom)) {
+       // 🌉 Bridge: Only end stream if this was the last active broadcaster session.
+       // This prevents accidental termination when the host has multiple sessions/tabs.
+       if (socket.username === prevRoom && activeStreams.has(prevRoom) && !isAnotherBroadcasterActive(prevRoom, socket.id)) {
           activeStreams.delete(prevRoom);
           streamSquads.delete(prevRoom);
           lastAdTrigger.delete(prevRoom);
@@ -954,8 +984,8 @@ io.on('connection', (socket) => {
     if (socket.currentRoom) {
        const room = socket.currentRoom;
 
-       // activeStreams logic: If host leaves, redirect viewers
-       if (socket.username === room && activeStreams.has(room)) {
+       // 🌉 Bridge: Only end stream if this was the last active broadcaster session.
+       if (socket.username === room && activeStreams.has(room) && !isAnotherBroadcasterActive(room, socket.id)) {
           activeStreams.delete(room);
           streamSquads.delete(room);
           lastAdTrigger.delete(room);
@@ -1015,6 +1045,9 @@ io.on('connection', (socket) => {
   // --- Metrics Reporting ---
   socket.on('metrics-report', ({ streamId, latency, uploadMbps }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
+
+    // 🛡️ SECURITY: Only authenticated users earn credits for relaying.
+    if (!socket.isAuthenticated) return;
 
     // Rate limiting: 1 report per 1000ms to prevent infinite credit exploits
     const now = Date.now();
@@ -1080,8 +1113,8 @@ io.on('connection', (socket) => {
   socket.on('update-squad', ({ streamId, squad }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
-    // Only host can update squad
-    if (socket.username !== streamId) return;
+    // 🛡️ SECURITY: Only authenticated host can update squad
+    if (!socket.isAuthenticated || socket.username !== streamId) return;
 
     if (!Array.isArray(squad)) return;
 
@@ -1109,8 +1142,8 @@ io.on('connection', (socket) => {
   socket.on('create-poll', ({ streamId, question, options, duration }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
-    // Only host can create polls (simple check: username matches streamId)
-    if (socket.username !== streamId) return;
+    // 🛡️ SECURITY: Only authenticated host can create polls
+    if (!socket.isAuthenticated || socket.username !== streamId) return;
 
     // Validation
     if (!question || typeof question !== 'string' || question.trim().length === 0 || question.length > 200) return;
@@ -1181,14 +1214,16 @@ io.on('connection', (socket) => {
 
   socket.on('end-poll', ({ streamId }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
-    if (socket.username !== streamId) return;
+    // 🛡️ SECURITY: Only authenticated host can end polls
+    if (!socket.isAuthenticated || socket.username !== streamId) return;
 
     cleanupPoll(streamId, true);
   });
 
   socket.on('raid-stream', ({ streamId, targetId }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
-    if (socket.username !== streamId) return; // Only host can raid
+    // 🛡️ SECURITY: Only authenticated host can raid
+    if (!socket.isAuthenticated || socket.username !== streamId) return;
     if (!targetId || targetId === streamId) return;
 
     // 🌉 Bridge: Validate that the target stream is actually online
@@ -1225,8 +1260,8 @@ io.on('connection', (socket) => {
   socket.on('update-stream-info', ({ streamId, title, tags }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
-    // Only host can update stream info
-    if (socket.username !== streamId) return;
+    // 🛡️ SECURITY: Only authenticated host can update stream info
+    if (!socket.isAuthenticated || socket.username !== streamId) return;
 
     // Basic Validation
     const safeTitle = (typeof title === 'string') ? title.trim().substring(0, 100) : 'Beacon Stream';
@@ -1294,8 +1329,8 @@ io.on('connection', (socket) => {
     const streamId = socket.currentRoom;
 
     if (streamId) {
-      // activeStreams logic: If host leaves, redirect viewers
-      if (socket.username === streamId && activeStreams.has(streamId)) {
+      // 🌉 Bridge: Only end stream if this was the last active broadcaster session.
+      if (socket.username === streamId && activeStreams.has(streamId) && !isAnotherBroadcasterActive(streamId, socket.id)) {
           activeStreams.delete(streamId);
           streamSquads.delete(streamId);
           lastAdTrigger.delete(streamId);
@@ -1349,4 +1384,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, io, streamSquads, JWT_SECRET };
+module.exports = { server, io, activeStreams, streamSquads, JWT_SECRET };
