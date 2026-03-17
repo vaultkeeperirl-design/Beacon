@@ -79,6 +79,9 @@ describe('AdBreakButton', () => {
   });
 
   it('shows error state when trigger fails', async () => {
+    const consoleError = console.error;
+    console.error = vi.fn();
+
     axios.post.mockRejectedValueOnce(new Error('Network Error'));
 
     render(<AdBreakButton />);
@@ -99,6 +102,7 @@ describe('AdBreakButton', () => {
     });
 
     expect(screen.getByText('Ad Break (60s)')).toBeInTheDocument();
+    console.error = consoleError;
   });
 
   it('is disabled if username or token is missing', () => {
