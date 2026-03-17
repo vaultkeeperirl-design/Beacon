@@ -42,6 +42,10 @@
 **Learning:** Fetching and serializing all active streams on every sidebar or home page mount creates a linear $O(N)$ bottleneck in both network payload and JSON parsing. As the number of streams grows, this leads to increased Time to Interactive (TTI).
 **Action:** Implement server-side pagination (`limit`/`offset`) even for internal components like sidebars. This caps the serialization and transmission cost, ensuring the UI remains responsive regardless of total system load.
 
+## 2025-10-15 - [Backend] Boosting Throughput with SQLite WAL Mode
+**Learning:** For a Node.js application handling high-frequency writes (like the 2s `metrics-report` event), the default SQLite rollback journal can become a bottleneck due to its "one writer OR multiple readers" locking model.
+**Action:** Enable WAL (Write-Ahead Logging) mode and set `synchronous = NORMAL`. This allows simultaneous reads and writes, drastically reducing latency for metrics reporting and credit updates while maintaining high durability.
+
 ## 2025-09-10 - [React] Decoupling Socket Listeners from High-Frequency State
 **Learning:** Including a frequently-updated state object (like an active poll with live vote counts) in a `useEffect` dependency array that manages socket listeners causes those listeners to be torn down and re-registered on every update. This creates unnecessary overhead and can lead to race conditions or missed events.
 **Action:** Use the functional state update pattern (`setState(prev => ...)`) inside the listener callback. This allows removing the state object from the effect's dependency array, keeping the socket listeners stable throughout the component's lifecycle.

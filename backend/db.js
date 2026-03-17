@@ -20,6 +20,13 @@ try {
 
 const db = new Database(dbPath);
 
+// ⚡ Performance Optimization: Enable WAL mode and NORMAL synchronous
+// WAL (Write-Ahead Logging) significantly improves concurrency by allowing
+// multiple readers and one writer simultaneously. NORMAL synchronous
+// provides a significant performance boost for writes while maintaining durability.
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
+
 // Initialize database schema
 db.exec(`
   CREATE TABLE IF NOT EXISTS Users (
