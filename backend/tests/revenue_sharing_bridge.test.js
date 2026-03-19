@@ -28,6 +28,8 @@ describe("Revenue Sharing Bridge: Proportional & Sybil-resistant", () => {
 
     broadcasterToken = jwt.sign({ username: broadcasterUser }, JWT_SECRET);
     tipperToken = jwt.sign({ username: tipperUser }, JWT_SECRET);
+    relayer1Token = jwt.sign({ username: relayer1User }, JWT_SECRET);
+    relayer2Token = jwt.sign({ username: relayer2User }, JWT_SECRET);
 
     return new Promise((resolve) => {
       server.listen(0, () => {
@@ -107,18 +109,22 @@ describe("Revenue Sharing Bridge: Proportional & Sybil-resistant", () => {
     };
 
     broadcasterSocket.on("connect", () => {
+      broadcasterSocket.emit("register-auth", { token: broadcasterToken });
       broadcasterSocket.emit("join-stream", { streamId, username: broadcasterUser });
       checkReady();
     });
     relayer1Socket.on("connect", () => {
+      relayer1Socket.emit("register-auth", { token: relayer1Token });
       relayer1Socket.emit("join-stream", { streamId, username: relayer1User });
       checkReady();
     });
     relayer1SocketTab2.on("connect", () => {
+      relayer1SocketTab2.emit("register-auth", { token: relayer1Token });
       relayer1SocketTab2.emit("join-stream", { streamId, username: relayer1User });
       checkReady();
     });
     relayer2Socket.on("connect", () => {
+      relayer2Socket.emit("register-auth", { token: relayer2Token });
       relayer2Socket.emit("join-stream", { streamId, username: relayer2User });
       checkReady();
     });

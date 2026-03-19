@@ -48,13 +48,21 @@ describe("Raid Functionality", () => {
   test("should redirect viewers when host triggers a raid", async () => {
     const streamId = "host-user";
     const targetId = "target-user";
+    const jwt = require('jsonwebtoken');
+    const { JWT_SECRET } = require('../server');
+
+    // 🛡️ SECURITY: Perform register-auth for streamers
+    const hostToken = jwt.sign({ username: streamId }, JWT_SECRET);
+    const targetToken = jwt.sign({ username: targetId }, JWT_SECRET);
 
     // Target joins to become active
     const targetSocket = new Client(`http://localhost:${port}`);
+    targetSocket.emit("register-auth", { token: targetToken });
     targetSocket.emit("join-stream", { streamId: targetId, username: targetId });
     await waitFor(targetSocket, "room-users-update");
 
     // Host joins and becomes the streamer
+    hostSocket.emit("register-auth", { token: hostToken });
     hostSocket.emit("join-stream", { streamId, username: streamId });
     await waitFor(hostSocket, "room-users-update");
 

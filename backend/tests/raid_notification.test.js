@@ -52,6 +52,15 @@ describe("Raid Notification Functionality", () => {
   test("should notify target stream when a raid occurs", async () => {
     const hostId = "raider-user";
     const targetId = "target-user";
+    const jwt = require('jsonwebtoken');
+    const { JWT_SECRET } = require('../server');
+
+    // 🛡️ SECURITY: Perform register-auth for both streamers to allow host-level actions
+    const hostToken = jwt.sign({ username: hostId }, JWT_SECRET);
+    const targetToken = jwt.sign({ username: targetId }, JWT_SECRET);
+
+    hostSocket.emit("register-auth", { token: hostToken });
+    targetSocket.emit("register-auth", { token: targetToken });
 
     // Target joins and becomes an active streamer
     targetSocket.emit("join-stream", { streamId: targetId, username: targetId });
