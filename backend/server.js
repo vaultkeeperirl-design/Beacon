@@ -36,6 +36,9 @@ const activePolls = new Map();
 // Track stream squads for revenue splits
 // Map<streamId, Array<{ username: string, split: number }>>
 const streamSquads = new Map();
+// ⚡ Performance Optimization: Cache relayer splits to avoid O(N) mesh traversals on every tip/ad.
+// Map<streamId, { relayers: Array, totalRelayBandwidth: number, timestamp: number }>
+const relayerSplitsCache = new Map();
 
 // Prepared SQL Statements for Performance
 const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
@@ -188,30 +191,50 @@ const distributeCreditsToStream = (streamId, amount, tipper = null) => {
   const squad = streamSquads.get(streamId) || [{ username: streamId, split: 100 }];
   const mesh = streamMeshTopology.get(streamId);
 
-  // 🌉 Bridge: Implement Sybil-resistant and Proportional Relay Distribution
-  // We deduplicate relayers by username and sum their bandwidth contribution.
-  // Rewards are then distributed proportionally based on total bandwidth served.
-  const relayerContributions = new Map(); // username -> total uploadMbps
+  // ⚡ Performance Optimization: Check relayer splits cache (2s TTL)
+  const now = Date.now();
+  const cached = relayerSplitsCache.get(streamId);
+  let relayers = [];
   let totalRelayBandwidth = 0;
 
-  if (mesh) {
-    for (const [socketId, node] of mesh.entries()) {
-      // ⚡ Performance Optimization: Prioritize the accountName already stored in the node object.
-      // This avoids the O(N) overhead of looking up every socket in the global Map on every distribution.
-      let accountName = node.accountName;
+  if (cached && (now - cached.timestamp < 2000)) {
+    relayers = cached.relayers;
+    totalRelayBandwidth = cached.totalRelayBandwidth;
+  } else {
+    // 🌉 Bridge: Implement Sybil-resistant and Proportional Relay Distribution
+    // We deduplicate relayers by username and sum their bandwidth contribution.
+    // Rewards are then distributed proportionally based on total bandwidth served.
+    const relayerContributions = new Map(); // username -> total uploadMbps
 
-      if (!accountName) {
-        const socket = io.sockets.sockets.get(socketId);
-        accountName = socket?.accountName;
-        if (accountName) node.accountName = accountName; // Cache for next time
-      }
+    if (mesh) {
+      for (const [socketId, node] of mesh.entries()) {
+        // ⚡ Performance Optimization: Prioritize the accountName already stored in the node object.
+        // This avoids the O(N) overhead of looking up every socket in the global Map on every distribution.
+        let accountName = node.accountName;
 
-      if (!node.isBroadcaster && accountName && node.metrics && node.metrics.uploadMbps > 0) {
-        const bandwidth = node.metrics.uploadMbps;
-        relayerContributions.set(accountName, (relayerContributions.get(accountName) || 0) + bandwidth);
-        totalRelayBandwidth += bandwidth;
+        if (!accountName) {
+          const socket = io.sockets.sockets.get(socketId);
+          accountName = socket?.accountName;
+          if (accountName) node.accountName = accountName; // Cache for next time
+        }
+
+        if (!node.isBroadcaster && accountName && node.metrics && node.metrics.uploadMbps > 0) {
+          const bandwidth = node.metrics.uploadMbps;
+          relayerContributions.set(accountName, (relayerContributions.get(accountName) || 0) + bandwidth);
+          totalRelayBandwidth += bandwidth;
+        }
       }
     }
+
+    if (totalRelayBandwidth > 0) {
+      for (const [username, bandwidth] of relayerContributions.entries()) {
+        const weight = (bandwidth / totalRelayBandwidth) * 100;
+        relayers.push({ username, split: weight });
+      }
+    }
+
+    // Update cache
+    relayerSplitsCache.set(streamId, { relayers, totalRelayBandwidth, timestamp: now });
   }
 
   const RELAY_PORTION = 0.20;
@@ -219,21 +242,20 @@ const distributeCreditsToStream = (streamId, amount, tipper = null) => {
   const hasRelayers = totalRelayBandwidth > 0;
   const squadTotal = amount - (hasRelayers ? relayTotal : 0);
 
-  // Convert relayerContributions to the format expected by the transaction
-  const relayers = [];
-  if (hasRelayers) {
-    for (const [username, bandwidth] of relayerContributions.entries()) {
-      const weight = (bandwidth / totalRelayBandwidth) * 100;
-      relayers.push({ username, split: weight });
-    }
-  }
-
   try {
     const updates = revenueTx(tipper, amount, squad, relayers, relayTotal, squadTotal);
 
-    // Emit updates after successful transaction to prevent state desync
+    // ⚡ Performance Optimization: Deduplicate wallet update emissions.
+    // If a user is both a squad member and a relayer, aggregate their final balance
+    // to emit only one socket message per unique user.
+    const uniqueUpdates = new Map();
     for (const update of updates) {
-      io.to(`user:${update.username}`).emit('wallet-update', { balance: update.balance });
+      uniqueUpdates.set(update.username, update.balance);
+    }
+
+    // Emit updates after successful transaction to prevent state desync
+    for (const [username, balance] of uniqueUpdates.entries()) {
+      io.to(`user:${username}`).emit('wallet-update', { balance });
     }
   } catch (err) {
     console.error(`Failed to distribute credits for stream ${streamId}:`, err);
@@ -897,6 +919,7 @@ io.on('connection', (socket) => {
           activeStreams.delete(prevRoom);
           streamSquads.delete(prevRoom);
           lastAdTrigger.delete(prevRoom);
+          relayerSplitsCache.delete(prevRoom);
           // Check for active poll and clear its timeout
           cleanupPoll(prevRoom, true);
           const redirect = getRandomStreamId();
@@ -959,6 +982,7 @@ io.on('connection', (socket) => {
           activeStreams.delete(room);
           streamSquads.delete(room);
           lastAdTrigger.delete(room);
+          relayerSplitsCache.delete(room);
           // Check for active poll and clear its timeout
           cleanupPoll(room, true);
           const redirect = getRandomStreamId();
@@ -1205,6 +1229,7 @@ io.on('connection', (socket) => {
       activeStreams.delete(streamId);
       streamSquads.delete(streamId);
       lastAdTrigger.delete(streamId);
+      relayerSplitsCache.delete(streamId);
       cleanupPoll(streamId, true);
 
       // 🌉 Bridge: Notify the target stream's chat about the incoming raid
@@ -1299,6 +1324,7 @@ io.on('connection', (socket) => {
           activeStreams.delete(streamId);
           streamSquads.delete(streamId);
           lastAdTrigger.delete(streamId);
+          relayerSplitsCache.delete(streamId);
 
           cleanupPoll(streamId, true);
 

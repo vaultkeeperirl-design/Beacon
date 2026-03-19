@@ -53,3 +53,7 @@
 ## 2025-05-15 - [Backend] Efficient Map Pagination
 **Learning:** Using `Array.from(map.entries()).slice()` for paginating large in-memory Maps is extremely inefficient as it creates a full intermediate array copy ($O(N)$ memory and time) before slicing.
 **Action:** Use a `for...of` loop to iterate over the Map directly, skipping the `offset` and breaking after the `limit` is reached. This ensures $O(\text{offset} + \text{limit})$ performance and zero intermediate array allocations, significantly reducing GC pressure.
+
+## 2025-11-20 - [Backend] Time-Based Caching for Mesh Traversals
+**Learning:** Performing an O(N) mesh traversal for every tip/ad break event causes CPU spikes during bursts of high activity. Since mesh metrics (bandwidth/latency) only update every 2s, calculating relayer splits more frequently is redundant.
+**Action:** Implement a time-based cache (e.g., 2s TTL) for relayer split calculations. This collapses multiple O(N) operations into a single traversal per update interval, drastically reducing CPU overhead and GC churn during high-frequency revenue events.
