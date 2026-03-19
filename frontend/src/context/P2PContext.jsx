@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import { useRealP2PStats } from '../hooks/useRealP2PStats';
 import { getSocket } from '../hooks/useSocket';
 // Performance Optimization:
@@ -62,9 +62,9 @@ export function P2PProvider({ children }) {
     };
   });
 
-  const updateUserProfile = (newProfileOrFn) => {
+  const updateUserProfile = useCallback((newProfileOrFn) => {
     setUserProfile((prev) => (typeof newProfileOrFn === 'function' ? newProfileOrFn(prev) : newProfileOrFn));
-  };
+  }, []);
 
   // Persist user profile to local storage whenever it changes
   useEffect(() => {
@@ -72,7 +72,7 @@ export function P2PProvider({ children }) {
   }, [userProfile]);
 
   // Helper to sync user metadata from backend responses to local profile state
-  const syncProfile = (userData) => {
+  const syncProfile = useCallback((userData) => {
     updateUserProfile(prev => ({
       ...prev,
       username: userData.username,
@@ -80,14 +80,14 @@ export function P2PProvider({ children }) {
       avatar: userData.avatar_url,
       bio: userData.bio ?? prev.bio
     }));
-  };
+  }, [updateUserProfile]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('beacon_token');
     setToken(null);
     setUser(null);
     setUsername('Guest');
-  };
+  }, []);
 
   // Load user profile on mount if token exists
   useEffect(() => {
@@ -140,9 +140,9 @@ export function P2PProvider({ children }) {
       }
     }
 
-  }, [token]);
+  }, [token, syncProfile]);
 
-  const login = async (loginUsername, password) => {
+  const login = useCallback(async (loginUsername, password) => {
     try {
       const res = await axios.post(`${API_URL}/auth/login`, { username: loginUsername, password });
       const { token: newToken, user: newUser } = res.data;
@@ -158,9 +158,9 @@ export function P2PProvider({ children }) {
     } catch (err) {
       return { success: false, error: err.response?.data?.error || 'Login failed' };
     }
-  };
+  }, [syncProfile]);
 
-  const register = async (registerUsername, password) => {
+  const register = useCallback(async (registerUsername, password) => {
     try {
       const res = await axios.post(`${API_URL}/auth/register`, { username: registerUsername, password });
       const { token: newToken, user: newUser } = res.data;
@@ -176,12 +176,12 @@ export function P2PProvider({ children }) {
     } catch (err) {
       return { success: false, error: err.response?.data?.error || 'Registration failed' };
     }
-  };
+  }, [syncProfile]);
 
   // Keep for backwards compatibility for now, but it won't persist to DB
-  const updateUsername = (newName) => {
+  const updateUsername = useCallback((newName) => {
     setUsername(newName);
-  };
+  }, []);
 
   const [settings, setSettings] = useState({
     maxUploadSpeed: 50, // Mbps
@@ -190,19 +190,9 @@ export function P2PProvider({ children }) {
     lowLatency: false,
   });
 
-  const stats = useRealP2PStats(isSharing, settings, currentStreamId, username) || {
-    uploadSpeed: 0,
-    downloadSpeed: 0,
-    peersConnected: 0,
-    credits: 0.0,
-    totalUploaded: 0,
-    bufferHealth: 0,
-    latency: 0
-  };
-
-  const updateSettings = (newSettings) => {
+  const updateSettings = useCallback((newSettings) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
-  };
+  }, []);
 
   // Memoize settings and actions to prevent unnecessary re-renders of stable components.
   // These only change when the user explicitly updates settings or changes the stream.
@@ -222,16 +212,81 @@ export function P2PProvider({ children }) {
     logout,
     userProfile,
     updateUserProfile
-  }), [isSharing, settings, currentStreamId, username, user, token, userProfile]);
+  }), [
+    isSharing,
+    settings,
+    updateSettings,
+    setIsSharing,
+    currentStreamId,
+    setCurrentStreamId,
+    username,
+    updateUsername,
+    user,
+    token,
+    login,
+    register,
+    logout,
+    userProfile,
+    updateUserProfile
+  ]);
 
   return (
     <P2PSettingsContext.Provider value={settingsValue}>
-      <P2PStatsContext.Provider value={stats}>
+      <P2PStatsProvider
+        isSharing={isSharing}
+        settings={settings}
+        currentStreamId={currentStreamId}
+        username={username}
+      >
         {children}
-      </P2PStatsContext.Provider>
+      </P2PStatsProvider>
     </P2PSettingsContext.Provider>
   );
 }
+
+/**
+ * ⚡ PERFORMANCE OPTIMIZATION: Isolated Stats Provider
+ * By moving the useRealP2PStats hook into this leaf component, we ensure that
+ * high-frequency stats updates (every 2s) ONLY trigger re-renders in components
+ * that consume P2PStatsContext, and NOT the entire P2PProvider application root.
+ */
+function P2PStatsProvider({ children, isSharing, settings, currentStreamId, username }) {
+  const stats = useRealP2PStats(isSharing, settings, currentStreamId, username);
+
+  return (
+    <P2PStatsContext.Provider value={stats}>
+      {children}
+    </P2PStatsContext.Provider>
+  );
+}
+
+/**
+ * Hook for consuming real-time P2P network statistics.
+ *
+ * ⚡ PERFORMANCE WARNING: This hook causes the consuming component to re-render
+ * every time the mesh network statistics update (currently every 1 second).
+ * Only use this hook in components that actually display these metrics.
+ *
+ * @returns {{
+ *   uploadSpeed: number,
+ *   downloadSpeed: number,
+ *   peersConnected: number,
+ *   credits: number,
+ *   totalUploaded: number,
+ *   bufferHealth: number,
+ *   latency?: number
+ * }} An object containing the current P2P statistics.
+ * @throws {Error} If called outside of a P2PProvider.
+ */
+const FALLBACK_STATS = {
+  uploadSpeed: 0,
+  downloadSpeed: 0,
+  peersConnected: 0,
+  credits: 0.0,
+  totalUploaded: 0,
+  bufferHealth: 5.0,
+  latency: 0
+};
 
 /**
  * Hook for consuming real-time P2P network statistics.
@@ -257,28 +312,12 @@ export function useP2PStats() {
     throw new Error('useP2PStats must be used within a P2PProvider');
   }
 
-  const fallback = {
-    uploadSpeed: 0,
-    downloadSpeed: 0,
-    peersConnected: 0,
-    credits: 0.0,
-    totalUploaded: 0,
-    bufferHealth: 0,
-    latency: 0
-  };
-
-  if (!context) return fallback;
-
-  // Ensure credits and other stats are always defined
-  return {
-    uploadSpeed: context.uploadSpeed ?? fallback.uploadSpeed,
-    downloadSpeed: context.downloadSpeed ?? fallback.downloadSpeed,
-    peersConnected: context.peersConnected ?? fallback.peersConnected,
-    credits: context.credits ?? fallback.credits,
-    totalUploaded: context.totalUploaded ?? fallback.totalUploaded,
-    bufferHealth: context.bufferHealth ?? fallback.bufferHealth,
-    latency: context.latency ?? fallback.latency
-  };
+  // ⚡ PERFORMANCE OPTIMIZATION: Return context directly
+  // Previously, this hook returned a new object literal on every call, which broke
+  // React.memo and reference stability for components consuming this hook.
+  // Now, we return the context object directly, which is maintained as a stable
+  // reference by the shallow-equality check inside the useRealP2PStats hook.
+  return context || FALLBACK_STATS;
 }
 
 /**
