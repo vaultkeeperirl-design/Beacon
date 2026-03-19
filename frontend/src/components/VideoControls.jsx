@@ -15,11 +15,11 @@ const VideoControls = memo(({
   quality
 }) => {
   return (
-    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6 z-10">
+    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/20 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex flex-col justify-end p-6 z-10">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
           <button
-            className="text-white hover:text-beacon-500 transition-colors"
+            className="text-white hover:text-beacon-500 transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-beacon-500 outline-none rounded-md"
             onClick={onPlayToggle}
             aria-label={isPlaying ? "Pause stream (Space/k)" : "Play stream (Space/k)"}
             title={isPlaying ? "Pause (Space/k)" : "Play (Space/k)"}
@@ -32,7 +32,7 @@ const VideoControls = memo(({
              data-testid="volume-control-container"
           >
              <button
-               className="text-white hover:text-beacon-500 transition-colors"
+               className="text-white hover:text-beacon-500 transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-beacon-500 outline-none rounded-md"
                onClick={onMuteToggle}
                aria-label={isMuted ? "Unmute audio (m)" : "Mute audio (m)"}
                title={isMuted ? "Unmute (m)" : "Mute (m)"}
@@ -63,7 +63,7 @@ const VideoControls = memo(({
             P2P: {quality}
           </span>
           <button
-            className="text-white hover:text-beacon-500 transition-colors"
+            className="text-white hover:text-beacon-500 transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-beacon-500 outline-none rounded-md"
             onClick={onSettingsToggle}
             aria-label="Open stream settings"
             title="Settings"
@@ -71,7 +71,7 @@ const VideoControls = memo(({
             <Settings className="w-5 h-5" />
           </button>
           <button
-            className="text-white hover:text-beacon-500 transition-colors"
+            className="text-white hover:text-beacon-500 transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-beacon-500 outline-none rounded-md"
             onClick={onFullscreenToggle}
             aria-label={isFullscreen ? "Exit Fullscreen (f)" : "Enter Fullscreen (f)"}
             title={isFullscreen ? "Exit Fullscreen (f)" : "Enter Fullscreen (f)"}

@@ -63,3 +63,7 @@
 ## 2026-03-27 - Accessible Polling Pattern
 **Learning:** For interactive poll widgets, using dynamic `aria-label` attributes on option buttons allows screen readers to distinguish between the 'voting' phase and the 'results' phase. Additionally, applying `aria-live="polite"` to the options container ensures that as votes roll in, the updated percentages and counts are announced without interrupting the user.
 **Action:** Always implement context-aware ARIA labels and live regions for components that transition from input to data visualization, ensuring the state change is clear to assistive technologies.
+
+## 2026-03-28 - Keyboard Focus for Hover UI
+**Learning:** Any container using `opacity-0 group-hover:opacity-100` to hide/show controls (common in video players or card overlays) must also include `focus-within:opacity-100`. This ensures interactive elements are visible to keyboard users when they receive focus. Additionally, adding `active:scale-95` and `focus-visible` rings to these controls provides essential tactile feedback and navigation clarity.
+**Action:** Always pair `group-hover` visibility with `focus-within` for interactive overlays, and use high-contrast focus rings and active states to guide keyboard users.
