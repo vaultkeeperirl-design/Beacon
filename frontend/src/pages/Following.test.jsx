@@ -35,6 +35,17 @@ describe('Following Page - Offline Channels Sorting', () => {
     );
   };
 
+  it('renders offline channel skeletons while loading', async () => {
+    // Return a promise that does not resolve immediately to keep it in loading state
+    axios.get.mockReturnValue(new Promise(() => {}));
+
+    renderComponent();
+
+    // In loading state, we expect skeletons (the pulse animation elements)
+    const skeletons = screen.getAllByTestId('offline-channel-skeleton');
+    expect(skeletons.length).toBeGreaterThan(0);
+  });
+
   it('renders offline channels in default (recently-live) order', async () => {
     renderComponent();
 
