@@ -15,7 +15,7 @@ const VideoControls = memo(({
   quality
 }) => {
   return (
-    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6 z-10">
+    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/20 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex flex-col justify-end p-6 z-10">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
           <button
