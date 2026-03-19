@@ -161,7 +161,7 @@ export default function Following() {
            {isLoading ? (
              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                  {Array.from({ length: 4 }).map((_, i) => (
-                     <div key={i} className="flex items-center gap-4 p-4 bg-neutral-900/50 border border-neutral-800 rounded-xl animate-pulse">
+                     <div key={i} data-testid="offline-channel-skeleton" className="flex items-center gap-4 p-4 bg-neutral-900/50 border border-neutral-800 rounded-xl animate-pulse">
                          <div className="w-12 h-12 rounded-full bg-neutral-800 flex-shrink-0"></div>
                          <div className="flex-1 space-y-2 py-1">
                              <div className="h-4 bg-neutral-800 rounded w-1/2"></div>
