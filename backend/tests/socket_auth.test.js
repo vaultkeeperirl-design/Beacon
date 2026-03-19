@@ -40,7 +40,8 @@ describe("Socket Authentication (register-auth)", () => {
         // 2. Verify guest state in backend
         const sockets = Array.from(io.sockets.sockets.values());
         const socket = sockets.find(s => s.id === clientSocket.id);
-        expect(socket.username).toBeUndefined();
+        expect(socket.username).toBe("Guest");
+        expect(socket.isAuthenticated).toBe(false);
 
         // 3. Emit register-auth
         clientSocket.emit("register-auth", { token });
@@ -50,6 +51,7 @@ describe("Socket Authentication (register-auth)", () => {
           // 4. Verify authenticated state in backend
           expect(socket.username).toBe(username);
           expect(socket.accountName).toBe(username);
+          expect(socket.isAuthenticated).toBe(true);
           expect(Array.from(socket.rooms)).toContain(`user:${username}`);
 
           // 5. Verify mesh topology update

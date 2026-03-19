@@ -84,6 +84,9 @@ describe("Bug Reproduction: socket.currentRoom desync", () => {
   test("should update activeStreams when re-joining as host", async () => {
     const streamId = "host-transition-room";
     const username = streamId; // Host username equals streamId
+    const jwt = require('jsonwebtoken');
+    const { JWT_SECRET } = require('../server');
+    const token = jwt.sign({ username }, JWT_SECRET);
 
     // 1. Join as anonymous viewer
     clientSocket.emit("join-stream", streamId);
@@ -91,6 +94,7 @@ describe("Bug Reproduction: socket.currentRoom desync", () => {
 
     // 2. Re-join as host (same streamId, but providing username)
     const updatePromise = waitFor(clientSocket, "room-users-update");
+    clientSocket.emit("register-auth", { token });
     clientSocket.emit("join-stream", { streamId, username });
     await updatePromise;
 

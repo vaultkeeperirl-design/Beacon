@@ -41,6 +41,13 @@ describe("Poll Integrity and Security", () => {
 
   test("should NOT leak internal poll state (voters, timeoutId) to new joiners", (done) => {
     const streamId = "leak-test-stream";
+    const jwt = require('jsonwebtoken');
+    const { JWT_SECRET } = require('../server');
+    const token = jwt.sign({ username: streamId }, JWT_SECRET);
+
+    console.log("Test 1: Authenticating host");
+    hostSocket.emit("register-auth", { token });
+
     console.log("Test 1: Joining as host");
     hostSocket.emit("join-stream", { streamId, username: streamId });
 
@@ -83,6 +90,12 @@ describe("Poll Integrity and Security", () => {
   test("should prevent double voting by the same user across different socket sessions", (done) => {
     const streamId = "multi-session-vote-test";
     const username = "persistent-user";
+    const jwt = require('jsonwebtoken');
+    const { JWT_SECRET } = require('../server');
+    const token = jwt.sign({ username: streamId }, JWT_SECRET);
+
+    console.log("Test 2: Authenticating host");
+    hostSocket.emit("register-auth", { token });
 
     console.log("Test 2: Joining as host");
     hostSocket.emit("join-stream", { streamId, username: streamId });

@@ -63,12 +63,15 @@ describe("Bridge Revenue Real-time Sync", () => {
     const streamId = hostUser;
     let hostReceivedUpdate = false;
     let guestReceivedUpdate = false;
+    const tokenHost = jwt.sign({ username: hostUser }, JWT_SECRET);
+    const tokenGuest = jwt.sign({ username: guestUser }, JWT_SECRET);
 
     // 1. Host and Guest connect via Socket.io
     clientSocketHost = Client(`http://localhost:${port}`);
     clientSocketGuest = Client(`http://localhost:${port}`);
 
     clientSocketHost.on("connect", () => {
+      clientSocketHost.emit("register-auth", { token: tokenHost });
       clientSocketHost.emit("join-stream", { streamId, username: hostUser });
 
       // 2. Set the squad
@@ -81,6 +84,7 @@ describe("Bridge Revenue Real-time Sync", () => {
       });
 
       clientSocketGuest.on("connect", () => {
+        clientSocketGuest.emit("register-auth", { token: tokenGuest });
         clientSocketGuest.emit("join-stream", { streamId, username: guestUser });
 
         // Listen for wallet updates

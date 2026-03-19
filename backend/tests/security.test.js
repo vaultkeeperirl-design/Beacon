@@ -171,6 +171,12 @@ describe("Backend Security", () => {
   test("should prevent infinite credit exploits via bounds on uploadMbps", async () => {
     const streamId = "stream-credits";
     const username = "GreedyNode";
+    const jwt = require('jsonwebtoken');
+    const { JWT_SECRET } = require('../server');
+
+    // 🛡️ SECURITY: Perform register-auth handshake to enable credit distribution
+    const token = jwt.sign({ username }, JWT_SECRET);
+    clientSocket.emit("register-auth", { token });
 
     // Wait for the room join
     const updatePromise1 = waitFor(clientSocket, "room-users-update");
@@ -209,6 +215,12 @@ describe("Backend Security", () => {
   test("should prevent infinite credit exploits via rapid metrics-report spam", async () => {
     const streamId = "stream-spam";
     const username = "SpammerNode";
+    const jwt = require('jsonwebtoken');
+    const { JWT_SECRET } = require('../server');
+
+    // 🛡️ SECURITY: Perform register-auth handshake to enable credit distribution
+    const token = jwt.sign({ username }, JWT_SECRET);
+    clientSocket.emit("register-auth", { token });
 
     const updatePromise1 = waitFor(clientSocket, "room-users-update");
     clientSocket.emit("join-stream", { streamId, username });
