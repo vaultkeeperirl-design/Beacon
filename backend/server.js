@@ -36,6 +36,9 @@ const activePolls = new Map();
 // Track stream squads for revenue splits
 // Map<streamId, Array<{ username: string, split: number }>>
 const streamSquads = new Map();
+// Track active broadcaster sessions per streamId
+// Map<streamId, Set<socketId>>
+const broadcasterSessions = new Map();
 // ⚡ Performance Optimization: Cache relayer splits to avoid O(N) mesh traversals on every tip/ad.
 // Map<streamId, { relayers: Array, totalRelayBandwidth: number, timestamp: number }>
 const relayerSplitsCache = new Map();
@@ -87,6 +90,36 @@ const cleanupPoll = (streamId, notifyViewers = false) => {
     }
 
     activePolls.delete(streamId);
+  }
+};
+
+/**
+ * Updates the broadcaster session tracking for a socket.
+ * @param {Object} socket - The Socket.IO socket instance.
+ * @param {string} streamId - The ID of the stream.
+ * @param {boolean} isJoining - Whether the socket is joining or leaving the broadcaster role.
+ */
+const updateBroadcasterSession = (socket, streamId, isJoining) => {
+  if (!streamId) return;
+
+  // Broadcaster session is defined as an authenticated socket where username matches streamId
+  if (socket.isAuthenticated && socket.username === streamId) {
+    if (isJoining) {
+      if (!broadcasterSessions.has(streamId)) {
+        broadcasterSessions.set(streamId, new Set());
+      }
+      broadcasterSessions.get(streamId).add(socket.id);
+      console.log(`[Auth] Broadcaster session added for ${socket.id} in stream ${streamId}. Total: ${broadcasterSessions.get(streamId).size}`);
+    } else {
+      const sessions = broadcasterSessions.get(streamId);
+      if (sessions) {
+        sessions.delete(socket.id);
+        console.log(`[Auth] Broadcaster session removed for ${socket.id} in stream ${streamId}. Remaining: ${sessions.size}`);
+        if (sessions.size === 0) {
+          broadcasterSessions.delete(streamId);
+        }
+      }
+    }
   }
 };
 
@@ -722,22 +755,20 @@ function hasPathToBroadcaster(mesh, startNodeId) {
 /**
  * Checks if there is another authenticated broadcaster for the given streamId
  * in the same room, excluding the current socket.
+ * ⚡ Performance Optimization: This provides O(1) lookups by using the
+ * broadcasterSessions Map, avoiding O(N) iteration through room participants.
  * @param {string} streamId - The ID of the stream.
  * @param {string} currentSocketId - The ID of the current socket to exclude.
  * @returns {boolean} True if another authenticated broadcaster is found.
  */
 const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
-  const room = io.sockets.adapter.rooms.get(streamId);
-  if (!room) return false;
+  const sessions = broadcasterSessions.get(streamId);
+  if (!sessions) return false;
 
-  for (const socketId of room) {
-    if (socketId === currentSocketId) continue;
-    const socket = io.sockets.sockets.get(socketId);
-    if (socket && socket.isAuthenticated && socket.username === streamId) {
-      return true;
-    }
+  if (sessions.has(currentSocketId)) {
+    return sessions.size > 1;
   }
-  return false;
+  return sessions.size > 0;
 };
 
 function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
@@ -885,6 +916,13 @@ io.on('connection', (socket) => {
       // Join user-specific room for real-time wallet updates
       socket.join(`user:${username}`);
 
+      // 🌉 Bridge: Track broadcaster session if this user is the host of their current stream
+      // This ensures that if a user goes live and then authenticates, they are correctly
+      // counted as a broadcaster session for O(1) tracking.
+      if (socket.currentRoom && socket.username === socket.currentRoom) {
+        updateBroadcasterSession(socket, socket.currentRoom, true);
+      }
+
       // Retroactively update mesh topology with the new identity
       // ⚡ Performance Optimization: Using socket.currentRoom for targeted update (O(1))
       // instead of iterating over all active streams (O(N)).
@@ -944,6 +982,7 @@ io.on('connection', (socket) => {
        // activeStreams logic: If host leaves, redirect viewers
        if (socket.isAuthenticated && socket.username === prevRoom && activeStreams.has(prevRoom) && !isAnotherBroadcasterActive(prevRoom, socket.id)) {
           activeStreams.delete(prevRoom);
+          broadcasterSessions.delete(prevRoom); // Clean up tracking Map for the ended stream
           streamSquads.delete(prevRoom);
           lastAdTrigger.delete(prevRoom);
           relayerSplitsCache.delete(prevRoom);
@@ -954,6 +993,8 @@ io.on('connection', (socket) => {
        }
 
        socket.leave(prevRoom);
+       // 🌉 Bridge: Ensure broadcaster tracking is updated during room switch
+       updateBroadcasterSession(socket, prevRoom, false);
        // 🌉 Bridge: Ensure node is removed from previous mesh during room switch
        removeNodeFromMesh(prevRoom, socket.id);
        // Notify previous room
@@ -975,14 +1016,19 @@ io.on('connection', (socket) => {
 
         // 🛡️ SECURITY: Only authenticated hosts can start an active stream session
         // If the user is the host, mark stream as active
-        if (socket.isAuthenticated && socket.username === streamId && !activeStreams.has(streamId)) {
-          const user = getUserStmt.get(socket.username);
-          activeStreams.set(streamId, {
-            title: 'Welcome to my stream!',
-            tags: 'Beacon, P2P, Streaming',
-            streamer: socket.username,
-            avatar: user ? user.avatar_url : null
-          });
+        if (socket.isAuthenticated && socket.username === streamId) {
+          // Track broadcaster session for O(1) checks
+          updateBroadcasterSession(socket, streamId, true);
+
+          if (!activeStreams.has(streamId)) {
+            const user = getUserStmt.get(socket.username);
+            activeStreams.set(streamId, {
+              title: 'Welcome to my stream!',
+              tags: 'Beacon, P2P, Streaming',
+              streamer: socket.username,
+              avatar: user ? user.avatar_url : null
+            });
+          }
         }
 
         // Add to Mesh Tracker
@@ -1009,6 +1055,7 @@ io.on('connection', (socket) => {
        // activeStreams logic: If host leaves, redirect viewers
        if (socket.isAuthenticated && socket.username === room && activeStreams.has(room) && !isAnotherBroadcasterActive(room, socket.id)) {
           activeStreams.delete(room);
+          broadcasterSessions.delete(room); // Clean up tracking Map for the ended stream
           streamSquads.delete(room);
           lastAdTrigger.delete(room);
           relayerSplitsCache.delete(room);
@@ -1019,6 +1066,9 @@ io.on('connection', (socket) => {
        }
 
        socket.leave(room);
+
+       // 🌉 Bridge: Ensure broadcaster tracking is updated when leaving
+       updateBroadcasterSession(socket, room, false);
 
        // Remove from Mesh Tracker
        removeNodeFromMesh(room, socket.id);
@@ -1261,6 +1311,7 @@ io.on('connection', (socket) => {
       const viewersCount = io.sockets.adapter.rooms.get(streamId)?.size || 0;
 
       activeStreams.delete(streamId);
+      broadcasterSessions.delete(streamId); // Clean up all sessions for raided stream
       streamSquads.delete(streamId);
       lastAdTrigger.delete(streamId);
       relayerSplitsCache.delete(streamId);
@@ -1358,6 +1409,7 @@ io.on('connection', (socket) => {
       // activeStreams logic: If host leaves, redirect viewers
       if (socket.isAuthenticated && socket.username === streamId && activeStreams.has(streamId) && !isAnotherBroadcasterActive(streamId, socket.id)) {
           activeStreams.delete(streamId);
+          broadcasterSessions.delete(streamId); // Clean up tracking Map for the ended stream
           streamSquads.delete(streamId);
           lastAdTrigger.delete(streamId);
           relayerSplitsCache.delete(streamId);
@@ -1367,6 +1419,9 @@ io.on('connection', (socket) => {
           const redirect = getRandomStreamId();
           socket.to(streamId).emit('stream-ended', { redirect });
       }
+
+      // 🌉 Bridge: Ensure broadcaster tracking is updated on disconnect
+      updateBroadcasterSession(socket, streamId, false);
 
       // Remove from Mesh Tracker
       removeNodeFromMesh(streamId, socket.id);
@@ -1411,4 +1466,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, io, streamSquads, JWT_SECRET };
+module.exports = { server, io, streamSquads, activeStreams, broadcasterSessions, JWT_SECRET, isAnotherBroadcasterActive, updateBroadcasterSession };
