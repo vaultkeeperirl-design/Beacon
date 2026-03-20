@@ -1069,6 +1069,14 @@ io.on('connection', (socket) => {
   socket.on('metrics-report', ({ streamId, latency, uploadMbps }) => {
     if (!streamId || socket.currentRoom !== streamId) return;
 
+    // 🌉 Bridge: Explicitly cast and validate metrics data types to prevent logical desyncs or overflows
+    const numericLatency = Number(latency);
+    const numericUploadMbps = Number(uploadMbps);
+
+    if (!Number.isFinite(numericLatency) || !Number.isFinite(numericUploadMbps)) {
+      return;
+    }
+
     // Rate limiting: 1 report per 1000ms to prevent infinite credit exploits
     const now = Date.now();
     if (socket.lastMetricsTime && now - socket.lastMetricsTime < 1000) {
@@ -1078,9 +1086,9 @@ io.on('connection', (socket) => {
 
     // 🛡️ SECURITY: Only authenticated nodes earn credits
     // Credit Economy Calculation
-    if (socket.isAuthenticated && socket.accountName && uploadMbps > 0) {
+    if (socket.isAuthenticated && socket.accountName && numericUploadMbps > 0) {
       // Security: Cap uploadMbps to realistic maximum (100 Mbps) to prevent infinite credit exploits
-      const validUploadMbps = Math.min(Number(uploadMbps) || 0, 100);
+      const validUploadMbps = Math.min(numericUploadMbps, 100);
       const earnedCredits = validUploadMbps * 0.01; // Match frontend logic
 
       // ⚡ Performance Optimization:
@@ -1102,8 +1110,8 @@ io.on('connection', (socket) => {
 
       if (node && node.metrics) {
         // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
-        node.metrics.latency = latency;
-        node.metrics.uploadMbps = uploadMbps;
+        node.metrics.latency = numericLatency;
+        node.metrics.uploadMbps = numericUploadMbps;
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
@@ -1140,23 +1148,31 @@ io.on('connection', (socket) => {
 
     if (!Array.isArray(squad)) return;
 
+    // 🌉 Bridge: Robust validation of squad member names and splits
+    const sanitizedSquad = [];
+    let totalSplit = 0;
+
+    for (const member of squad) {
+      const split = Number(member.split);
+      const username = typeof member.name === 'string' ? member.name.trim() : null;
+
+      if (!Number.isFinite(split) || split < 0 || split > 100 || !username) {
+        console.log(`[Squad] Invalid member data for stream ${streamId}`, member);
+        return;
+      }
+
+      sanitizedSquad.push({ username, split });
+      totalSplit += split;
+    }
+
     // Validate split percentages equal 100
-    const totalSplit = squad.reduce((sum, member) => sum + (Number(member.split) || 0), 0);
     if (Math.abs(totalSplit - 100) > 0.01) {
        console.log(`[Squad] Invalid split percentage total: ${totalSplit} for stream ${streamId}`);
        return;
     }
 
-    // Security: Prevent negative splits which could generate infinite money or drain tipper
-    if (squad.some(m => Number(m.split) < 0 || Number(m.split) > 100)) {
-       console.log(`[Squad] Invalid split bounds for stream ${streamId}`);
-       return;
-    }
-
-    // Map frontend 'name' to 'username' for backend tracking
-    const backendSquad = squad.map(m => ({ username: m.name, split: Number(m.split) }));
-    streamSquads.set(streamId, backendSquad);
-    console.log(`[Squad] Updated for stream ${streamId}`, backendSquad);
+    streamSquads.set(streamId, sanitizedSquad);
+    console.log(`[Squad] Updated for stream ${streamId}`, sanitizedSquad);
   });
 
   // --- Poll Logic ---
