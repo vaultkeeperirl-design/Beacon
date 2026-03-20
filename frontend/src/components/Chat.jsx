@@ -26,6 +26,18 @@ const ChatMessage = memo(({ msg, onMention }) => (
 ChatMessage.displayName = 'ChatMessage';
 
 const EMOTES = ['🔥', '🚀', '💎', '🙌', '👀', '✨', '⚡', '🌉', '🛠️', '🏗️'];
+const EMOTE_LABELS = {
+  '🔥': 'Fire',
+  '🚀': 'Rocket',
+  '💎': 'Gem',
+  '🙌': 'Raising Hands',
+  '👀': 'Eyes',
+  '✨': 'Sparkles',
+  '⚡': 'Bolt',
+  '🌉': 'Bridge',
+  '🛠️': 'Tools',
+  '🏗️': 'Building'
+};
 
 const Chat = memo(function Chat({
   streamId,
@@ -170,13 +182,15 @@ const Chat = memo(function Chat({
              </button>
 
              {isEmotePickerOpen && (
-               <div className="absolute bottom-full mb-2 left-0 bg-neutral-900 border border-neutral-800 rounded-lg p-2 shadow-2xl grid grid-cols-5 gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+               <div className="absolute bottom-full mb-2 left-0 w-max bg-neutral-900 border border-neutral-800 rounded-lg p-2 shadow-2xl grid grid-cols-5 gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                  {EMOTES.map(emote => (
                    <button
                      key={emote}
                      type="button"
                      onClick={() => addEmote(emote)}
-                     className="w-8 h-8 flex items-center justify-center hover:bg-neutral-800 rounded transition-colors text-lg"
+                     className="w-8 h-8 flex items-center justify-center hover:bg-neutral-800 rounded transition-all text-lg active:scale-95"
+                     aria-label={`Insert ${EMOTE_LABELS[emote] || 'emote'}`}
+                     title={`Insert ${EMOTE_LABELS[emote] || 'emote'}`}
                    >
                      {emote}
                    </button>
