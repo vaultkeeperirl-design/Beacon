@@ -67,3 +67,7 @@
 ## 2026-04-01 - Keyboard Visibility for Hover-Based Controls
 **Learning:** UI elements that are only visible on hover (using `group-hover:opacity-100`) are inaccessible to keyboard users unless they also respond to focus. Without a focus-aware visibility trigger, keyboard users will tab into "invisible" interactive elements.
 **Action:** Always pair `group-hover:opacity-100` with `focus-within:opacity-100` on containers that hide interactive controls (like video players or overlay cards) to ensure they are visible when keyboard-focused.
+
+## 2026-04-02 - Emote Picker Accessibility and Tactile Feedback
+**Learning:** Icon-only buttons in interactive menus (like an emote picker) require descriptive `aria-label` and `title` attributes to be accessible to screen readers. Furthermore, adding micro-interactions like `active:scale-95` provides essential tactile feedback that makes the interface feel responsive and alive.
+**Action:** Always provide text descriptions for emoji or icon-only buttons and implement subtle scale transformations on active states to enhance the perceived responsiveness of interactive elements.
