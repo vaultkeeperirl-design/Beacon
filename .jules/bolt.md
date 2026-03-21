@@ -57,3 +57,7 @@
 ## 2025-11-20 - [Backend] Time-Based Caching for Mesh Traversals
 **Learning:** Performing an O(N) mesh traversal for every tip/ad break event causes CPU spikes during bursts of high activity. Since mesh metrics (bandwidth/latency) only update every 2s, calculating relayer splits more frequently is redundant.
 **Action:** Implement a time-based cache (e.g., 2s TTL) for relayer split calculations. This collapses multiple O(N) operations into a single traversal per update interval, drastically reducing CPU overhead and GC churn during high-frequency revenue events.
+
+## 2025-11-25 - [Backend] O(1) Broadcaster Presence Verification
+**Learning:** Using $O(N)$ room traversal (looping through all socket IDs in a room) to verify if another authenticated broadcaster is active during stream cleanup is a hidden scaling bottleneck. As room size grows, this check becomes increasingly expensive during high-churn events (like mass disconnects).
+**Action:** Implement a dedicated `broadcasterSessions` Map (`Map<streamId, Set<socketId>>`) to track authenticated broadcaster sessions. This enables $O(1)$ presence verification. Ensure the Map is maintained across all lifecycle events: `join-stream`, `leave-stream`, `disconnect`, `raid-stream`, and `register-auth` (including room switches).
