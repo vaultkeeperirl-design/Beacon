@@ -2,22 +2,31 @@ import React, { memo, useRef, useEffect } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import { X, Server, Wifi, Zap, Activity } from 'lucide-react';
 
-const ToggleButton = memo(function ToggleButton({ label, icon, iconColorClass, iconBgClass, checked, onChange }) {
+const ToggleButton = memo(function ToggleButton({ id, label, icon, iconColorClass, iconBgClass, checked, onChange }) {
   const IconComponent = icon;
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
+    <div
+      onClick={onChange}
+      className="flex items-center justify-between cursor-pointer p-2 -mx-2 rounded-lg hover:bg-neutral-800 transition-colors active:scale-[0.98]"
+    >
+      <div className="flex items-center gap-2 pointer-events-none">
         <div className={`p-1.5 rounded-lg ${iconBgClass} ${iconColorClass}`}>
           <IconComponent className="w-3.5 h-3.5" />
         </div>
-        <p className="text-xs font-semibold text-white">{label}</p>
+        <label htmlFor={id} className="text-xs font-semibold text-white cursor-pointer">
+          {label}
+        </label>
       </div>
       <button
-        onClick={onChange}
+        id={id}
+        onClick={(e) => {
+          e.stopPropagation();
+          onChange();
+        }}
         role="switch"
         aria-checked={checked}
         aria-label={label}
-        className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center ${
+        className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center focus-visible:ring-2 focus-visible:ring-beacon-500 outline-none ${
           checked ? 'bg-beacon-600' : 'bg-neutral-700'
         }`}
       >
@@ -104,7 +113,7 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
                   onClick={() => updateSettings({ quality: q })}
                   aria-pressed={settings.quality === q}
                   aria-label={`Select ${q} quality`}
-                  className={`px-2 py-1 rounded-lg text-xs font-medium border transition-all ${
+                  className={`px-2 py-1 rounded-lg text-xs font-medium border transition-all active:scale-95 ${
                     settings.quality === q
                       ? 'bg-beacon-600 text-white border-beacon-500 shadow-md shadow-beacon-600/20'
                       : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:bg-neutral-700 hover:text-white'
@@ -141,6 +150,7 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
           {/* Toggles */}
           <div className="space-y-3 pt-3 border-t border-neutral-800">
             <ToggleButton
+              id="low-latency-toggle"
               label="Low Latency Mode"
               icon={Zap}
               iconColorClass="text-yellow-500"
@@ -149,6 +159,7 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
               onChange={() => updateSettings({ lowLatency: !settings.lowLatency })}
             />
             <ToggleButton
+              id="stats-nerds-toggle"
               label="Stats for Nerds"
               icon={Activity}
               iconColorClass="text-purple-500"
@@ -157,6 +168,7 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
               onChange={() => updateSettings({ showStats: !settings.showStats })}
             />
             <ToggleButton
+              id="p2p-sharing-toggle"
               label="P2P Sharing"
               icon={Server}
               iconColorClass="text-green-500"
