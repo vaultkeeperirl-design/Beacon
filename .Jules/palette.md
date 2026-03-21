@@ -67,3 +67,7 @@
 ## 2026-04-01 - Keyboard Visibility for Hover-Based Controls
 **Learning:** UI elements that are only visible on hover (using `group-hover:opacity-100`) are inaccessible to keyboard users unless they also respond to focus. Without a focus-aware visibility trigger, keyboard users will tab into "invisible" interactive elements.
 **Action:** Always pair `group-hover:opacity-100` with `focus-within:opacity-100` on containers that hide interactive controls (like video players or overlay cards) to ensure they are visible when keyboard-focused.
+
+## 2026-04-05 - Clickable Configuration Rows and Tactile Feedback
+**Learning:** For configuration toggles and list-based settings, users expect the entire row to be interactive. Making only the switch icon clickable reduces the hit area and creates friction, especially on mobile. Additionally, adding subtle `active:scale` transitions provides immediate "tactile" feedback that makes the interface feel more responsive and premium.
+**Action:** Always wrap toggle switches in a clickable row container with `hover:bg` and `active:scale` feedback. Ensure proper accessibility by using `htmlFor` on the label linked to a unique `id` on the switch button, and use `e.stopPropagation()` on the button's click handler to prevent event bubbling issues.
