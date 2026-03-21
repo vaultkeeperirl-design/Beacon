@@ -1,1 +1,5 @@
-# YYYY-MM-DD\n\n## Learning\nIf `localStorage` holds an explicit `"null"` string (which is valid JSON), `JSON.parse('null')` returns primitive `null`. Passing this `null` primitive into React state, when downstream components expect an object with defaults, can cause the application to crash due to null property accesses.\n\n## Action\nAdded an explicit truthiness check `if (parsed) return parsed;` inside the `JSON.parse` try/catch block for `beacon_user_profile` in `P2PContext.jsx`. This ensures that if `parsed` is falsy (like `null`), execution continues and falls back to the default profile object defined in the code. Also added a regression test to verify this behavior.
+# Learning:
+Jest test suites (like `pnpm test:backend`) can hang and not exit properly if asynchronous operations, such as `setTimeout` calls within the tested code or the test itself, are not cleared or unreferenced.
+
+# Action:
+When using `setTimeout` in tests (like testing a timeout or delay logic), if it's not explicitly cleared with `clearTimeout` before the test finishes, you should append `.unref()` to the returned Timeout object (e.g., `const t = setTimeout(...); t.unref();`). This prevents the Node.js event loop from staying alive solely for that timeout, allowing Jest to exit cleanly.
