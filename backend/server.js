@@ -31,6 +31,9 @@ const io = new Server(server, {
 // Track active streams (where host is present)
 // Map<streamId, { title: string, tags: string, streamer: string }>
 const activeStreams = new Map();
+// Track broadcaster socket IDs per stream for O(1) presence checks
+// Map<streamId, Set<socketId>>
+const broadcasterSessions = new Map();
 // Track active polls per stream
 const activePolls = new Map();
 // Track stream squads for revenue splits
@@ -720,24 +723,43 @@ function hasPathToBroadcaster(mesh, startNodeId) {
 }
 
 /**
+ * Updates the broadcasterSessions Map when a host enters, leaves, or authenticates.
+ * @param {Socket} socket - The socket instance.
+ * @param {string} streamId - The ID of the stream.
+ * @param {boolean} isActive - Whether the broadcaster session is active.
+ */
+const updateBroadcasterSession = (socket, streamId, isActive) => {
+  if (!streamId) return;
+
+  if (isActive) {
+    if (!broadcasterSessions.has(streamId)) {
+      broadcasterSessions.set(streamId, new Set());
+    }
+    broadcasterSessions.get(streamId).add(socket.id);
+  } else if (broadcasterSessions.has(streamId)) {
+    const sessions = broadcasterSessions.get(streamId);
+    sessions.delete(socket.id);
+    if (sessions.size === 0) {
+      broadcasterSessions.delete(streamId);
+    }
+  }
+};
+
+/**
  * Checks if there is another authenticated broadcaster for the given streamId
- * in the same room, excluding the current socket.
+ * using the broadcasterSessions Map for O(1) performance.
  * @param {string} streamId - The ID of the stream.
  * @param {string} currentSocketId - The ID of the current socket to exclude.
  * @returns {boolean} True if another authenticated broadcaster is found.
  */
 const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
-  const room = io.sockets.adapter.rooms.get(streamId);
-  if (!room) return false;
+  const sessions = broadcasterSessions.get(streamId);
+  if (!sessions) return false;
 
-  for (const socketId of room) {
-    if (socketId === currentSocketId) continue;
-    const socket = io.sockets.sockets.get(socketId);
-    if (socket && socket.isAuthenticated && socket.username === streamId) {
-      return true;
-    }
+  if (sessions.has(currentSocketId)) {
+    return sessions.size > 1;
   }
-  return false;
+  return sessions.size > 0;
 };
 
 function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
@@ -897,6 +919,12 @@ io.on('connection', (socket) => {
           console.log(`[Mesh] Updated identity for ${socket.id} in stream ${streamId}`);
         }
       }
+
+      // If user is already in their own stream room, register as a broadcaster session
+      if (socket.currentRoom === username) {
+        updateBroadcasterSession(socket, username, true);
+        console.log(`[Auth] Registered broadcaster session for ${socket.id} in room ${username}`);
+      }
     });
   });
 
@@ -953,6 +981,11 @@ io.on('connection', (socket) => {
           socket.to(prevRoom).emit('stream-ended', { redirect });
        }
 
+       // Remove broadcaster session when leaving the room
+       if (socket.isAuthenticated && socket.username === prevRoom) {
+          updateBroadcasterSession(socket, prevRoom, false);
+       }
+
        socket.leave(prevRoom);
        // 🌉 Bridge: Ensure node is removed from previous mesh during room switch
        removeNodeFromMesh(prevRoom, socket.id);
@@ -975,14 +1008,18 @@ io.on('connection', (socket) => {
 
         // 🛡️ SECURITY: Only authenticated hosts can start an active stream session
         // If the user is the host, mark stream as active
-        if (socket.isAuthenticated && socket.username === streamId && !activeStreams.has(streamId)) {
-          const user = getUserStmt.get(socket.username);
-          activeStreams.set(streamId, {
-            title: 'Welcome to my stream!',
-            tags: 'Beacon, P2P, Streaming',
-            streamer: socket.username,
-            avatar: user ? user.avatar_url : null
-          });
+        if (socket.isAuthenticated && socket.username === streamId) {
+          if (!activeStreams.has(streamId)) {
+            const user = getUserStmt.get(socket.username);
+            activeStreams.set(streamId, {
+              title: 'Welcome to my stream!',
+              tags: 'Beacon, P2P, Streaming',
+              streamer: socket.username,
+              avatar: user ? user.avatar_url : null
+            });
+          }
+          // Register broadcaster session
+          updateBroadcasterSession(socket, streamId, true);
         }
 
         // Add to Mesh Tracker
@@ -1016,6 +1053,11 @@ io.on('connection', (socket) => {
           cleanupPoll(room, true);
           const redirect = getRandomStreamId();
           socket.to(room).emit('stream-ended', { redirect });
+       }
+
+       // Remove broadcaster session
+       if (socket.isAuthenticated && socket.username === room) {
+          updateBroadcasterSession(socket, room, false);
        }
 
        socket.leave(room);
@@ -1261,6 +1303,7 @@ io.on('connection', (socket) => {
       const viewersCount = io.sockets.adapter.rooms.get(streamId)?.size || 0;
 
       activeStreams.delete(streamId);
+      broadcasterSessions.delete(streamId); // Raid ends the source stream entirely
       streamSquads.delete(streamId);
       lastAdTrigger.delete(streamId);
       relayerSplitsCache.delete(streamId);
@@ -1368,6 +1411,11 @@ io.on('connection', (socket) => {
           socket.to(streamId).emit('stream-ended', { redirect });
       }
 
+      // Remove broadcaster session on disconnect
+      if (socket.isAuthenticated && socket.username === streamId) {
+          updateBroadcasterSession(socket, streamId, false);
+      }
+
       // Remove from Mesh Tracker
       removeNodeFromMesh(streamId, socket.id);
 
@@ -1411,4 +1459,13 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, io, streamSquads, JWT_SECRET };
+module.exports = {
+  server,
+  io,
+  activeStreams,
+  broadcasterSessions,
+  streamSquads,
+  updateBroadcasterSession,
+  isAnotherBroadcasterActive,
+  JWT_SECRET
+};
