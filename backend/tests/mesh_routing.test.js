@@ -80,11 +80,12 @@ describe("Mesh Network Tree Healing and Routing", () => {
               });
 
               // If it fails to heal within 2 seconds, fail the test
-              setTimeout(() => {
+              const timeout = setTimeout(() => {
                 if (!testCompleted) {
                    done(new Error("Mesh failed to heal: Orphaned viewer was not re-parented to broadcaster"));
                 }
               }, 2000);
+              timeout.unref();
             }
           };
 
