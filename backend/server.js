@@ -36,6 +36,33 @@ const activePolls = new Map();
 // Track stream squads for revenue splits
 // Map<streamId, Array<{ username: string, split: number }>>
 const streamSquads = new Map();
+// Track authenticated broadcaster socket IDs per streamId for multi-session support and O(1) checks.
+// Map<streamId, Set<socketId>>
+const broadcasterSessions = new Map();
+
+/**
+ * Updates the broadcaster sessions tracking map for a given stream and socket.
+ * @param {string} streamId - The ID of the stream.
+ * @param {string} socketId - The ID of the socket.
+ * @param {boolean} isBroadcaster - Whether the socket is an authenticated broadcaster.
+ */
+const updateBroadcasterSession = (streamId, socketId, isBroadcaster) => {
+  if (!streamId) return;
+
+  if (isBroadcaster) {
+    if (!broadcasterSessions.has(streamId)) {
+      broadcasterSessions.set(streamId, new Set());
+    }
+    broadcasterSessions.get(streamId).add(socketId);
+  } else if (broadcasterSessions.has(streamId)) {
+    const sessions = broadcasterSessions.get(streamId);
+    sessions.delete(socketId);
+    if (sessions.size === 0) {
+      broadcasterSessions.delete(streamId);
+    }
+  }
+};
+
 // ⚡ Performance Optimization: Cache relayer splits to avoid O(N) mesh traversals on every tip/ad.
 // Map<streamId, { relayers: Array, totalRelayBandwidth: number, timestamp: number }>
 const relayerSplitsCache = new Map();
@@ -727,38 +754,36 @@ function hasPathToBroadcaster(mesh, startNodeId) {
  * @returns {boolean} True if another authenticated broadcaster is found.
  */
 const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
-  const room = io.sockets.adapter.rooms.get(streamId);
-  if (!room) return false;
+  const sessions = broadcasterSessions.get(streamId);
+  if (!sessions) return false;
 
-  for (const socketId of room) {
-    if (socketId === currentSocketId) continue;
-    const socket = io.sockets.sockets.get(socketId);
-    if (socket && socket.isAuthenticated && socket.username === streamId) {
-      return true;
-    }
+  if (currentSocketId) {
+    return sessions.size > 1 || (sessions.size === 1 && !sessions.has(currentSocketId));
   }
-  return false;
+  return sessions.size > 0;
 };
 
-function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
+function addNodeToMesh(streamId, socketId, isBroadcasterRequested = false) {
   if (!streamMeshTopology.has(streamId)) {
     streamMeshTopology.set(streamId, new Map());
   }
 
   const mesh = streamMeshTopology.get(streamId);
+  const socket = io.sockets.sockets.get(socketId);
+
+  // 🛡️ SECURITY: Only authenticated users matching the streamId can be marked as broadcasters.
+  const isBroadcaster = isBroadcasterRequested && socket && socket.isAuthenticated && socket.accountName === streamId;
 
   // If node already exists, don't reset its state (children/parent)
   // This can happen on reconnects or re-joins to the same stream
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
     node.isBroadcaster = isBroadcaster;
-    const socket = io.sockets.sockets.get(socketId);
     if (socket?.accountName) node.accountName = socket.accountName;
     // Only return if it already has a parent or it's the broadcaster.
     // If it exists but has no parent (orphan), we continue to find it one.
     if (node.parent || isBroadcaster) return;
   } else {
-    const socket = io.sockets.sockets.get(socketId);
     mesh.set(socketId, {
       children: new Set(),
       parent: null,
@@ -890,10 +915,20 @@ io.on('connection', (socket) => {
       // instead of iterating over all active streams (O(N)).
       // Note: socket.currentRoom is maintained by the join/leave-stream handlers.
       const streamId = socket.currentRoom;
+
+      // Retroactively register as broadcaster if already in their own stream room
+      if (streamId === username) {
+        updateBroadcasterSession(streamId, socket.id, true);
+      }
+
       if (streamId && streamMeshTopology.has(streamId)) {
         const mesh = streamMeshTopology.get(streamId);
         if (mesh.has(socket.id)) {
           mesh.get(socket.id).accountName = username;
+          // Update broadcaster status in mesh if identity matches streamId
+          if (username === streamId) {
+            mesh.get(socket.id).isBroadcaster = true;
+          }
           console.log(`[Mesh] Updated identity for ${socket.id} in stream ${streamId}`);
         }
       }
@@ -902,16 +937,17 @@ io.on('connection', (socket) => {
 
   socket.on('join-stream', (data) => {
     const streamId = (typeof data === 'string' ? data : data?.streamId) || null;
-    const accountName = typeof data === 'object' ? data?.username : null;
+    // 🛡️ SECURITY: Prioritize authenticated identity to prevent spoofing.
+    const accountName = socket.accountName || (typeof data === 'object' ? data?.username : null) || null;
     let username = accountName;
 
     console.log(`[Join] User ${username} joining stream ${streamId}`);
 
     if (username) {
-      // Security: Prevent users from impersonating the host
-      // If the stream is active, the real host is already connected.
-      // Anyone else claiming to be the host gets a fallback name.
-      if (username === streamId && activeStreams.has(streamId)) {
+      // 🛡️ SECURITY: Prevent users from impersonating the host.
+      // If the user is NOT the authenticated broadcaster for this stream, append -viewer if name conflicts.
+      const isBroadcaster = socket.isAuthenticated && accountName === streamId;
+      if (username === streamId && activeStreams.has(streamId) && !isBroadcaster) {
         username = `${username}-viewer`;
       }
 
@@ -922,6 +958,11 @@ io.on('connection', (socket) => {
 
       socket.username = username;
       socket.accountName = accountName;
+
+      // Track broadcaster session
+      if (socket.isAuthenticated && socket.accountName === streamId) {
+        updateBroadcasterSession(streamId, socket.id, true);
+      }
 
       // Persist accountName in the mesh topology for revenue sharing if node already exists
       if (streamId && streamMeshTopology.has(streamId)) {
@@ -939,6 +980,11 @@ io.on('connection', (socket) => {
     // Leave previous room if any to prevent double counting or stale state
     if (socket.currentRoom && socket.currentRoom !== streamId) {
        const prevRoom = socket.currentRoom;
+
+       // Track broadcaster session cleanup
+       if (socket.isAuthenticated && socket.accountName === prevRoom) {
+         updateBroadcasterSession(prevRoom, socket.id, false);
+       }
 
        // 🛡️ SECURITY: Only end stream if this is the LAST authenticated broadcaster session
        // activeStreams logic: If host leaves, redirect viewers
@@ -1004,6 +1050,11 @@ io.on('connection', (socket) => {
   socket.on('leave-stream', () => {
     if (socket.currentRoom) {
        const room = socket.currentRoom;
+
+       // Track broadcaster session cleanup
+       if (socket.isAuthenticated && socket.accountName === room) {
+         updateBroadcasterSession(room, socket.id, false);
+       }
 
        // 🛡️ SECURITY: Only end stream if this is the LAST authenticated broadcaster session
        // activeStreams logic: If host leaves, redirect viewers
@@ -1262,6 +1313,7 @@ io.on('connection', (socket) => {
 
       activeStreams.delete(streamId);
       streamSquads.delete(streamId);
+      broadcasterSessions.delete(streamId);
       lastAdTrigger.delete(streamId);
       relayerSplitsCache.delete(streamId);
       cleanupPoll(streamId, true);
@@ -1354,6 +1406,11 @@ io.on('connection', (socket) => {
     const streamId = socket.currentRoom;
 
     if (streamId) {
+      // Track broadcaster session cleanup
+      if (socket.isAuthenticated && socket.accountName === streamId) {
+        updateBroadcasterSession(streamId, socket.id, false);
+      }
+
       // 🛡️ SECURITY: Only end stream if this is the LAST authenticated broadcaster session
       // activeStreams logic: If host leaves, redirect viewers
       if (socket.isAuthenticated && socket.username === streamId && activeStreams.has(streamId) && !isAnotherBroadcasterActive(streamId, socket.id)) {
@@ -1411,4 +1468,13 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, io, streamSquads, JWT_SECRET };
+module.exports = {
+  server,
+  io,
+  activeStreams,
+  streamSquads,
+  broadcasterSessions,
+  updateBroadcasterSession,
+  isAnotherBroadcasterActive,
+  JWT_SECRET
+};
