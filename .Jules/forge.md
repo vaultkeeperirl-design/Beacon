@@ -9,3 +9,9 @@
 **Learning:** Raid functionality in a streaming platform requires cross-room synchronization. Validating target stream existence in the `activeStreams` Map prevents "dead-end" raids. Calculating viewer counts via `io.sockets.adapter.rooms.get(streamId)?.size` allows for meaningful system announcements in the target stream's chat, enhancing the social connectivity of the platform.
 
 **Action:** Always validate target room state and notify the recipient when implementing features that move or redirect users between rooms or streams.
+
+## 2026-03-25 - O(1) Broadcaster Session Tracking
+
+**Learning:** Iterating through room participants (O(N)) to identify authenticated hosts is inefficient for large streams. Implementing a dedicated `broadcasterSessions` Map (`Map<streamId, Set<socketId>>`) provides O(1) performance for session lookups. This pattern also naturally supports multi-tab sessions and robust stream termination (only when the *last* authenticated host session disconnects).
+
+**Action:** Use specialized session Maps for high-frequency identity lookups in Socket.IO backends to ensure scalability and consistent multi-session behavior.

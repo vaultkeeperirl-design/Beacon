@@ -31,6 +31,9 @@ const io = new Server(server, {
 // Track active streams (where host is present)
 // Map<streamId, { title: string, tags: string, streamer: string }>
 const activeStreams = new Map();
+// ⚡ Performance Optimization: Track active broadcaster sessions per stream for O(1) state lookups.
+// Map<streamId, Set<socketId>>
+const broadcasterSessions = new Map();
 // Track active polls per stream
 const activePolls = new Map();
 // Track stream squads for revenue splits
@@ -695,6 +698,32 @@ const streamMeshTopology = new Map();
 const MAX_CHILDREN_PER_NODE = 2; // Keep it low for browser WebRTC stability
 
 /**
+ * Updates the set of active broadcaster socket IDs for a given streamId.
+ * This is used for O(1) tracking of broadcaster sessions (e.g., multi-tab support).
+ * @param {string} streamId - The ID of the stream.
+ * @param {string} socketId - The ID of the socket.
+ * @param {boolean} isJoining - True if the socket is becoming a broadcaster, false if leaving.
+ */
+const updateBroadcasterSession = (streamId, socketId, isJoining) => {
+  if (!streamId || !socketId) return;
+
+  if (isJoining) {
+    if (!broadcasterSessions.has(streamId)) {
+      broadcasterSessions.set(streamId, new Set());
+    }
+    broadcasterSessions.get(streamId).add(socketId);
+  } else {
+    if (broadcasterSessions.has(streamId)) {
+      const sessions = broadcasterSessions.get(streamId);
+      sessions.delete(socketId);
+      if (sessions.size === 0) {
+        broadcasterSessions.delete(streamId);
+      }
+    }
+  }
+};
+
+/**
  * Verifies if a node has a valid upstream path to the broadcaster.
  * Prevents mesh cycles and ensures viewers only connect to viable nodes.
  * @param {Map} mesh - The mesh topology for the stream.
@@ -722,22 +751,19 @@ function hasPathToBroadcaster(mesh, startNodeId) {
 /**
  * Checks if there is another authenticated broadcaster for the given streamId
  * in the same room, excluding the current socket.
+ * ⚡ Performance Optimization: O(1) lookup using the broadcasterSessions Map.
  * @param {string} streamId - The ID of the stream.
  * @param {string} currentSocketId - The ID of the current socket to exclude.
  * @returns {boolean} True if another authenticated broadcaster is found.
  */
 const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
-  const room = io.sockets.adapter.rooms.get(streamId);
-  if (!room) return false;
+  const sessions = broadcasterSessions.get(streamId);
+  if (!sessions) return false;
 
-  for (const socketId of room) {
-    if (socketId === currentSocketId) continue;
-    const socket = io.sockets.sockets.get(socketId);
-    if (socket && socket.isAuthenticated && socket.username === streamId) {
-      return true;
-    }
+  if (sessions.has(currentSocketId)) {
+    return sessions.size > 1;
   }
-  return false;
+  return sessions.size > 0;
 };
 
 function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
@@ -897,6 +923,12 @@ io.on('connection', (socket) => {
           console.log(`[Mesh] Updated identity for ${socket.id} in stream ${streamId}`);
         }
       }
+
+      // If the authenticated user is the host of their current room, track the broadcaster session
+      if (streamId === username) {
+        updateBroadcasterSession(streamId, socket.id, true);
+        console.log(`[Auth] Registered broadcaster session for ${username} in ${streamId}`);
+      }
     });
   });
 
@@ -942,15 +974,20 @@ io.on('connection', (socket) => {
 
        // 🛡️ SECURITY: Only end stream if this is the LAST authenticated broadcaster session
        // activeStreams logic: If host leaves, redirect viewers
-       if (socket.isAuthenticated && socket.username === prevRoom && activeStreams.has(prevRoom) && !isAnotherBroadcasterActive(prevRoom, socket.id)) {
-          activeStreams.delete(prevRoom);
-          streamSquads.delete(prevRoom);
-          lastAdTrigger.delete(prevRoom);
-          relayerSplitsCache.delete(prevRoom);
-          // Check for active poll and clear its timeout
-          cleanupPoll(prevRoom, true);
-          const redirect = getRandomStreamId();
-          socket.to(prevRoom).emit('stream-ended', { redirect });
+       if (socket.isAuthenticated && socket.username === prevRoom) {
+          // Update O(1) session tracker before checking if another broadcaster is active
+          updateBroadcasterSession(prevRoom, socket.id, false);
+
+          if (activeStreams.has(prevRoom) && !isAnotherBroadcasterActive(prevRoom, socket.id)) {
+             activeStreams.delete(prevRoom);
+             streamSquads.delete(prevRoom);
+             lastAdTrigger.delete(prevRoom);
+             relayerSplitsCache.delete(prevRoom);
+             // Check for active poll and clear its timeout
+             cleanupPoll(prevRoom, true);
+             const redirect = getRandomStreamId();
+             socket.to(prevRoom).emit('stream-ended', { redirect });
+          }
        }
 
        socket.leave(prevRoom);
@@ -975,14 +1012,19 @@ io.on('connection', (socket) => {
 
         // 🛡️ SECURITY: Only authenticated hosts can start an active stream session
         // If the user is the host, mark stream as active
-        if (socket.isAuthenticated && socket.username === streamId && !activeStreams.has(streamId)) {
-          const user = getUserStmt.get(socket.username);
-          activeStreams.set(streamId, {
-            title: 'Welcome to my stream!',
-            tags: 'Beacon, P2P, Streaming',
-            streamer: socket.username,
-            avatar: user ? user.avatar_url : null
-          });
+        if (socket.isAuthenticated && socket.username === streamId) {
+          // Track broadcaster session for O(1) state management
+          updateBroadcasterSession(streamId, socket.id, true);
+
+          if (!activeStreams.has(streamId)) {
+            const user = getUserStmt.get(socket.username);
+            activeStreams.set(streamId, {
+              title: 'Welcome to my stream!',
+              tags: 'Beacon, P2P, Streaming',
+              streamer: socket.username,
+              avatar: user ? user.avatar_url : null
+            });
+          }
         }
 
         // Add to Mesh Tracker
@@ -1007,15 +1049,20 @@ io.on('connection', (socket) => {
 
        // 🛡️ SECURITY: Only end stream if this is the LAST authenticated broadcaster session
        // activeStreams logic: If host leaves, redirect viewers
-       if (socket.isAuthenticated && socket.username === room && activeStreams.has(room) && !isAnotherBroadcasterActive(room, socket.id)) {
-          activeStreams.delete(room);
-          streamSquads.delete(room);
-          lastAdTrigger.delete(room);
-          relayerSplitsCache.delete(room);
-          // Check for active poll and clear its timeout
-          cleanupPoll(room, true);
-          const redirect = getRandomStreamId();
-          socket.to(room).emit('stream-ended', { redirect });
+       if (socket.isAuthenticated && socket.username === room) {
+          // Update O(1) session tracker before checking if another broadcaster is active
+          updateBroadcasterSession(room, socket.id, false);
+
+          if (activeStreams.has(room) && !isAnotherBroadcasterActive(room, socket.id)) {
+             activeStreams.delete(room);
+             streamSquads.delete(room);
+             lastAdTrigger.delete(room);
+             relayerSplitsCache.delete(room);
+             // Check for active poll and clear its timeout
+             cleanupPoll(room, true);
+             const redirect = getRandomStreamId();
+             socket.to(room).emit('stream-ended', { redirect });
+          }
        }
 
        socket.leave(room);
@@ -1260,6 +1307,9 @@ io.on('connection', (socket) => {
     if (activeStreams.has(streamId)) {
       const viewersCount = io.sockets.adapter.rooms.get(streamId)?.size || 0;
 
+      // Clean up broadcaster session for the raiding stream
+      updateBroadcasterSession(streamId, socket.id, false);
+
       activeStreams.delete(streamId);
       streamSquads.delete(streamId);
       lastAdTrigger.delete(streamId);
@@ -1356,16 +1406,21 @@ io.on('connection', (socket) => {
     if (streamId) {
       // 🛡️ SECURITY: Only end stream if this is the LAST authenticated broadcaster session
       // activeStreams logic: If host leaves, redirect viewers
-      if (socket.isAuthenticated && socket.username === streamId && activeStreams.has(streamId) && !isAnotherBroadcasterActive(streamId, socket.id)) {
-          activeStreams.delete(streamId);
-          streamSquads.delete(streamId);
-          lastAdTrigger.delete(streamId);
-          relayerSplitsCache.delete(streamId);
+      if (socket.isAuthenticated && socket.username === streamId) {
+          // Update O(1) session tracker before checking if another broadcaster is active
+          updateBroadcasterSession(streamId, socket.id, false);
 
-          cleanupPoll(streamId, true);
+          if (activeStreams.has(streamId) && !isAnotherBroadcasterActive(streamId, socket.id)) {
+              activeStreams.delete(streamId);
+              streamSquads.delete(streamId);
+              lastAdTrigger.delete(streamId);
+              relayerSplitsCache.delete(streamId);
 
-          const redirect = getRandomStreamId();
-          socket.to(streamId).emit('stream-ended', { redirect });
+              cleanupPoll(streamId, true);
+
+              const redirect = getRandomStreamId();
+              socket.to(streamId).emit('stream-ended', { redirect });
+          }
       }
 
       // Remove from Mesh Tracker
@@ -1411,4 +1466,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, io, streamSquads, JWT_SECRET };
+module.exports = { server, io, activeStreams, streamSquads, broadcasterSessions, updateBroadcasterSession, JWT_SECRET, isAnotherBroadcasterActive };
