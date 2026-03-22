@@ -2,18 +2,31 @@ import React, { memo, useRef, useEffect } from 'react';
 import { useP2PSettings } from '../context/P2PContext';
 import { X, Server, Wifi, Zap, Activity } from 'lucide-react';
 
-const ToggleButton = memo(function ToggleButton({ label, icon, iconColorClass, iconBgClass, checked, onChange }) {
+const ToggleButton = memo(function ToggleButton({ id, label, icon, iconColorClass, iconBgClass, checked, onChange }) {
   const IconComponent = icon;
   return (
-    <div className="flex items-center justify-between">
+    <div
+      onClick={onChange}
+      className="flex items-center justify-between cursor-pointer hover:bg-neutral-800/50 active:scale-[0.98] transition-all p-1.5 -mx-1.5 rounded-lg group"
+    >
       <div className="flex items-center gap-2">
         <div className={`p-1.5 rounded-lg ${iconBgClass} ${iconColorClass}`}>
           <IconComponent className="w-3.5 h-3.5" />
         </div>
-        <p className="text-xs font-semibold text-white">{label}</p>
+        <label
+          htmlFor={id}
+          className="text-xs font-semibold text-white cursor-pointer"
+          onClick={(e) => e.preventDefault()}
+        >
+          {label}
+        </label>
       </div>
       <button
-        onClick={onChange}
+        id={id}
+        onClick={(e) => {
+          e.stopPropagation();
+          onChange();
+        }}
         role="switch"
         aria-checked={checked}
         aria-label={label}
@@ -141,6 +154,7 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
           {/* Toggles */}
           <div className="space-y-3 pt-3 border-t border-neutral-800">
             <ToggleButton
+              id="low-latency-toggle"
               label="Low Latency Mode"
               icon={Zap}
               iconColorClass="text-yellow-500"
@@ -149,6 +163,7 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
               onChange={() => updateSettings({ lowLatency: !settings.lowLatency })}
             />
             <ToggleButton
+              id="stats-toggle"
               label="Stats for Nerds"
               icon={Activity}
               iconColorClass="text-purple-500"
@@ -157,6 +172,7 @@ const StreamSettings = memo(function StreamSettings({ isOpen, onClose }) {
               onChange={() => updateSettings({ showStats: !settings.showStats })}
             />
             <ToggleButton
+              id="p2p-toggle"
               label="P2P Sharing"
               icon={Server}
               iconColorClass="text-green-500"
