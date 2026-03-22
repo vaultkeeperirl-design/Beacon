@@ -31,6 +31,9 @@ const io = new Server(server, {
 // Track active streams (where host is present)
 // Map<streamId, { title: string, tags: string, streamer: string }>
 const activeStreams = new Map();
+// Track broadcaster socket IDs per streamId to provide O(1) session lookups.
+// Map<streamId, Set<socketId>>
+const broadcasterSessions = new Map();
 // Track active polls per stream
 const activePolls = new Map();
 // Track stream squads for revenue splits
@@ -107,6 +110,30 @@ const getRandomStreamId = () => {
     i++;
   }
   return null;
+};
+
+/**
+ * Updates the broadcasterSessions tracking map.
+ * @param {string} streamId - The ID of the stream.
+ * @param {string} socketId - The ID of the broadcaster socket.
+ * @param {boolean} isJoining - True if joining/authenticating, false if leaving/disconnecting.
+ */
+const updateBroadcasterSession = (streamId, socketId, isJoining) => {
+  if (!streamId) return;
+  if (isJoining) {
+    if (!broadcasterSessions.has(streamId)) {
+      broadcasterSessions.set(streamId, new Set());
+    }
+    broadcasterSessions.get(streamId).add(socketId);
+  } else {
+    if (broadcasterSessions.has(streamId)) {
+      const sessions = broadcasterSessions.get(streamId);
+      sessions.delete(socketId);
+      if (sessions.size === 0) {
+        broadcasterSessions.delete(streamId);
+      }
+    }
+  }
 };
 
 /**
@@ -722,22 +749,18 @@ function hasPathToBroadcaster(mesh, startNodeId) {
 /**
  * Checks if there is another authenticated broadcaster for the given streamId
  * in the same room, excluding the current socket.
+ * ⚡ Performance Optimization: Uses broadcasterSessions Map for O(1) lookup.
  * @param {string} streamId - The ID of the stream.
  * @param {string} currentSocketId - The ID of the current socket to exclude.
  * @returns {boolean} True if another authenticated broadcaster is found.
  */
 const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
-  const room = io.sockets.adapter.rooms.get(streamId);
-  if (!room) return false;
-
-  for (const socketId of room) {
-    if (socketId === currentSocketId) continue;
-    const socket = io.sockets.sockets.get(socketId);
-    if (socket && socket.isAuthenticated && socket.username === streamId) {
-      return true;
-    }
+  const sessions = broadcasterSessions.get(streamId);
+  if (!sessions) return false;
+  if (sessions.has(currentSocketId)) {
+    return sessions.size > 1;
   }
-  return false;
+  return sessions.size > 0;
 };
 
 function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
@@ -886,15 +909,27 @@ io.on('connection', (socket) => {
       socket.join(`user:${username}`);
 
       // Retroactively update mesh topology with the new identity
-      // ⚡ Performance Optimization: Using socket.currentRoom for targeted update (O(1))
-      // instead of iterating over all active streams (O(N)).
-      // Note: socket.currentRoom is maintained by the join/leave-stream handlers.
       const streamId = socket.currentRoom;
       if (streamId && streamMeshTopology.has(streamId)) {
         const mesh = streamMeshTopology.get(streamId);
         if (mesh.has(socket.id)) {
           mesh.get(socket.id).accountName = username;
           console.log(`[Mesh] Updated identity for ${socket.id} in stream ${streamId}`);
+        }
+      }
+
+      // 🛠️ Forge: If user is the host and in their own room, activate broadcaster session
+      if (streamId && username === streamId) {
+        updateBroadcasterSession(streamId, socket.id, true);
+        if (!activeStreams.has(streamId)) {
+          const user = getUserStmt.get(username);
+          activeStreams.set(streamId, {
+            title: 'Welcome to my stream!',
+            tags: 'Beacon, P2P, Streaming',
+            streamer: username,
+            avatar: user ? user.avatar_url : null
+          });
+          io.to(streamId).emit('stream-info-updated', activeStreams.get(streamId));
         }
       }
     });
@@ -940,6 +975,11 @@ io.on('connection', (socket) => {
     if (socket.currentRoom && socket.currentRoom !== streamId) {
        const prevRoom = socket.currentRoom;
 
+       // ⚡ Performance Optimization: Update broadcaster session tracking
+       if (socket.isAuthenticated && socket.username === prevRoom) {
+         updateBroadcasterSession(prevRoom, socket.id, false);
+       }
+
        // 🛡️ SECURITY: Only end stream if this is the LAST authenticated broadcaster session
        // activeStreams logic: If host leaves, redirect viewers
        if (socket.isAuthenticated && socket.username === prevRoom && activeStreams.has(prevRoom) && !isAnotherBroadcasterActive(prevRoom, socket.id)) {
@@ -975,14 +1015,17 @@ io.on('connection', (socket) => {
 
         // 🛡️ SECURITY: Only authenticated hosts can start an active stream session
         // If the user is the host, mark stream as active
-        if (socket.isAuthenticated && socket.username === streamId && !activeStreams.has(streamId)) {
-          const user = getUserStmt.get(socket.username);
-          activeStreams.set(streamId, {
-            title: 'Welcome to my stream!',
-            tags: 'Beacon, P2P, Streaming',
-            streamer: socket.username,
-            avatar: user ? user.avatar_url : null
-          });
+        if (socket.isAuthenticated && socket.username === streamId) {
+          updateBroadcasterSession(streamId, socket.id, true);
+          if (!activeStreams.has(streamId)) {
+            const user = getUserStmt.get(socket.username);
+            activeStreams.set(streamId, {
+              title: 'Welcome to my stream!',
+              tags: 'Beacon, P2P, Streaming',
+              streamer: socket.username,
+              avatar: user ? user.avatar_url : null
+            });
+          }
         }
 
         // Add to Mesh Tracker
@@ -1004,6 +1047,11 @@ io.on('connection', (socket) => {
   socket.on('leave-stream', () => {
     if (socket.currentRoom) {
        const room = socket.currentRoom;
+
+       // ⚡ Performance Optimization: Update broadcaster session tracking
+       if (socket.isAuthenticated && socket.username === room) {
+         updateBroadcasterSession(room, socket.id, false);
+       }
 
        // 🛡️ SECURITY: Only end stream if this is the LAST authenticated broadcaster session
        // activeStreams logic: If host leaves, redirect viewers
@@ -1260,6 +1308,7 @@ io.on('connection', (socket) => {
     if (activeStreams.has(streamId)) {
       const viewersCount = io.sockets.adapter.rooms.get(streamId)?.size || 0;
 
+      updateBroadcasterSession(streamId, socket.id, false);
       activeStreams.delete(streamId);
       streamSquads.delete(streamId);
       lastAdTrigger.delete(streamId);
@@ -1354,6 +1403,11 @@ io.on('connection', (socket) => {
     const streamId = socket.currentRoom;
 
     if (streamId) {
+      // ⚡ Performance Optimization: Update broadcaster session tracking
+      if (socket.isAuthenticated && socket.username === streamId) {
+        updateBroadcasterSession(streamId, socket.id, false);
+      }
+
       // 🛡️ SECURITY: Only end stream if this is the LAST authenticated broadcaster session
       // activeStreams logic: If host leaves, redirect viewers
       if (socket.isAuthenticated && socket.username === streamId && activeStreams.has(streamId) && !isAnotherBroadcasterActive(streamId, socket.id)) {
@@ -1411,4 +1465,13 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, io, streamSquads, JWT_SECRET };
+module.exports = {
+  server,
+  io,
+  activeStreams,
+  streamSquads,
+  broadcasterSessions,
+  updateBroadcasterSession,
+  JWT_SECRET,
+  isAnotherBroadcasterActive
+};
