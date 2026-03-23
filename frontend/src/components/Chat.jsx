@@ -25,7 +25,18 @@ const ChatMessage = memo(({ msg, onMention }) => (
 
 ChatMessage.displayName = 'ChatMessage';
 
-const EMOTES = ['🔥', '🚀', '💎', '🙌', '👀', '✨', '⚡', '🌉', '🛠️', '🏗️'];
+const EMOTES = [
+  { char: '🔥', label: 'Fire' },
+  { char: '🚀', label: 'Rocket' },
+  { char: '💎', label: 'Gem' },
+  { char: '🙌', label: 'Hands' },
+  { char: '👀', label: 'Eyes' },
+  { char: '✨', label: 'Sparkles' },
+  { char: '⚡', label: 'Lightning' },
+  { char: '🌉', label: 'Bridge' },
+  { char: '🛠️', label: 'Tools' },
+  { char: '🏗️', label: 'Construction' },
+];
 
 const Chat = memo(function Chat({
   streamId,
@@ -170,15 +181,17 @@ const Chat = memo(function Chat({
              </button>
 
              {isEmotePickerOpen && (
-               <div className="absolute bottom-full mb-2 left-0 bg-neutral-900 border border-neutral-800 rounded-lg p-2 shadow-2xl grid grid-cols-5 gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+               <div className="absolute bottom-full mb-2 left-0 bg-neutral-900 border border-neutral-800 rounded-lg p-2 shadow-2xl grid grid-cols-5 gap-1 z-50 animate-in fade-in zoom-in-95 duration-100 w-max">
                  {EMOTES.map(emote => (
                    <button
-                     key={emote}
+                     key={emote.char}
                      type="button"
-                     onClick={() => addEmote(emote)}
+                     onClick={() => addEmote(emote.char)}
                      className="w-8 h-8 flex items-center justify-center hover:bg-neutral-800 rounded transition-colors text-lg"
+                     aria-label={`Insert ${emote.label}`}
+                     title={`Insert ${emote.label}`}
                    >
-                     {emote}
+                     {emote.char}
                    </button>
                  ))}
                </div>
