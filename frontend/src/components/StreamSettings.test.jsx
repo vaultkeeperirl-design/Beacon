@@ -47,6 +47,44 @@ describe('StreamSettings', () => {
     expect(statsSwitch).toHaveAttribute('aria-checked', 'true');
   });
 
+  it('updates settings when clicking the row container', () => {
+    render(
+      <P2PProvider>
+        <StreamSettings isOpen={true} onClose={() => {}} />
+      </P2PProvider>
+    );
+
+    const statsSwitch = screen.getByLabelText('Stats for Nerds');
+    const row = statsSwitch.closest('.flex.items-center.justify-between');
+
+    // Click the row itself
+    fireEvent.click(row);
+    expect(statsSwitch).toHaveAttribute('aria-checked', 'true');
+
+    // Click again to toggle off
+    fireEvent.click(row);
+    expect(statsSwitch).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('updates settings when clicking the label specifically', () => {
+    render(
+      <P2PProvider>
+        <StreamSettings isOpen={true} onClose={() => {}} />
+      </P2PProvider>
+    );
+
+    const statsSwitch = screen.getByLabelText('Stats for Nerds');
+    const label = screen.getByText('Stats for Nerds');
+
+    // Click the label specifically
+    fireEvent.click(label);
+    expect(statsSwitch).toHaveAttribute('aria-checked', 'true');
+
+    // Click again to toggle off
+    fireEvent.click(label);
+    expect(statsSwitch).toHaveAttribute('aria-checked', 'false');
+  });
+
   it('calls onClose when close button is clicked', () => {
     const onClose = vi.fn();
     render(
