@@ -68,7 +68,7 @@ export default function Broadcast() {
     return () => {
       setCurrentStreamId(null);
     };
-  }, [isLive, username, setCurrentStreamId, socket]);
+  }, [isLive, username, setCurrentStreamId, socket, title, tags]);
 
   useEffect(() => {
     async function startCamera() {
