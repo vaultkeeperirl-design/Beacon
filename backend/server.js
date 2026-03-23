@@ -723,6 +723,23 @@ const streamMeshTopology = new Map();
 const MAX_CHILDREN_PER_NODE = 2; // Keep it low for browser WebRTC stability
 
 /**
+ * 🌉 Bridge: Mesh Healing Logic
+ * Scans for orphan nodes (no parent) and attempts to assign them a parent.
+ * This is triggered whenever a new potential parent joins or is promoted.
+ * @param {string} streamId - The ID of the stream to heal.
+ */
+function healOrphans(streamId) {
+  const mesh = streamMeshTopology.get(streamId);
+  if (!mesh) return;
+
+  for (const [socketId, node] of mesh.entries()) {
+    if (!node.isBroadcaster && !node.parent) {
+      addNodeToMesh(streamId, socketId, false);
+    }
+  }
+}
+
+/**
  * Verifies if a node has a valid upstream path to the broadcaster.
  * Prevents mesh cycles and ensures viewers only connect to viable nodes.
  * @param {Map} mesh - The mesh topology for the stream.
@@ -776,12 +793,29 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   // This can happen on reconnects or re-joins to the same stream
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
+
+    // 🌉 Bridge: Handle promotion to broadcaster
+    if (isBroadcaster && !node.isBroadcaster) {
+      console.log(`[Mesh] Promoting node ${socketId} to broadcaster in stream ${streamId}`);
+      if (node.parent) {
+        const parentNode = mesh.get(node.parent);
+        if (parentNode) parentNode.children.delete(socketId);
+        node.parent = null;
+      }
+    }
+
     node.isBroadcaster = isBroadcaster;
     const socket = io.sockets.sockets.get(socketId);
     if (socket?.accountName) node.accountName = socket.accountName;
+
     // Only return if it already has a parent or it's the broadcaster.
     // If it exists but has no parent (orphan), we continue to find it one.
-    if (node.parent || isBroadcaster) return;
+    if (node.parent || isBroadcaster) {
+      // 🌉 Bridge: Even if this node doesn't need a parent, it might now BE a good parent
+      // for others. Trigger orphan healing.
+      healOrphans(streamId);
+      return;
+    }
   } else {
     const socket = io.sockets.sockets.get(socketId);
     mesh.set(socketId, {
@@ -794,6 +828,7 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   }
 
   if (isBroadcaster) {
+    healOrphans(streamId);
     return; // Broadcaster has no parent
   }
 
@@ -909,6 +944,11 @@ io.on('connection', (socket) => {
 
       // Join user-specific room for real-time wallet updates
       socket.join(`user:${username}`);
+
+      // 🌉 Bridge: Ensure node is promoted to broadcaster in mesh upon authentication
+      if (socket.currentRoom === username) {
+        addNodeToMesh(username, socket.id, true);
+      }
 
       // ⚡ Performance Optimization: Track broadcaster session if already in own stream room
       if (socket.currentRoom === username) {
@@ -1469,6 +1509,7 @@ module.exports = {
   io,
   activeStreams,
   streamSquads,
+  streamMeshTopology,
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
