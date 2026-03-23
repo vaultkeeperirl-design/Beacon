@@ -71,14 +71,14 @@ const VideoPlayer = memo(function VideoPlayer({ stream, streamUrl = "https://com
     videoRef.current.muted = isMuted;
   }, [isMuted]);
 
-  const handleVolumeChange = (newVolume) => {
+  const handleVolumeChange = useCallback((newVolume) => {
       setVolume(newVolume);
       if (newVolume > 0 && isMuted) {
           setIsMuted(false);
       } else if (newVolume === 0 && !isMuted) {
           setIsMuted(true);
       }
-  };
+  }, [isMuted]);
 
   // Keyboard Shortcuts
   useVideoShortcuts({ setIsPlaying, setIsMuted, toggleFullscreen, volume, handleVolumeChange, containerRef });

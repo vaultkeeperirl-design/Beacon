@@ -263,7 +263,7 @@ export const useP2PStream = (isBroadcaster = false, localStream = null, streamId
       socket.off('ice-candidate', handleIceCandidate);
       socket.off('user-disconnected', handleUserDisconnected);
     };
-  }, [socket, isConnected, isBroadcaster, localStream, streamId, createPeerConnection, addPeer, removePeer]);
+  }, [socket, isConnected, isBroadcaster, localStream, streamId, createPeerConnection, addPeer, removePeer, initiateChildConnection]);
 
   // Poll RTCPeerConnection stats periodically
   useEffect(() => {
