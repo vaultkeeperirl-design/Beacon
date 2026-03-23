@@ -723,6 +723,23 @@ const streamMeshTopology = new Map();
 const MAX_CHILDREN_PER_NODE = 2; // Keep it low for browser WebRTC stability
 
 /**
+ * Scans the mesh for a given stream and attempts to assign parents to any orphan nodes.
+ * This ensures the topology stays connected even if nodes join before the broadcaster
+ * or high-quality relays become available.
+ * @param {string} streamId - The ID of the stream to heal.
+ */
+function healOrphans(streamId) {
+  if (!streamMeshTopology.has(streamId)) return;
+  const mesh = streamMeshTopology.get(streamId);
+
+  for (const [socketId, node] of mesh.entries()) {
+    if (!node.isBroadcaster && !node.parent) {
+      addNodeToMesh(streamId, socketId, false);
+    }
+  }
+}
+
+/**
  * Verifies if a node has a valid upstream path to the broadcaster.
  * Prevents mesh cycles and ensures viewers only connect to viable nodes.
  * @param {Map} mesh - The mesh topology for the stream.
@@ -776,12 +793,26 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   // This can happen on reconnects or re-joins to the same stream
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
+
+    // Handle promotion: If we are now a broadcaster, we must not have a parent
+    if (isBroadcaster && !node.isBroadcaster) {
+      if (node.parent) {
+        const parentNode = mesh.get(node.parent);
+        if (parentNode) parentNode.children.delete(socketId);
+        node.parent = null;
+      }
+    }
+
     node.isBroadcaster = isBroadcaster;
     const socket = io.sockets.sockets.get(socketId);
     if (socket?.accountName) node.accountName = socket.accountName;
     // Only return if it already has a parent or it's the broadcaster.
     // If it exists but has no parent (orphan), we continue to find it one.
-    if (node.parent || isBroadcaster) return;
+    if (node.parent || isBroadcaster) {
+      // If we just became a potential parent, heal other orphans
+      if (isBroadcaster) healOrphans(streamId);
+      return;
+    }
   } else {
     const socket = io.sockets.sockets.get(socketId);
     mesh.set(socketId, {
@@ -876,9 +907,13 @@ function removeNodeFromMesh(streamId, socketId) {
   for (const orphanId of orphans) {
     if (mesh.has(orphanId)) {
       mesh.get(orphanId).parent = null;
-      // Re-add to find a new parent
-      addNodeToMesh(streamId, orphanId, false);
     }
+  }
+
+  // 🌉 Bridge: Re-parent orphans after the node is removed from the mesh.
+  // This ensures the removal is atomic before attempting to assign new parents.
+  if (orphans.length > 0) {
+    healOrphans(streamId);
   }
 }
 
@@ -910,9 +945,23 @@ io.on('connection', (socket) => {
       // Join user-specific room for real-time wallet updates
       socket.join(`user:${username}`);
 
-      // ⚡ Performance Optimization: Track broadcaster session if already in own stream room
+      // 🌉 Bridge: Retroactive host activation.
+      // If a user authenticates and is already in their own stream room, we initialize
+      // the stream in activeStreams and promote the node to broadcaster in the mesh.
       if (socket.currentRoom === username) {
         updateBroadcasterSession(username, socket.id, true);
+
+        if (!activeStreams.has(username)) {
+          const user = getUserStmt.get(username);
+          activeStreams.set(username, {
+            title: 'Welcome to my stream!',
+            tags: 'Beacon, P2P, Streaming',
+            streamer: username,
+            avatar: user ? user.avatar_url : null
+          });
+          console.log(`[Auth] Retroactively started stream for ${username}`);
+        }
+        addNodeToMesh(username, socket.id, true);
       }
 
       // Retroactively update mesh topology with the new identity
@@ -1128,6 +1177,13 @@ io.on('connection', (socket) => {
       // Security: Cap uploadMbps to realistic maximum (100 Mbps) to prevent infinite credit exploits
       const validUploadMbps = Math.min(Number(uploadMbps) || 0, 100);
       const earnedCredits = validUploadMbps * 0.01; // Match frontend logic
+
+      // 🌉 Bridge: If this node is now contributing bandwidth, attempt to heal orphans.
+      // This allows it to immediately be assigned children who were previously orphaned.
+      const node = streamMeshTopology.get(streamId)?.get(socket.id);
+      if (node && node.metrics && node.metrics.uploadMbps === 0 && validUploadMbps > 0) {
+        setTimeout(() => healOrphans(streamId), 0);
+      }
 
       // ⚡ Performance Optimization:
       // Use specialized single-user transaction to avoid 'squad' and 'updates' array allocations.
@@ -1472,5 +1528,9 @@ module.exports = {
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  streamMeshTopology,
+  addNodeToMesh,
+  removeNodeFromMesh,
+  healOrphans
 };
