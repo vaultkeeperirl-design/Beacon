@@ -765,6 +765,31 @@ const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
   return sessions.size > 0;
 };
 
+/**
+ * Scans for nodes without a parent in a stream's mesh and attempts to assign them one.
+ * This is triggered when a new potential parent (broadcaster or relay) is added or promoted.
+ * @param {string} streamId - The ID of the stream.
+ */
+function healOrphans(streamId) {
+  if (!streamMeshTopology.has(streamId)) return;
+
+  const mesh = streamMeshTopology.get(streamId);
+  const orphans = [];
+
+  for (const [socketId, node] of mesh.entries()) {
+    if (!node.isBroadcaster && !node.parent) {
+      orphans.push(socketId);
+    }
+  }
+
+  if (orphans.length > 0) {
+    console.log(`[Mesh] Found ${orphans.length} orphans in stream ${streamId}. Attempting to heal...`);
+    for (const orphanId of orphans) {
+      addNodeToMesh(streamId, orphanId, false);
+    }
+  }
+}
+
 function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   if (!streamMeshTopology.has(streamId)) {
     streamMeshTopology.set(streamId, new Map());
@@ -794,6 +819,8 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   }
 
   if (isBroadcaster) {
+    // 🌉 Bridge: When a new broadcaster is added, try to heal any orphans that joined before them.
+    healOrphans(streamId);
     return; // Broadcaster has no parent
   }
 
@@ -819,9 +846,14 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
       if (node.isBroadcaster) {
         score = 10000; // Extremely high score to prefer direct connection
       } else {
+        // 🌉 Bridge: Only allow nodes with positive upload bandwidth to act as relays.
+        // This prevents "dead" nodes from being assigned children they cannot serve.
+        if (!node.metrics || !(node.metrics.uploadMbps > 0)) {
+           continue;
+        }
         // Higher score is better: High upload speed and low latency
-        const uploadScore = (node.metrics && node.metrics.uploadMbps > 0) ? node.metrics.uploadMbps * 10 : 5;
-        const latencyPenalty = (node.metrics && node.metrics.latency > 0) ? node.metrics.latency : 100;
+        const uploadScore = node.metrics.uploadMbps * 10;
+        const latencyPenalty = (node.metrics.latency > 0) ? node.metrics.latency : 100;
         score = (uploadScore / latencyPenalty) * 100;
       }
 
@@ -1147,9 +1179,16 @@ io.on('connection', (socket) => {
       const node = mesh.get(socket.id);
 
       if (node && node.metrics) {
+        const wasViableRelay = node.metrics.uploadMbps > 0;
         // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
         node.metrics.latency = latency;
         node.metrics.uploadMbps = uploadMbps;
+
+        // 🌉 Bridge: If this node just became a viable relay, try to heal orphans.
+        if (!wasViableRelay && uploadMbps > 0) {
+           console.log(`[Mesh] Node ${socket.id} promoted to viable relay. Healing orphans...`);
+           healOrphans(streamId);
+        }
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
@@ -1469,8 +1508,12 @@ module.exports = {
   io,
   activeStreams,
   streamSquads,
+  streamMeshTopology,
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  addNodeToMesh,
+  removeNodeFromMesh,
+  healOrphans
 };
