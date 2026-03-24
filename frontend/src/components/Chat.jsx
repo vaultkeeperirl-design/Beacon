@@ -26,6 +26,18 @@ const ChatMessage = memo(({ msg, onMention }) => (
 ChatMessage.displayName = 'ChatMessage';
 
 const EMOTES = ['🔥', '🚀', '💎', '🙌', '👀', '✨', '⚡', '🌉', '🛠️', '🏗️'];
+const EMOTE_LABELS = {
+  '🔥': 'Insert Fire',
+  '🚀': 'Insert Rocket',
+  '💎': 'Insert Gem',
+  '🙌': 'Insert Hands Up',
+  '👀': 'Insert Eyes',
+  '✨': 'Insert Sparkles',
+  '⚡': 'Insert Bolt',
+  '🌉': 'Insert Bridge',
+  '🛠️': 'Insert Tools',
+  '🏗️': 'Insert Construction',
+};
 
 const Chat = memo(function Chat({
   streamId,
@@ -177,6 +189,8 @@ const Chat = memo(function Chat({
                      type="button"
                      onClick={() => addEmote(emote)}
                      className="w-8 h-8 flex items-center justify-center hover:bg-neutral-800 rounded transition-colors text-lg"
+                     aria-label={EMOTE_LABELS[emote]}
+                     title={EMOTE_LABELS[emote]}
                    >
                      {emote}
                    </button>

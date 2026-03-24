@@ -67,3 +67,7 @@
 ## 2026-04-01 - Keyboard Visibility for Hover-Based Controls
 **Learning:** UI elements that are only visible on hover (using `group-hover:opacity-100`) are inaccessible to keyboard users unless they also respond to focus. Without a focus-aware visibility trigger, keyboard users will tab into "invisible" interactive elements.
 **Action:** Always pair `group-hover:opacity-100` with `focus-within:opacity-100` on containers that hide interactive controls (like video players or overlay cards) to ensure they are visible when keyboard-focused.
+
+## 2026-04-05 - Chat Emote Picker Accessibility
+**Learning:** Icon-only emote buttons in the chat interface must include `aria-label` and `title` attributes using a standard descriptive mapping (e.g., '🔥' -> 'Insert Fire') to ensure accessibility for screen readers and provide visual tooltips.
+**Action:** Always provide descriptive `aria-label` and `title` attributes for each emoji in a picker to ensure accessibility and provide informative tooltips.
