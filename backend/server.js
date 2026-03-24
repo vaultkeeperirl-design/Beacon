@@ -748,6 +748,23 @@ function hasPathToBroadcaster(mesh, startNodeId) {
 }
 
 /**
+ * Scans for orphan nodes (no parent) in the mesh and attempts to find them one.
+ * Should be called when a potential new parent (broadcaster or relay) is added or promoted.
+ * @param {string} streamId - The ID of the stream.
+ */
+function healOrphans(streamId) {
+  if (!streamMeshTopology.has(streamId)) return;
+  const mesh = streamMeshTopology.get(streamId);
+
+  for (const [socketId, node] of mesh.entries()) {
+    if (!node.isBroadcaster && !node.parent) {
+      console.log(`[Mesh] Attempting to heal orphan ${socketId} in stream ${streamId}`);
+      addNodeToMesh(streamId, socketId, false);
+    }
+  }
+}
+
+/**
  * Checks if there is another authenticated broadcaster for the given streamId
  * in the same room, excluding the current socket.
  * ⚡ Performance Optimization: Uses broadcasterSessions Map for O(1) lookup.
@@ -776,9 +793,23 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   // This can happen on reconnects or re-joins to the same stream
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
+    const previouslyBroadcaster = node.isBroadcaster;
     node.isBroadcaster = isBroadcaster;
     const socket = io.sockets.sockets.get(socketId);
     if (socket?.accountName) node.accountName = socket.accountName;
+
+    // Handle Promotion: If a node is promoted to broadcaster, it must lose its parent
+    if (isBroadcaster && !previouslyBroadcaster) {
+      if (node.parent) {
+        const parentNode = mesh.get(node.parent);
+        if (parentNode) parentNode.children.delete(socketId);
+        console.log(`[Mesh] Promoted ${socketId} to broadcaster, cleared parent ${node.parent}`);
+        node.parent = null;
+      }
+      // New broadcaster available, heal orphans
+      healOrphans(streamId);
+    }
+
     // Only return if it already has a parent or it's the broadcaster.
     // If it exists but has no parent (orphan), we continue to find it one.
     if (node.parent || isBroadcaster) return;
@@ -794,6 +825,8 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   }
 
   if (isBroadcaster) {
+    // 🌉 Bridge: New potential parent (broadcaster) joined, attempt to heal orphans
+    healOrphans(streamId);
     return; // Broadcaster has no parent
   }
 
@@ -913,6 +946,20 @@ io.on('connection', (socket) => {
       // ⚡ Performance Optimization: Track broadcaster session if already in own stream room
       if (socket.currentRoom === username) {
         updateBroadcasterSession(username, socket.id, true);
+
+        // 🛠️ Forge: Retroactive host activation
+        // If the user authenticates and is already in their own stream room, initialize the stream.
+        if (!activeStreams.has(username)) {
+           const user = getUserStmt.get(username);
+           activeStreams.set(username, {
+              title: 'Welcome to my stream!',
+              tags: 'Beacon, P2P, Streaming',
+              streamer: username,
+              avatar: user ? user.avatar_url : null
+           });
+        }
+        // Promote to broadcaster in the mesh
+        addNodeToMesh(username, socket.id, true);
       }
 
       // Retroactively update mesh topology with the new identity
@@ -1148,8 +1195,15 @@ io.on('connection', (socket) => {
 
       if (node && node.metrics) {
         // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
+        const previousUploadMbps = node.metrics.uploadMbps;
         node.metrics.latency = latency;
         node.metrics.uploadMbps = uploadMbps;
+
+        // 🌉 Bridge: If a node starts contributing (uploadMbps > 0), it's a potential new parent.
+        // Heal orphans to allow them to connect to this new relay.
+        if (uploadMbps > 0 && previousUploadMbps === 0) {
+          healOrphans(streamId);
+        }
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
@@ -1469,8 +1523,12 @@ module.exports = {
   io,
   activeStreams,
   streamSquads,
+  streamMeshTopology,
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  addNodeToMesh,
+  removeNodeFromMesh,
+  healOrphans
 };
