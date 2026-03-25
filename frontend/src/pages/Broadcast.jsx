@@ -328,14 +328,20 @@ export default function Broadcast() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="stream-notification" className="block text-sm font-medium text-neutral-400 mb-2">Go Live Notification</label>
-                     <textarea
-                       id="stream-notification"
-                       value={notification}
-                       onChange={(e) => setNotification(e.target.value)}
-                       className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-beacon-500 outline-none transition-colors shadow-inner h-24 resize-none"
-                       placeholder="Tell your followers what you're up to..."
-                     ></textarea>
+                    <div className="flex justify-between items-center mb-2">
+                      <label htmlFor="stream-notification" className="block text-sm font-medium text-neutral-400">Go Live Notification</label>
+                      <span className={`text-[10px] font-mono font-bold ${notification.length >= 130 ? 'text-beacon-500' : 'text-neutral-600'}`}>
+                        {notification.length}/140
+                      </span>
+                    </div>
+                    <textarea
+                      id="stream-notification"
+                      value={notification}
+                      onChange={(e) => setNotification(e.target.value)}
+                      maxLength={140}
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-beacon-500 outline-none transition-colors shadow-inner h-24 resize-none"
+                      placeholder="Tell your followers what you're up to..."
+                    ></textarea>
                   </div>
                </div>
                <div className="mt-6 flex items-center justify-end gap-4">
