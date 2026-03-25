@@ -723,6 +723,24 @@ const streamMeshTopology = new Map();
 const MAX_CHILDREN_PER_NODE = 2; // Keep it low for browser WebRTC stability
 
 /**
+ * Scans the mesh for a specific stream and attempts to find a parent for any node
+ * that currently lacks one (orphans). This is called when a new potential parent
+ * (broadcaster or high-speed relay) is added or updated.
+ * @param {string} streamId - The ID of the stream.
+ */
+function healOrphans(streamId) {
+  if (!streamMeshTopology.has(streamId)) return;
+  const mesh = streamMeshTopology.get(streamId);
+
+  for (const [socketId, node] of mesh.entries()) {
+    if (!node.isBroadcaster && !node.parent) {
+      console.log(`[Mesh] Attempting to heal orphan: ${socketId} in stream ${streamId}`);
+      addNodeToMesh(streamId, socketId, false);
+    }
+  }
+}
+
+/**
  * Verifies if a node has a valid upstream path to the broadcaster.
  * Prevents mesh cycles and ensures viewers only connect to viable nodes.
  * @param {Map} mesh - The mesh topology for the stream.
@@ -776,9 +794,23 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   // This can happen on reconnects or re-joins to the same stream
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
+    const wasBroadcaster = node.isBroadcaster;
     node.isBroadcaster = isBroadcaster;
+
+    // 🌉 Bridge: Handle promotion to broadcaster by severing existing parent relationship
+    if (isBroadcaster && !wasBroadcaster && node.parent) {
+      const oldParent = mesh.get(node.parent);
+      if (oldParent) oldParent.children.delete(socketId);
+      node.parent = null;
+      console.log(`[Mesh] Node ${socketId} promoted to broadcaster in ${streamId}`);
+    }
+
     const socket = io.sockets.sockets.get(socketId);
     if (socket?.accountName) node.accountName = socket.accountName;
+
+    // 🌉 Bridge: Always trigger healing when a broadcaster is added or updated
+    if (isBroadcaster) healOrphans(streamId);
+
     // Only return if it already has a parent or it's the broadcaster.
     // If it exists but has no parent (orphan), we continue to find it one.
     if (node.parent || isBroadcaster) return;
@@ -791,6 +823,9 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
       accountName: socket?.accountName || null,
       metrics: { latency: 0, uploadMbps: 0 }
     });
+
+    // 🌉 Bridge: Trigger healing when a new potential parent joins
+    if (isBroadcaster) healOrphans(streamId);
   }
 
   if (isBroadcaster) {
@@ -807,6 +842,12 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
 
   for (const [id, node] of mesh.entries()) {
     if (id !== socketId && node.children.size < MAX_CHILDREN_PER_NODE) {
+      // 🌉 Bridge: Ensure potential parent is a broadcaster or has upload capacity.
+      // This prevents assignment to 'dead' nodes that joined but haven't started relaying.
+      if (!node.isBroadcaster && (!node.metrics || (node.metrics.uploadMbps || 0) <= 0)) {
+        continue;
+      }
+
       // 🌉 Bridge: Ensure potential parent has a valid path to the broadcaster.
       // This prevents cycles and ensures the tree is always connected to the root.
       if (!node.isBroadcaster && !hasPathToBroadcaster(mesh, id)) {
@@ -1147,9 +1188,17 @@ io.on('connection', (socket) => {
       const node = mesh.get(socket.id);
 
       if (node && node.metrics) {
+        // 🌉 Bridge: Trigger healing if node transitions from zero upload to positive (new relay potential)
+        const wasInactive = (node.metrics.uploadMbps || 0) === 0;
+
         // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
         node.metrics.latency = latency;
         node.metrics.uploadMbps = uploadMbps;
+
+        if (wasInactive && uploadMbps > 0) {
+           console.log(`[Mesh] Node ${socket.id} started relaying. Triggering healOrphans...`);
+           healOrphans(streamId);
+        }
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
@@ -1469,8 +1518,12 @@ module.exports = {
   io,
   activeStreams,
   streamSquads,
+  streamMeshTopology,
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  addNodeToMesh,
+  removeNodeFromMesh,
+  healOrphans
 };
