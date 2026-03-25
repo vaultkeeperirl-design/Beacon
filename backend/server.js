@@ -794,6 +794,9 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   }
 
   if (isBroadcaster) {
+    // 🌉 Bridge: When a broadcaster is added or promoted, attempt to heal any existing orphans
+    // that may have joined before the broadcaster was active.
+    healOrphans(streamId);
     return; // Broadcaster has no parent
   }
 
@@ -846,6 +849,22 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
     console.log(`[Mesh] Assigned ${socketId} as child of ${assignedParent} in stream ${streamId}`);
   } else {
     console.log(`[Mesh] Warning: Could not find parent for ${socketId} in stream ${streamId}`);
+  }
+}
+
+/**
+ * Scans for orphan nodes (no parent) and attempts to assign them a parent.
+ * This is triggered when a new potential parent joins or is promoted.
+ * @param {string} streamId - The ID of the stream.
+ */
+function healOrphans(streamId) {
+  if (!streamMeshTopology.has(streamId)) return;
+  const mesh = streamMeshTopology.get(streamId);
+
+  for (const [socketId, node] of mesh.entries()) {
+    if (!node.isBroadcaster && !node.parent) {
+      addNodeToMesh(streamId, socketId, false);
+    }
   }
 }
 
@@ -1147,9 +1166,17 @@ io.on('connection', (socket) => {
       const node = mesh.get(socket.id);
 
       if (node && node.metrics) {
+        const previousUpload = node.metrics.uploadMbps || 0;
         // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
         node.metrics.latency = latency;
         node.metrics.uploadMbps = uploadMbps;
+
+        // 🌉 Bridge: If a node transitions from 0 upload to a positive value,
+        // it can now serve as a parent for others. Trigger healing to assign orphans.
+        if (previousUpload === 0 && uploadMbps > 0) {
+           console.log(`[Mesh] Node ${socket.id} in stream ${streamId} promoted to relay (upload: ${uploadMbps}Mbps). Healing orphans...`);
+           healOrphans(streamId);
+        }
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
@@ -1472,5 +1499,9 @@ module.exports = {
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  streamMeshTopology,
+  healOrphans,
+  addNodeToMesh,
+  removeNodeFromMesh
 };
