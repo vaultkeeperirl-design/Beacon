@@ -776,12 +776,27 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   // This can happen on reconnects or re-joins to the same stream
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
-    node.isBroadcaster = isBroadcaster;
+
+    // Handle broadcaster promotion: sever parent relationship if node becomes broadcaster
+    if (isBroadcaster && !node.isBroadcaster) {
+      if (node.parent) {
+        const parentNode = mesh.get(node.parent);
+        if (parentNode) parentNode.children.delete(socketId);
+        node.parent = null;
+      }
+      node.isBroadcaster = true;
+    }
+
     const socket = io.sockets.sockets.get(socketId);
     if (socket?.accountName) node.accountName = socket.accountName;
+
     // Only return if it already has a parent or it's the broadcaster.
     // If it exists but has no parent (orphan), we continue to find it one.
-    if (node.parent || isBroadcaster) return;
+    if (node.parent || node.isBroadcaster) {
+      // ⚡ Performance Optimization: Trigger healing after successful promotion to broadcaster
+      if (isBroadcaster) healOrphans(streamId);
+      return;
+    }
   } else {
     const socket = io.sockets.sockets.get(socketId);
     mesh.set(socketId, {
@@ -844,8 +859,28 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
     // Notify the parent to initiate a connection with the new child
     io.to(assignedParent).emit('p2p-initiate-connection', { childId: socketId });
     console.log(`[Mesh] Assigned ${socketId} as child of ${assignedParent} in stream ${streamId}`);
+
+    // ⚡ Performance Optimization: Trigger healing in case this new node is a potential relay (upload > 0)
+    healOrphans(streamId);
   } else {
     console.log(`[Mesh] Warning: Could not find parent for ${socketId} in stream ${streamId}`);
+  }
+}
+
+/**
+ * Scans the mesh for nodes without a parent (orphans) and attempts to assign them one.
+ * This is triggered when new capacity (broadcaster or relay) is added or promoted.
+ * @param {string} streamId - The ID of the stream.
+ */
+function healOrphans(streamId) {
+  if (!streamMeshTopology.has(streamId)) return;
+  const mesh = streamMeshTopology.get(streamId);
+
+  for (const [socketId, node] of mesh.entries()) {
+    if (!node.isBroadcaster && !node.parent) {
+      console.log(`[Mesh] Attempting to heal orphan node ${socketId} in stream ${streamId}`);
+      addNodeToMesh(streamId, socketId, false);
+    }
   }
 }
 
@@ -913,6 +948,20 @@ io.on('connection', (socket) => {
       // ⚡ Performance Optimization: Track broadcaster session if already in own stream room
       if (socket.currentRoom === username) {
         updateBroadcasterSession(username, socket.id, true);
+
+        // 🌉 Bridge: Retroactive host activation. If this socket was already in its own room,
+        // we promote it to broadcaster in the mesh and initialize activeStreams.
+        if (!activeStreams.has(username)) {
+          const user = getUserStmt.get(username);
+          activeStreams.set(username, {
+            title: 'Welcome to my stream!',
+            tags: 'Beacon, P2P, Streaming',
+            streamer: username,
+            avatar: user ? user.avatar_url : null
+          });
+          console.log(`[Auth] Retroactively activated stream for ${username}`);
+        }
+        addNodeToMesh(username, socket.id, true);
       }
 
       // Retroactively update mesh topology with the new identity
@@ -1147,9 +1196,15 @@ io.on('connection', (socket) => {
       const node = mesh.get(socket.id);
 
       if (node && node.metrics) {
+        const prevUpload = node.metrics.uploadMbps || 0;
         // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
         node.metrics.latency = latency;
         node.metrics.uploadMbps = uploadMbps;
+
+        // ⚡ Performance Optimization: Trigger healing if this node just became a viable relay
+        if (prevUpload === 0 && uploadMbps > 0) {
+          healOrphans(streamId);
+        }
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
@@ -1469,8 +1524,15 @@ module.exports = {
   io,
   activeStreams,
   streamSquads,
+  streamMeshTopology,
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  addNodeToMesh,
+  removeNodeFromMesh,
+  healOrphans,
+  updateSingleUserCreditsTx,
+  revenueTx,
+  distributeCreditsToStream
 };
