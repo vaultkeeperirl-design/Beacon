@@ -765,6 +765,22 @@ const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
   return sessions.size > 0;
 };
 
+/**
+ * Scans for orphan nodes (no parent) and attempts to assign them a parent.
+ * This ensures the mesh stays connected as new capacity becomes available.
+ * @param {string} streamId - The ID of the stream.
+ */
+function healOrphans(streamId) {
+  const mesh = streamMeshTopology.get(streamId);
+  if (!mesh) return;
+
+  for (const [socketId, node] of mesh.entries()) {
+    if (!node.isBroadcaster && !node.parent) {
+      addNodeToMesh(streamId, socketId, false);
+    }
+  }
+}
+
 function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   if (!streamMeshTopology.has(streamId)) {
     streamMeshTopology.set(streamId, new Map());
@@ -776,12 +792,29 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   // This can happen on reconnects or re-joins to the same stream
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
+
+    // 🌉 Bridge: Handle broadcaster promotion
+    // If a node was previously a viewer and is now the broadcaster,
+    // we must clear its parent relationship to prevent cycles.
+    if (isBroadcaster && !node.isBroadcaster) {
+      if (node.parent) {
+        const prevParent = mesh.get(node.parent);
+        if (prevParent) prevParent.children.delete(socketId);
+        node.parent = null;
+      }
+    }
+
     node.isBroadcaster = isBroadcaster;
     const socket = io.sockets.sockets.get(socketId);
     if (socket?.accountName) node.accountName = socket.accountName;
     // Only return if it already has a parent or it's the broadcaster.
     // If it exists but has no parent (orphan), we continue to find it one.
-    if (node.parent || isBroadcaster) return;
+    if (node.parent || isBroadcaster) {
+      // 🌉 Bridge: Even if it's already in the mesh, its arrival or promotion
+      // might provide capacity for others.
+      healOrphans(streamId);
+      return;
+    }
   } else {
     const socket = io.sockets.sockets.get(socketId);
     mesh.set(socketId, {
@@ -794,6 +827,7 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   }
 
   if (isBroadcaster) {
+    healOrphans(streamId);
     return; // Broadcaster has no parent
   }
 
@@ -811,6 +845,12 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
       // This prevents cycles and ensures the tree is always connected to the root.
       if (!node.isBroadcaster && !hasPathToBroadcaster(mesh, id)) {
         console.log(`[Mesh] Skipping potential parent ${id} for ${socketId} - no path to broadcaster`);
+        continue;
+      }
+
+      // 🌉 Bridge: Only assign children to nodes that have proven upload bandwidth.
+      // This prevents 'dead' or zero-contribution nodes from stalling the mesh.
+      if (!node.isBroadcaster && (!node.metrics || !node.metrics.uploadMbps || node.metrics.uploadMbps <= 0)) {
         continue;
       }
 
@@ -910,9 +950,24 @@ io.on('connection', (socket) => {
       // Join user-specific room for real-time wallet updates
       socket.join(`user:${username}`);
 
-      // ⚡ Performance Optimization: Track broadcaster session if already in own stream room
+      // 🌉 Bridge: Retroactive host activation.
+      // If the user authenticates while already in their own stream room,
+      // we must initialize the stream and promote them in the mesh.
       if (socket.currentRoom === username) {
         updateBroadcasterSession(username, socket.id, true);
+
+        if (!activeStreams.has(username)) {
+          const user = getUserStmt.get(username);
+          activeStreams.set(username, {
+            title: 'Welcome to my stream!',
+            tags: 'Beacon, P2P, Streaming',
+            streamer: username,
+            avatar: user ? user.avatar_url : null
+          });
+          console.log(`[Auth] Retroactively activated stream for ${username}`);
+        }
+
+        addNodeToMesh(username, socket.id, true);
       }
 
       // Retroactively update mesh topology with the new identity
@@ -1112,8 +1167,13 @@ io.on('connection', (socket) => {
   });
 
   // --- Metrics Reporting ---
-  socket.on('metrics-report', ({ streamId, latency, uploadMbps }) => {
+  socket.on('metrics-report', (data) => {
+    const { streamId } = data;
     if (!streamId || socket.currentRoom !== streamId) return;
+
+    // 🛡️ SECURITY: Explicitly cast and validate numeric inputs to prevent type-coercion exploits
+    const latency = Number(data.latency) || 0;
+    const uploadMbps = Number(data.uploadMbps) || 0;
 
     // Rate limiting: 1 report per 1000ms to prevent infinite credit exploits
     const now = Date.now();
@@ -1126,7 +1186,7 @@ io.on('connection', (socket) => {
     // Credit Economy Calculation
     if (socket.isAuthenticated && socket.accountName && uploadMbps > 0) {
       // Security: Cap uploadMbps to realistic maximum (100 Mbps) to prevent infinite credit exploits
-      const validUploadMbps = Math.min(Number(uploadMbps) || 0, 100);
+      const validUploadMbps = Math.min(uploadMbps, 100);
       const earnedCredits = validUploadMbps * 0.01; // Match frontend logic
 
       // ⚡ Performance Optimization:
@@ -1148,8 +1208,15 @@ io.on('connection', (socket) => {
 
       if (node && node.metrics) {
         // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
+        const prevUpload = node.metrics.uploadMbps || 0;
         node.metrics.latency = latency;
         node.metrics.uploadMbps = uploadMbps;
+
+        // 🌉 Bridge: Trigger orphan healing if this node just became a viable parent
+        if (prevUpload <= 0 && uploadMbps > 0) {
+          console.log(`[Mesh] Node ${socket.id} in stream ${streamId} became a viable parent. Healing orphans...`);
+          healOrphans(streamId);
+        }
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
@@ -1469,8 +1536,12 @@ module.exports = {
   io,
   activeStreams,
   streamSquads,
+  streamMeshTopology,
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  addNodeToMesh,
+  removeNodeFromMesh,
+  healOrphans
 };
