@@ -124,7 +124,7 @@ describe('Chat Component - Optimistic UI', () => {
     fireEvent.change(input, { target: { value: 'Hello ' } });
     fireEvent.click(emoteButton);
 
-    const fireEmote = screen.getByText('🔥');
+    const fireEmote = screen.getByRole('button', { name: /Insert Fire/i });
     fireEvent.click(fireEmote);
 
     expect(input.value).toBe('Hello 🔥');
