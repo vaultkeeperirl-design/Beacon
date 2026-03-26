@@ -124,4 +124,27 @@ describe('Follows API Endpoints', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Not following this user');
   });
+
+  test('POST /api/users/:username/follow - Deleted follower user returns 404', async () => {
+    db.prepare('DELETE FROM Users WHERE username = ?').run(followerUsername);
+
+    const res = await request(server)
+      .post(`/api/users/${followeeUsername}/follow`)
+      .set('Authorization', `Bearer ${followerToken}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('Follower not found');
+  });
+
+  test('DELETE /api/users/:username/follow - Deleted follower user returns 404', async () => {
+    // Ensure the user is deleted for this test specifically to prevent test interdependency
+    db.prepare('DELETE FROM Users WHERE username = ?').run(followerUsername);
+
+    const res = await request(server)
+      .delete(`/api/users/${followeeUsername}/follow`)
+      .set('Authorization', `Bearer ${followerToken}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('Follower not found');
+  });
 });

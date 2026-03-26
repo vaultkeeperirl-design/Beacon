@@ -562,6 +562,7 @@ app.post('/api/users/:username/follow', authenticateToken, (req, res) => {
     const follower = getUserStmt.get(followerUsername);
     const followee = getUserStmt.get(followeeUsername);
 
+    if (!follower) return res.status(404).json({ error: 'Follower not found' });
     if (!followee) return res.status(404).json({ error: 'User to follow not found' });
 
     // Check if already following
@@ -589,6 +590,7 @@ app.delete('/api/users/:username/follow', authenticateToken, (req, res) => {
     const follower = getUserStmt.get(followerUsername);
     const followee = getUserStmt.get(followeeUsername);
 
+    if (!follower) return res.status(404).json({ error: 'Follower not found' });
     if (!followee) return res.status(404).json({ error: 'User to unfollow not found' });
 
     // Check if actually following
