@@ -5,3 +5,5 @@ pnpm-debug.log
 .env
 coverage/
 backend/beacon.db
+backend/beacon.db-shm
+backend/beacon.db-wal

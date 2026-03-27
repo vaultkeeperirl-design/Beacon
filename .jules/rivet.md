@@ -1,1 +1,9 @@
-# YYYY-MM-DD\n\n## Learning\nIf `localStorage` holds an explicit `"null"` string (which is valid JSON), `JSON.parse('null')` returns primitive `null`. Passing this `null` primitive into React state, when downstream components expect an object with defaults, can cause the application to crash due to null property accesses.\n\n## Action\nAdded an explicit truthiness check `if (parsed) return parsed;` inside the `JSON.parse` try/catch block for `beacon_user_profile` in `P2PContext.jsx`. This ensures that if `parsed` is falsy (like `null`), execution continues and falls back to the default profile object defined in the code. Also added a regression test to verify this behavior.
+# 2026-03-27
+
+## Learning:
+If a user account is deleted from the backend but their JWT remains valid, certain authenticated endpoints (like follow/unfollow) can crash the server if they attempt to lookup the `follower` object and do not check for `null` before accessing `follower.id`. Furthermore, SQLite temporary files (`beacon.db-shm` and `beacon.db-wal`) shouldn't be tracked in version control.
+
+## Action:
+- Added null checks in `backend/server.js` for the `follower` object in both the POST and DELETE `/api/users/:username/follow` endpoints, returning a `404 User not found` instead.
+- Added regression tests in `backend/tests/follows.test.js` to ensure this gracefully handles deleted users with active tokens.
+- Added `backend/beacon.db-shm` and `backend/beacon.db-wal` to `.gitignore` to prevent version tracking of SQLite artifacts.

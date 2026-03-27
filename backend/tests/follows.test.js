@@ -124,4 +124,42 @@ describe('Follows API Endpoints', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Not following this user');
   });
+
+  test('POST /api/users/:username/follow - Deleted user with valid token does not crash server', async () => {
+    const deletedUsername = `deleted_${Date.now()}`;
+    const insertStmt = db.prepare('INSERT INTO Users (username, password_hash, avatar_url, bio, credits) VALUES (?, ?, ?, ?, ?)');
+    const info = insertStmt.run(deletedUsername, 'hash', null, 'bio', 0);
+
+    // Generate valid token
+    const token = jwt.sign({ id: info.lastInsertRowid, username: deletedUsername }, JWT_SECRET, { expiresIn: '1h' });
+
+    // Delete the user from the database
+    db.prepare('DELETE FROM Users WHERE id = ?').run(info.lastInsertRowid);
+
+    // Attempt to follow someone
+    const res = await request(server)
+      .post(`/api/users/${followeeUsername}/follow`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('User not found');
+  });
+
+  test('DELETE /api/users/:username/follow - Deleted user with valid token does not crash server', async () => {
+    const deletedUsername = `deleted2_${Date.now()}`;
+    const insertStmt = db.prepare('INSERT INTO Users (username, password_hash, avatar_url, bio, credits) VALUES (?, ?, ?, ?, ?)');
+    const info = insertStmt.run(deletedUsername, 'hash', null, 'bio', 0);
+
+    const token = jwt.sign({ id: info.lastInsertRowid, username: deletedUsername }, JWT_SECRET, { expiresIn: '1h' });
+
+    db.prepare('DELETE FROM Users WHERE id = ?').run(info.lastInsertRowid);
+
+    // Attempt to unfollow someone
+    const res = await request(server)
+      .delete(`/api/users/${followeeUsername}/follow`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('User not found');
+  });
 });
