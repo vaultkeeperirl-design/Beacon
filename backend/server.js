@@ -69,9 +69,11 @@ const updateBroadcasterSession = (streamId, socketId, add) => {
 };
 
 // Prepared SQL Statements for Performance
-const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
-const deductCreditsStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ?');
-const deductCreditsWithCheckStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ? AND credits >= ?');
+// ⚡ Performance Optimization: Using RETURNING clause to combine UPDATE and SELECT into a single atomic operation.
+// This reduces database round-trips for high-frequency credit operations.
+const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ? RETURNING credits');
+const deductCreditsStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ? RETURNING credits');
+const deductCreditsWithCheckStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ? AND credits >= ? RETURNING credits');
 const getCreditsStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
 const getUserStmt = db.prepare('SELECT id, username, avatar_url, bio, follower_count, (SELECT COUNT(*) FROM Follows WHERE follower_id = Users.id) AS following_count FROM Users WHERE username = ?');
 const getUserWithHashStmt = db.prepare('SELECT * FROM Users WHERE username = ?');
@@ -148,8 +150,8 @@ const distributeCredits = (squad, totalAmount) => {
   for (const member of squad) {
     const cut = totalAmount * (member.split / 100);
     if (cut > 0) {
-      updateCreditsStmt.run(cut, member.username);
-      const row = getCreditsStmt.get(member.username);
+      // ⚡ Performance Optimization: Using atomic RETURNING clause
+      const row = updateCreditsStmt.get(cut, member.username);
       if (row) {
         updates.push({ username: member.username, balance: row.credits });
       }
@@ -167,15 +169,15 @@ const distributeCreditsTx = db.transaction(distributeCredits);
 // ⚡ Performance Optimization: Specialized transaction for high-frequency single-user credit updates.
 // This avoids the overhead of creating 'squad' and 'updates' arrays in metrics-report.
 const updateSingleUserCreditsTx = db.transaction((username, amount) => {
-  updateCreditsStmt.run(amount, username);
-  return getCreditsStmt.get(username);
+  // ⚡ Performance Optimization: Atomic update and select using RETURNING
+  return updateCreditsStmt.get(amount, username);
 });
 
 const revenueTx = db.transaction((tipper, amount, squad, relayers, relayTotal, squadTotal) => {
   if (tipper) {
-    // ⚡ Performance Optimization: Merge balance check and deduction into a single atomic UPDATE.
-    const info = deductCreditsWithCheckStmt.run(amount, tipper, amount);
-    if (info.changes === 0) {
+    // ⚡ Performance Optimization: Merge balance check and deduction into a single atomic UPDATE with RETURNING.
+    const row = deductCreditsWithCheckStmt.get(amount, tipper, amount);
+    if (!row) {
       throw new Error('INSUFFICIENT_FUNDS');
     }
   }
@@ -723,6 +725,23 @@ const streamMeshTopology = new Map();
 const MAX_CHILDREN_PER_NODE = 2; // Keep it low for browser WebRTC stability
 
 /**
+ * Scans the mesh for orphan nodes (no parent) and attempts to assign them a parent.
+ * This is triggered whenever a potential parent (broadcaster or relay) is added or promoted.
+ * @param {string} streamId - The ID of the stream.
+ */
+function healOrphans(streamId) {
+  if (!streamMeshTopology.has(streamId)) return;
+  const mesh = streamMeshTopology.get(streamId);
+
+  for (const [socketId, node] of mesh.entries()) {
+    if (!node.isBroadcaster && !node.parent) {
+      // ⚡ Performance Optimization: Pass triggerHeal=false to prevent recursion loops
+      addNodeToMesh(streamId, socketId, false, false);
+    }
+  }
+}
+
+/**
  * Verifies if a node has a valid upstream path to the broadcaster.
  * Prevents mesh cycles and ensures viewers only connect to viable nodes.
  * @param {Map} mesh - The mesh topology for the stream.
@@ -765,23 +784,37 @@ const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
   return sessions.size > 0;
 };
 
-function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
+function addNodeToMesh(streamId, socketId, isBroadcaster = false, triggerHeal = true) {
   if (!streamMeshTopology.has(streamId)) {
     streamMeshTopology.set(streamId, new Map());
   }
 
   const mesh = streamMeshTopology.get(streamId);
 
-  // If node already exists, don't reset its state (children/parent)
-  // This can happen on reconnects or re-joins to the same stream
+  // If node already exists, handle potential promotion or re-parenting
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
-    node.isBroadcaster = isBroadcaster;
+
+    // 🛠️ Forge: Handle Broadcaster Promotion
+    // If a node was previously a viewer but is now the broadcaster,
+    // it must sever its existing parent relationship.
+    if (isBroadcaster && !node.isBroadcaster) {
+      if (node.parent) {
+        const oldParent = mesh.get(node.parent);
+        if (oldParent) oldParent.children.delete(socketId);
+        node.parent = null;
+      }
+      node.isBroadcaster = true;
+      // When a new broadcaster is promoted, trigger mesh healing
+      if (triggerHeal) healOrphans(streamId);
+    }
+
     const socket = io.sockets.sockets.get(socketId);
     if (socket?.accountName) node.accountName = socket.accountName;
+
     // Only return if it already has a parent or it's the broadcaster.
     // If it exists but has no parent (orphan), we continue to find it one.
-    if (node.parent || isBroadcaster) return;
+    if (node.parent || node.isBroadcaster) return;
   } else {
     const socket = io.sockets.sockets.get(socketId);
     mesh.set(socketId, {
@@ -794,6 +827,8 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   }
 
   if (isBroadcaster) {
+    // 🛠️ Forge: New broadcaster joined, trigger healing to connect existing orphans
+    if (triggerHeal) healOrphans(streamId);
     return; // Broadcaster has no parent
   }
 
@@ -844,6 +879,9 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
     // Notify the parent to initiate a connection with the new child
     io.to(assignedParent).emit('p2p-initiate-connection', { childId: socketId });
     console.log(`[Mesh] Assigned ${socketId} as child of ${assignedParent} in stream ${streamId}`);
+
+    // 🛠️ Forge: Trigger healing when a new potential parent joins or is assigned a child
+    if (triggerHeal) healOrphans(streamId);
   } else {
     console.log(`[Mesh] Warning: Could not find parent for ${socketId} in stream ${streamId}`);
   }
@@ -910,9 +948,25 @@ io.on('connection', (socket) => {
       // Join user-specific room for real-time wallet updates
       socket.join(`user:${username}`);
 
-      // ⚡ Performance Optimization: Track broadcaster session if already in own stream room
+      // 🛠️ Forge: Retroactive host activation
+      // If a user authenticates and is already in their own stream room,
+      // initialize the stream in activeStreams and promote their node in the mesh.
       if (socket.currentRoom === username) {
+        // ⚡ Performance Optimization: Track broadcaster session
         updateBroadcasterSession(username, socket.id, true);
+
+        if (!activeStreams.has(username)) {
+           const user = getUserStmt.get(username);
+           activeStreams.set(username, {
+             title: 'Welcome to my stream!',
+             tags: 'Beacon, P2P, Streaming',
+             streamer: username,
+             avatar: user ? user.avatar_url : null
+           });
+        }
+
+        // Promote to broadcaster in mesh
+        addNodeToMesh(username, socket.id, true);
       }
 
       // Retroactively update mesh topology with the new identity
@@ -1125,6 +1179,16 @@ io.on('connection', (socket) => {
     // 🛡️ SECURITY: Only authenticated nodes earn credits
     // Credit Economy Calculation
     if (socket.isAuthenticated && socket.accountName && uploadMbps > 0) {
+      // 🛠️ Forge: If this node just started contributing bandwidth, trigger mesh healing
+      // to ensure it can be assigned children and help the network.
+      if (streamMeshTopology.has(streamId)) {
+        const mesh = streamMeshTopology.get(streamId);
+        const node = mesh.get(socket.id);
+        if (node && (!node.metrics || node.metrics.uploadMbps === 0)) {
+           healOrphans(streamId);
+        }
+      }
+
       // Security: Cap uploadMbps to realistic maximum (100 Mbps) to prevent infinite credit exploits
       const validUploadMbps = Math.min(Number(uploadMbps) || 0, 100);
       const earnedCredits = validUploadMbps * 0.01; // Match frontend logic
@@ -1469,8 +1533,16 @@ module.exports = {
   io,
   activeStreams,
   streamSquads,
+  streamMeshTopology,
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  addNodeToMesh,
+  removeNodeFromMesh,
+  healOrphans,
+  updateSingleUserCreditsTx,
+  revenueTx,
+  distributeCredits,
+  distributeCreditsToStream
 };

@@ -43,7 +43,7 @@ export default function Channel() {
           banner: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=1920', // Keep mock banner
           bio: res.data.bio || "Tech enthusiast, coder, and gamer.",
           followers: res.data.follower_count || 0,
-          following: 150,
+          following: res.data.following_count || 0,
           socials: { twitter: "@" + res.data.username, github: 'github.com/' + res.data.username, website: 'example.com' }
         });
       })
