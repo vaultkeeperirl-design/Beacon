@@ -27,6 +27,19 @@ ChatMessage.displayName = 'ChatMessage';
 
 const EMOTES = ['🔥', '🚀', '💎', '🙌', '👀', '✨', '⚡', '🌉', '🛠️', '🏗️'];
 
+const EMOTE_LABELS = {
+  '🔥': 'Fire',
+  '🚀': 'Rocket',
+  '💎': 'Diamond',
+  '🙌': 'Raising Hands',
+  '👀': 'Eyes',
+  '✨': 'Sparkles',
+  '⚡': 'Bolt',
+  '🌉': 'Bridge',
+  '🛠️': 'Hammer and Wrench',
+  '🏗️': 'Building Construction'
+};
+
 const Chat = memo(function Chat({
   streamId,
   className = "fixed right-0 top-16 bottom-0 w-80 z-40 hidden lg:flex shadow-xl border-l border-neutral-800",
@@ -66,6 +79,11 @@ const Chat = memo(function Chat({
   }, []);
 
   useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsEmotePickerOpen(false);
+      }
+    };
     const handleClickOutside = (e) => {
       if (emotePickerRef.current && !emotePickerRef.current.contains(e.target)) {
         setIsEmotePickerOpen(false);
@@ -73,8 +91,12 @@ const Chat = memo(function Chat({
     };
     if (isEmotePickerOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isEmotePickerOpen]);
 
   const addEmote = (emote) => {
@@ -170,13 +192,15 @@ const Chat = memo(function Chat({
              </button>
 
              {isEmotePickerOpen && (
-               <div className="absolute bottom-full mb-2 left-0 bg-neutral-900 border border-neutral-800 rounded-lg p-2 shadow-2xl grid grid-cols-5 gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+               <div className="absolute bottom-full mb-2 left-0 bg-neutral-900 border border-neutral-800 rounded-lg p-2 w-48 shadow-2xl grid grid-cols-5 gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                  {EMOTES.map(emote => (
                    <button
                      key={emote}
                      type="button"
                      onClick={() => addEmote(emote)}
-                     className="w-8 h-8 flex items-center justify-center hover:bg-neutral-800 rounded transition-colors text-lg"
+                     className="w-8 h-8 flex items-center justify-center hover:bg-neutral-800 rounded transition-colors text-lg focus-visible:ring-1 focus-visible:ring-beacon-500 outline-none"
+                     aria-label={EMOTE_LABELS[emote]}
+                     title={EMOTE_LABELS[emote]}
                    >
                      {emote}
                    </button>

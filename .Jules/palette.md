@@ -56,6 +56,10 @@
 **Learning:** In applications with persistent navigation bars and sidebars, keyboard users are forced to tab through numerous links before reaching the page's primary content. A "Skip to Main Content" link provides a significant UX boost for accessibility by allowing users to bypass repetitive navigation.
 **Action:** Always include a "Skip to Main Content" link in the root layout, ensuring it targets a `<main>` element with a corresponding ID and `tabIndex="-1"` for reliable focus management.
 
+## 2025-05-15 - Chat Emote Picker Polish
+**Learning:** In dense absolute-positioned grids like the emote picker, using a fixed width (e.g., `w-48`) and specific padding (`p-2`) prevents emojis from overlapping or squashing, ensuring clear hit targets. Additionally, implementing an 'Escape' key listener and descriptive ARIA labels for icon-only buttons is crucial for keyboard and screen reader accessibility.
+**Action:** Always pair visual grid refinements with keyboard interaction listeners and semantic accessibility attributes for complex interactive overlays.
+
 ## 2026-03-26 - Chat Mention System Accessibility
 **Learning:** Interactive usernames in a chat stream must be implemented as semantic `<button>` elements rather than simple `<span>` or `<a>` tags. This ensures they are keyboard-navigable and allows for the addition of descriptive `aria-label` attributes (e.g., "Mention [username]").
 **Action:** Always use `<button>` elements for usernames in chat if they trigger interactive features like mentions or profile overlays, providing clear ARIA labels to describe the specific action.
