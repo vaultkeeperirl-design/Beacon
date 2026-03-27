@@ -9,3 +9,9 @@
 **Learning:** Raid functionality in a streaming platform requires cross-room synchronization. Validating target stream existence in the `activeStreams` Map prevents "dead-end" raids. Calculating viewer counts via `io.sockets.adapter.rooms.get(streamId)?.size` allows for meaningful system announcements in the target stream's chat, enhancing the social connectivity of the platform.
 
 **Action:** Always validate target room state and notify the recipient when implementing features that move or redirect users between rooms or streams.
+
+## 2026-03-24 - P2P Mesh Healing & Recursive Loop Prevention
+
+**Learning:** Proactive mesh healing (re-parenting orphans) is essential for tree-based P2P topologies where nodes join in non-optimal order. However, calling `addNodeToMesh` from `healOrphans` (which is itself called by `addNodeToMesh`) requires an explicit `triggerHeal` boolean flag to prevent infinite recursion and stack overflow.
+
+**Action:** When implementing reactive topology re-balancing, use a flag to distinguish between the initial insertion (which triggers a scan) and the recursive assignment of orphans (which should not).
