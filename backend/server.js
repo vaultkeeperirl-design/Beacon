@@ -69,9 +69,10 @@ const updateBroadcasterSession = (streamId, socketId, add) => {
 };
 
 // Prepared SQL Statements for Performance
-const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
-const deductCreditsStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ?');
-const deductCreditsWithCheckStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ? AND credits >= ?');
+// ⚡ Performance Optimization: Using RETURNING clause (SQLite 3.35.0+) to combine UPDATE and SELECT.
+const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ? RETURNING credits');
+const deductCreditsStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ? RETURNING credits');
+const deductCreditsWithCheckStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ? AND credits >= ? RETURNING credits');
 const getCreditsStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
 const getUserStmt = db.prepare('SELECT id, username, avatar_url, bio, follower_count, (SELECT COUNT(*) FROM Follows WHERE follower_id = Users.id) AS following_count FROM Users WHERE username = ?');
 const getUserWithHashStmt = db.prepare('SELECT * FROM Users WHERE username = ?');
@@ -148,8 +149,9 @@ const distributeCredits = (squad, totalAmount) => {
   for (const member of squad) {
     const cut = totalAmount * (member.split / 100);
     if (cut > 0) {
-      updateCreditsStmt.run(cut, member.username);
-      const row = getCreditsStmt.get(member.username);
+      // ⚡ Performance Optimization: Atomic UPDATE with RETURNING clause
+      // This eliminates the need for a separate SELECT query to get the updated balance.
+      const row = updateCreditsStmt.get(cut, member.username);
       if (row) {
         updates.push({ username: member.username, balance: row.credits });
       }
@@ -167,20 +169,22 @@ const distributeCreditsTx = db.transaction(distributeCredits);
 // ⚡ Performance Optimization: Specialized transaction for high-frequency single-user credit updates.
 // This avoids the overhead of creating 'squad' and 'updates' arrays in metrics-report.
 const updateSingleUserCreditsTx = db.transaction((username, amount) => {
-  updateCreditsStmt.run(amount, username);
-  return getCreditsStmt.get(username);
+  return updateCreditsStmt.get(amount, username);
 });
 
 const revenueTx = db.transaction((tipper, amount, squad, relayers, relayTotal, squadTotal) => {
+  const results = [];
+
   if (tipper) {
-    // ⚡ Performance Optimization: Merge balance check and deduction into a single atomic UPDATE.
-    const info = deductCreditsWithCheckStmt.run(amount, tipper, amount);
-    if (info.changes === 0) {
+    // ⚡ Performance Optimization: Atomic balance check, deduction, and fetch in one operation.
+    const row = deductCreditsWithCheckStmt.get(amount, tipper, amount);
+    if (!row) {
       throw new Error('INSUFFICIENT_FUNDS');
     }
+    // Include the updated tipper balance in results for deduplicated notification
+    results.push({ username: tipper, balance: row.credits });
   }
 
-  const results = [];
   // Distribute 80% to squad
   results.push(...distributeCredits(squad, squadTotal));
   // Distribute 20% to relayers
@@ -271,6 +275,8 @@ const distributeCreditsToStream = (streamId, amount, tipper = null) => {
   const squadTotal = amount - (hasRelayers ? relayTotal : 0);
 
   try {
+    // ⚡ Performance Optimization: revenueTx now includes the tipper's updated balance
+    // in the 'updates' array, allowing for a single unified emission pass.
     const updates = revenueTx(tipper, amount, squad, relayers, relayTotal, squadTotal);
 
     // ⚡ Performance Optimization: Deduplicate wallet update emissions.
@@ -641,13 +647,10 @@ app.post('/api/tip', authenticateToken, (req, res) => {
   try {
     // 🌉 Bridge: Use the unified distributeCreditsToStream to apply 80/20 split
     // and proportional relay rewards to Tips as well as Ads.
+    // ⚡ Performance Optimization: distributeCreditsToStream now returns the updated
+    // balance for the tipper and all recipients, and handles wallet-update emissions
+    // in a single deduplicated pass.
     distributeCreditsToStream(streamId, amount, tipper);
-
-    // Notify all of tipper's devices about the new balance
-    const updatedTipper = getCreditsStmt.get(tipper);
-    if (updatedTipper) {
-      io.to(`user:${tipper}`).emit('wallet-update', { balance: updatedTipper.credits });
-    }
 
     // Emit event to the room so chat can show the tip
     io.to(streamId).emit('chat-message', {
@@ -1472,5 +1475,8 @@ module.exports = {
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  updateSingleUserCreditsTx,
+  revenueTx,
+  distributeCreditsToStream
 };
