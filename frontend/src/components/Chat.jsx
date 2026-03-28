@@ -26,6 +26,18 @@ const ChatMessage = memo(({ msg, onMention }) => (
 ChatMessage.displayName = 'ChatMessage';
 
 const EMOTES = ['🔥', '🚀', '💎', '🙌', '👀', '✨', '⚡', '🌉', '🛠️', '🏗️'];
+const EMOTE_LABELS = {
+  '🔥': 'Fire',
+  '🚀': 'Rocket',
+  '💎': 'Diamond',
+  '🙌': 'Raising Hands',
+  '👀': 'Eyes',
+  '✨': 'Sparkles',
+  '⚡': 'Bolt',
+  '🌉': 'Bridge',
+  '🛠️': 'Hammer and Wrench',
+  '🏗️': 'Building Construction'
+};
 
 const Chat = memo(function Chat({
   streamId,
@@ -71,10 +83,21 @@ const Chat = memo(function Chat({
         setIsEmotePickerOpen(false);
       }
     };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsEmotePickerOpen(false);
+      }
+    };
+
     if (isEmotePickerOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isEmotePickerOpen]);
 
   const addEmote = (emote) => {
@@ -170,13 +193,15 @@ const Chat = memo(function Chat({
              </button>
 
              {isEmotePickerOpen && (
-               <div className="absolute bottom-full mb-2 left-0 bg-neutral-900 border border-neutral-800 rounded-lg p-2 shadow-2xl grid grid-cols-5 gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+               <div className="absolute bottom-full mb-2 left-0 w-48 bg-neutral-900 border border-neutral-800 rounded-lg p-1.5 shadow-2xl grid grid-cols-5 gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                  {EMOTES.map(emote => (
                    <button
                      key={emote}
                      type="button"
                      onClick={() => addEmote(emote)}
                      className="w-8 h-8 flex items-center justify-center hover:bg-neutral-800 rounded transition-colors text-lg"
+                     aria-label={EMOTE_LABELS[emote] || emote}
+                     title={EMOTE_LABELS[emote] || emote}
                    >
                      {emote}
                    </button>
