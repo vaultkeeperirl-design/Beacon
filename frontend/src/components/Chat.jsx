@@ -5,6 +5,19 @@ import PollWidget from './PollWidget';
 
 // Performance Optimization: Extract individual message to a memoized component.
 // This prevents all messages from re-rendering when a single new message is added.
+const EMOTE_LABELS = {
+  '🔥': 'Fire',
+  '🚀': 'Rocket',
+  '💎': 'Gem',
+  '🙌': 'Hands up',
+  '👀': 'Eyes',
+  '✨': 'Sparkles',
+  '⚡': 'Bolt',
+  '🌉': 'Bridge',
+  '🛠️': 'Hammer and Wrench',
+  '🏗️': 'Building Construction'
+};
+
 const ChatMessage = memo(({ msg, onMention }) => (
   <div className={`text-sm break-words leading-relaxed group hover:bg-neutral-900/50 -mx-2 px-2 py-1 rounded transition-colors ${msg.isPending ? 'opacity-50' : ''}`}>
     {msg.user === 'System' ? (
@@ -39,6 +52,7 @@ const Chat = memo(function Chat({
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
   const emotePickerRef = useRef(null);
+  const emoteTriggerRef = useRef(null);
 
   // Note: Resetting of messages when streamId changes is now handled by a 'key' on
   // the component in Watch.jsx, which is more idiomatic and avoids cascading renders.
@@ -69,12 +83,30 @@ const Chat = memo(function Chat({
     const handleClickOutside = (e) => {
       if (emotePickerRef.current && !emotePickerRef.current.contains(e.target)) {
         setIsEmotePickerOpen(false);
+        // ✨ Palette: Returning focus to the trigger button when the menu is closed via click-outside
+        // ensures a predictable experience for keyboard and screen reader users.
+        emoteTriggerRef.current?.focus();
       }
     };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsEmotePickerOpen(false);
+        // ✨ Palette: Returning focus to the trigger button when the menu is closed via Escape
+        // is a standard accessibility requirement for accessible menus.
+        emoteTriggerRef.current?.focus();
+      }
+    };
+
     if (isEmotePickerOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isEmotePickerOpen]);
 
   const addEmote = (emote) => {
@@ -157,6 +189,7 @@ const Chat = memo(function Chat({
         <div className="flex justify-between items-center mt-3 text-[10px] text-neutral-600 font-medium">
            <div className="relative" ref={emotePickerRef}>
              <button
+               ref={emoteTriggerRef}
                type="button"
                onClick={() => setIsEmotePickerOpen(!isEmotePickerOpen)}
                className="flex items-center gap-1.5 cursor-pointer hover:text-neutral-400 transition-colors focus-visible:ring-1 focus-visible:ring-beacon-500 rounded outline-none"
@@ -170,13 +203,15 @@ const Chat = memo(function Chat({
              </button>
 
              {isEmotePickerOpen && (
-               <div className="absolute bottom-full mb-2 left-0 bg-neutral-900 border border-neutral-800 rounded-lg p-2 shadow-2xl grid grid-cols-5 gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+               <div className="absolute bottom-full mb-2 left-0 w-48 bg-neutral-900 border border-neutral-800 rounded-lg p-1.5 shadow-2xl grid grid-cols-5 gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                  {EMOTES.map(emote => (
                    <button
                      key={emote}
                      type="button"
                      onClick={() => addEmote(emote)}
                      className="w-8 h-8 flex items-center justify-center hover:bg-neutral-800 rounded transition-colors text-lg"
+                     aria-label={EMOTE_LABELS[emote] || emote}
+                     title={EMOTE_LABELS[emote] || emote}
                    >
                      {emote}
                    </button>

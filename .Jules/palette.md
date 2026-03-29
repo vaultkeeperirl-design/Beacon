@@ -67,3 +67,7 @@
 ## 2026-04-01 - Keyboard Visibility for Hover-Based Controls
 **Learning:** UI elements that are only visible on hover (using `group-hover:opacity-100`) are inaccessible to keyboard users unless they also respond to focus. Without a focus-aware visibility trigger, keyboard users will tab into "invisible" interactive elements.
 **Action:** Always pair `group-hover:opacity-100` with `focus-within:opacity-100` on containers that hide interactive controls (like video players or overlay cards) to ensure they are visible when keyboard-focused.
+
+## 2024-05-25 - Focus Management on Overlay Dismissal
+**Learning:** Dismissing interactive overlays (like the emote picker) via keyboard (Escape) or click-outside leaves the focus state in an ambiguous or reset state if not explicitly handled. For a seamless keyboard and screen reader experience, focus should always be returned to the element that triggered the overlay.
+**Action:** Implement a `triggerRef` and explicitly call `.focus()` on the trigger element within the dismissal handlers for all temporary overlays.
