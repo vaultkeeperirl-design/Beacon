@@ -748,6 +748,24 @@ function hasPathToBroadcaster(mesh, startNodeId) {
 }
 
 /**
+ * Scans for orphan nodes (no parent) in a stream and attempts to re-parent them.
+ * This is triggered when new capacity (broadcaster or high-bandwidth relay) is added.
+ * @param {string} streamId - The ID of the stream.
+ */
+function healOrphans(streamId) {
+  if (!streamMeshTopology.has(streamId)) return;
+  const mesh = streamMeshTopology.get(streamId);
+
+  for (const [socketId, node] of mesh.entries()) {
+    if (!node.isBroadcaster && !node.parent) {
+      console.log(`[Mesh] Attempting to heal orphan ${socketId} in stream ${streamId}`);
+      // Pass triggerHeal: false to prevent infinite recursion
+      addNodeToMesh(streamId, socketId, false, false);
+    }
+  }
+}
+
+/**
  * Checks if there is another authenticated broadcaster for the given streamId
  * in the same room, excluding the current socket.
  * ⚡ Performance Optimization: Uses broadcasterSessions Map for O(1) lookup.
@@ -765,7 +783,7 @@ const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
   return sessions.size > 0;
 };
 
-function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
+function addNodeToMesh(streamId, socketId, isBroadcaster = false, triggerHeal = true) {
   if (!streamMeshTopology.has(streamId)) {
     streamMeshTopology.set(streamId, new Map());
   }
@@ -776,12 +794,29 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   // This can happen on reconnects or re-joins to the same stream
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
+
+    // 🌉 Bridge: Handle broadcaster promotion
+    // If a node was previously a viewer and now becomes a broadcaster,
+    // we must clear its parent relationship to maintain tree integrity.
+    if (isBroadcaster && !node.isBroadcaster) {
+      if (node.parent) {
+        const parentNode = mesh.get(node.parent);
+        if (parentNode) {
+          parentNode.children.delete(socketId);
+        }
+        node.parent = null;
+      }
+    }
+
     node.isBroadcaster = isBroadcaster;
     const socket = io.sockets.sockets.get(socketId);
     if (socket?.accountName) node.accountName = socket.accountName;
     // Only return if it already has a parent or it's the broadcaster.
     // If it exists but has no parent (orphan), we continue to find it one.
-    if (node.parent || isBroadcaster) return;
+    if (node.parent || isBroadcaster) {
+      if (triggerHeal && isBroadcaster) healOrphans(streamId);
+      return;
+    }
   } else {
     const socket = io.sockets.sockets.get(socketId);
     mesh.set(socketId, {
@@ -794,6 +829,7 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   }
 
   if (isBroadcaster) {
+    if (triggerHeal) healOrphans(streamId);
     return; // Broadcaster has no parent
   }
 
@@ -811,6 +847,12 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
       // This prevents cycles and ensures the tree is always connected to the root.
       if (!node.isBroadcaster && !hasPathToBroadcaster(mesh, id)) {
         console.log(`[Mesh] Skipping potential parent ${id} for ${socketId} - no path to broadcaster`);
+        continue;
+      }
+
+      // 🌉 Bridge: Ensure potential relay parent has actual bandwidth contribution.
+      // This prevents 'dead' relay nodes with 0 upload from becoming parents.
+      if (!node.isBroadcaster && (!node.metrics || (node.metrics.uploadMbps || 0) <= 0)) {
         continue;
       }
 
@@ -846,6 +888,14 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
     console.log(`[Mesh] Assigned ${socketId} as child of ${assignedParent} in stream ${streamId}`);
   } else {
     console.log(`[Mesh] Warning: Could not find parent for ${socketId} in stream ${streamId}`);
+  }
+
+  // 🌉 Bridge: Proactively heal orphans if this new/updated node is a viable parent
+  if (triggerHeal) {
+    const node = mesh.get(socketId);
+    if (isBroadcaster || (node && node.metrics && node.metrics.uploadMbps > 0)) {
+      healOrphans(streamId);
+    }
   }
 }
 
@@ -913,6 +963,21 @@ io.on('connection', (socket) => {
       // ⚡ Performance Optimization: Track broadcaster session if already in own stream room
       if (socket.currentRoom === username) {
         updateBroadcasterSession(username, socket.id, true);
+
+        // 🌉 Bridge: Retroactive host activation
+        // If the user authenticates and is already in their own stream room,
+        // we must initialize the stream and promote them to broadcaster in the mesh.
+        if (!activeStreams.has(username)) {
+          const user = getUserStmt.get(username);
+          activeStreams.set(username, {
+            title: 'Welcome to my stream!',
+            tags: 'Beacon, P2P, Streaming',
+            streamer: username,
+            avatar: user ? user.avatar_url : null
+          });
+          console.log(`[Auth] Retroactively activated stream for ${username}`);
+        }
+        addNodeToMesh(username, socket.id, true);
       }
 
       // Retroactively update mesh topology with the new identity
@@ -1148,8 +1213,14 @@ io.on('connection', (socket) => {
 
       if (node && node.metrics) {
         // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
+        const prevUploadMbps = node.metrics.uploadMbps || 0;
         node.metrics.latency = latency;
         node.metrics.uploadMbps = uploadMbps;
+
+        // 🌉 Bridge: Proactively heal orphans if this node now has bandwidth to contribute
+        if (prevUploadMbps <= 0 && uploadMbps > 0) {
+          healOrphans(streamId);
+        }
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
@@ -1469,8 +1540,16 @@ module.exports = {
   io,
   activeStreams,
   streamSquads,
+  streamMeshTopology,
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  addNodeToMesh,
+  removeNodeFromMesh,
+  healOrphans,
+  updateSingleUserCreditsTx,
+  revenueTx,
+  distributeCredits,
+  distributeCreditsToStream
 };
