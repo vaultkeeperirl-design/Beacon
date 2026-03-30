@@ -26,7 +26,7 @@
 
 ## 2026-03-06 - Form Accessibility via Label Association
 **Learning:** Simply wrapping text in a `<label>` tag next to an `<input>` is not sufficient for screen readers. The label must be explicitly associated with the input using the `htmlFor` attribute on the label and a matching `id` attribute on the input. This ensures that when a screen reader focuses on the input, it accurately announces the associated label text.
-**Action:** Always verify that every `<label>` has an `htmlFor` attribute that matches the `id` of its corresponding `<input>`, `<select>`, or `<textarea>`, especially on critical forms like Login and Register.
+**Action:** Always verify that every `<label>` has an `htmlFor` attribute that announces the associated label text.
 
 ## 2026-03-10 - Sidebar Navigation and Active States
 **Learning:** For application-wide navigation components like the Sidebar, using `NavLink` with a functional `className` provides a standardized way to communicate the user's current location visually. Additionally, purely visual status indicators (like "Live" pulse dots) must be made accessible using `role="img"` and `aria-label`.
@@ -67,3 +67,7 @@
 ## 2026-04-01 - Keyboard Visibility for Hover-Based Controls
 **Learning:** UI elements that are only visible on hover (using `group-hover:opacity-100`) are inaccessible to keyboard users unless they also respond to focus. Without a focus-aware visibility trigger, keyboard users will tab into "invisible" interactive elements.
 **Action:** Always pair `group-hover:opacity-100` with `focus-within:opacity-100` on containers that hide interactive controls (like video players or overlay cards) to ensure they are visible when keyboard-focused.
+
+## 2024-06-25 - Focus Management for Dismissible Overlays
+**Learning:** When an overlay (like an emote picker or menu) is dismissed via keyboard (Escape) or a click outside, focus must be programmatically returned to the triggering element. Failure to do so causes the browser to reset focus to the top of the document, breaking the user's navigational flow and confusing screen reader users.
+**Action:** Always use a `useRef` to track the trigger element and call `.focus()` on it when dismissing an associated overlay component.
