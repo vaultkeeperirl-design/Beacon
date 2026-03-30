@@ -130,4 +130,34 @@ describe('Chat Component - Optimistic UI', () => {
     expect(input.value).toBe('Hello 🔥');
     expect(document.activeElement).toBe(input);
   });
+
+  it('should return focus to trigger button when emote picker is dismissed via Escape', () => {
+    render(<Chat streamId="test-stream" />);
+    const emoteButton = screen.getByRole('button', { name: /Open emotes menu/i });
+
+    // Open picker
+    fireEvent.click(emoteButton);
+    expect(screen.getByText('🔥')).toBeInTheDocument();
+
+    // Dismiss with Escape
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
+
+    expect(screen.queryByText('🔥')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(emoteButton);
+  });
+
+  it('should return focus to trigger button when emote picker is dismissed via click outside', () => {
+    render(<Chat streamId="test-stream" />);
+    const emoteButton = screen.getByRole('button', { name: /Open emotes menu/i });
+
+    // Open picker
+    fireEvent.click(emoteButton);
+    expect(screen.getByText('🔥')).toBeInTheDocument();
+
+    // Dismiss with click outside
+    fireEvent.mouseDown(document.body);
+
+    expect(screen.queryByText('🔥')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(emoteButton);
+  });
 });
