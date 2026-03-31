@@ -723,6 +723,22 @@ const streamMeshTopology = new Map();
 const MAX_CHILDREN_PER_NODE = 2; // Keep it low for browser WebRTC stability
 
 /**
+ * Scans for orphan nodes (no parent) and attempts to assign them to a parent.
+ * This proactively re-balances the mesh as new capacity becomes available.
+ * @param {string} streamId - The ID of the stream.
+ */
+function healOrphans(streamId) {
+  if (!streamMeshTopology.has(streamId)) return;
+  const mesh = streamMeshTopology.get(streamId);
+  console.log(`[Mesh] Healing orphans for stream ${streamId}...`);
+  for (const [id, node] of mesh.entries()) {
+    if (!node.isBroadcaster && !node.parent) {
+      addNodeToMesh(streamId, id, false, false);
+    }
+  }
+}
+
+/**
  * Verifies if a node has a valid upstream path to the broadcaster.
  * Prevents mesh cycles and ensures viewers only connect to viable nodes.
  * @param {Map} mesh - The mesh topology for the stream.
@@ -765,23 +781,35 @@ const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
   return sessions.size > 0;
 };
 
-function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
+function addNodeToMesh(streamId, socketId, isBroadcaster = false, triggerHeal = true) {
   if (!streamMeshTopology.has(streamId)) {
     streamMeshTopology.set(streamId, new Map());
   }
 
   const mesh = streamMeshTopology.get(streamId);
 
-  // If node already exists, don't reset its state (children/parent)
-  // This can happen on reconnects or re-joins to the same stream
+  // If node already exists, handle potential promotion
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
+
+    // 🌉 Bridge: If promoted to broadcaster, sever existing parent ties
+    if (isBroadcaster && !node.isBroadcaster) {
+      if (node.parent) {
+        const parentNode = mesh.get(node.parent);
+        if (parentNode) parentNode.children.delete(socketId);
+        node.parent = null;
+      }
+    }
+
     node.isBroadcaster = isBroadcaster;
     const socket = io.sockets.sockets.get(socketId);
     if (socket?.accountName) node.accountName = socket.accountName;
-    // Only return if it already has a parent or it's the broadcaster.
-    // If it exists but has no parent (orphan), we continue to find it one.
-    if (node.parent || isBroadcaster) return;
+
+    // If it's already the broadcaster or has a parent, we only need to heal orphans if it was just promoted
+    if (node.parent || isBroadcaster) {
+      if (isBroadcaster && triggerHeal) healOrphans(streamId);
+      return;
+    }
   } else {
     const socket = io.sockets.sockets.get(socketId);
     mesh.set(socketId, {
@@ -794,6 +822,7 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   }
 
   if (isBroadcaster) {
+    if (triggerHeal) healOrphans(streamId);
     return; // Broadcaster has no parent
   }
 
@@ -819,9 +848,15 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
       if (node.isBroadcaster) {
         score = 10000; // Extremely high score to prefer direct connection
       } else {
+        // 🌉 Bridge: Only nodes with proven upload bandwidth can be parents.
+        // This prevents 'dead' nodes from stalling the mesh distribution.
+        if (!node.metrics || !node.metrics.uploadMbps || node.metrics.uploadMbps <= 0) {
+          continue;
+        }
+
         // Higher score is better: High upload speed and low latency
-        const uploadScore = (node.metrics && node.metrics.uploadMbps > 0) ? node.metrics.uploadMbps * 10 : 5;
-        const latencyPenalty = (node.metrics && node.metrics.latency > 0) ? node.metrics.latency : 100;
+        const uploadScore = node.metrics.uploadMbps * 10;
+        const latencyPenalty = (node.metrics.latency > 0) ? node.metrics.latency : 100;
         score = (uploadScore / latencyPenalty) * 100;
       }
 
@@ -910,16 +945,32 @@ io.on('connection', (socket) => {
       // Join user-specific room for real-time wallet updates
       socket.join(`user:${username}`);
 
-      // ⚡ Performance Optimization: Track broadcaster session if already in own stream room
-      if (socket.currentRoom === username) {
+      // 🌉 Bridge: Retroactive Host Activation
+      // If the user authenticates and is already in their own stream room,
+      // they should be promoted to broadcaster in the mesh.
+      const streamId = socket.streamRoom;
+      if (streamId === username) {
+        // Track as an active broadcaster session for O(1) lookups
         updateBroadcasterSession(username, socket.id, true);
+
+        // Ensure the stream is marked as active if it wasn't already
+        if (!activeStreams.has(username)) {
+          const user = getUserStmt.get(username);
+          activeStreams.set(username, {
+            title: 'Welcome to my stream!',
+            tags: 'Beacon, P2P, Streaming',
+            streamer: username,
+            avatar: user ? user.avatar_url : null
+          });
+          console.log(`[Auth] Retroactively initialized stream for host ${username}`);
+        }
+
+        // Promote the node in the mesh topology
+        addNodeToMesh(username, socket.id, true);
+        console.log(`[Auth] Retroactively promoted ${socket.id} to broadcaster for stream ${username}`);
       }
 
-      // Retroactively update mesh topology with the new identity
-      // ⚡ Performance Optimization: Using socket.currentRoom for targeted update (O(1))
-      // instead of iterating over all active streams (O(N)).
-      // Note: socket.currentRoom is maintained by the join/leave-stream handlers.
-      const streamId = socket.currentRoom;
+      // Retroactively update mesh topology with the new identity for revenue sharing
       if (streamId && streamMeshTopology.has(streamId)) {
         const mesh = streamMeshTopology.get(streamId);
         if (mesh.has(socket.id)) {
@@ -968,8 +1019,8 @@ io.on('connection', (socket) => {
     }
 
     // Leave previous room if any to prevent double counting or stale state
-    if (socket.currentRoom && socket.currentRoom !== streamId) {
-       const prevRoom = socket.currentRoom;
+    if (socket.streamRoom && socket.streamRoom !== streamId) {
+       const prevRoom = socket.streamRoom;
 
        // ⚡ Performance Optimization: Remove from broadcaster sessions if leaving own stream
        if (socket.isAuthenticated && socket.username === prevRoom) {
@@ -996,13 +1047,13 @@ io.on('connection', (socket) => {
        const prevCount = io.sockets.adapter.rooms.get(prevRoom)?.size || 0;
        io.to(prevRoom).emit('room-users-update', prevCount);
        socket.to(prevRoom).emit('user-disconnected', { id: socket.id, username: socket.username });
-       socket.currentRoom = null;
+       socket.streamRoom = null;
     }
 
     if (streamId) {
-        if (socket.currentRoom !== streamId) {
+        if (socket.streamRoom !== streamId) {
             socket.join(streamId);
-            socket.currentRoom = streamId;
+            socket.streamRoom = streamId;
             console.log(`Socket ${socket.id} (${socket.username || 'unknown'}) joined stream ${streamId}`);
 
             // Notify others for potential P2P connection
@@ -1043,8 +1094,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('leave-stream', () => {
-    if (socket.currentRoom) {
-       const room = socket.currentRoom;
+    if (socket.streamRoom) {
+       const room = socket.streamRoom;
 
        // ⚡ Performance Optimization: Remove from broadcaster sessions if leaving own stream
        if (socket.isAuthenticated && socket.username === room) {
@@ -1072,14 +1123,14 @@ io.on('connection', (socket) => {
        const count = io.sockets.adapter.rooms.get(room)?.size || 0;
        io.to(room).emit('room-users-update', count);
        socket.to(room).emit('user-disconnected', { id: socket.id, username: socket.username });
-       socket.currentRoom = null;
+       socket.streamRoom = null;
        console.log(`Socket ${socket.id} left stream ${room}`);
     }
   });
 
   socket.on('chat-message', ({ streamId, user, text, color }) => {
     // Validate streamId and ensure user is in the room
-    if (!streamId || socket.currentRoom !== streamId) {
+    if (!streamId || socket.streamRoom !== streamId) {
       return;
     }
 
@@ -1113,7 +1164,7 @@ io.on('connection', (socket) => {
 
   // --- Metrics Reporting ---
   socket.on('metrics-report', ({ streamId, latency, uploadMbps }) => {
-    if (!streamId || socket.currentRoom !== streamId) return;
+    if (!streamId || socket.streamRoom !== streamId) return;
 
     // Rate limiting: 1 report per 1000ms to prevent infinite credit exploits
     const now = Date.now();
@@ -1147,9 +1198,17 @@ io.on('connection', (socket) => {
       const node = mesh.get(socket.id);
 
       if (node && node.metrics) {
+        const prevUpload = node.metrics.uploadMbps || 0;
+
         // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
         node.metrics.latency = latency;
         node.metrics.uploadMbps = uploadMbps;
+
+        // 🌉 Bridge: If this node just started contributing bandwidth, heal orphans
+        // to immediately utilize this new high-quality relay node.
+        if (prevUpload === 0 && uploadMbps > 0) {
+          healOrphans(streamId);
+        }
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
@@ -1178,7 +1237,7 @@ io.on('connection', (socket) => {
 
   // --- Co-Streaming Squad Logic ---
   socket.on('update-squad', ({ streamId, squad }) => {
-    if (!streamId || socket.currentRoom !== streamId) return;
+    if (!streamId || socket.streamRoom !== streamId) return;
 
     // 🛡️ SECURITY: Only authenticated hosts can update squad
     // Only host can update squad
@@ -1208,7 +1267,7 @@ io.on('connection', (socket) => {
   // --- Poll Logic ---
 
   socket.on('create-poll', ({ streamId, question, options, duration }) => {
-    if (!streamId || socket.currentRoom !== streamId) return;
+    if (!streamId || socket.streamRoom !== streamId) return;
 
     // 🛡️ SECURITY: Only authenticated hosts can create polls
     // Only host can create polls (simple check: username matches streamId)
@@ -1258,7 +1317,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('vote-poll', ({ streamId, pollId, optionIndex }) => {
-    if (!streamId || socket.currentRoom !== streamId) return;
+    if (!streamId || socket.streamRoom !== streamId) return;
 
     const poll = activePolls.get(streamId);
     if (!poll || poll.id !== pollId || !poll.isActive) return;
@@ -1282,7 +1341,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('end-poll', ({ streamId }) => {
-    if (!streamId || socket.currentRoom !== streamId) return;
+    if (!streamId || socket.streamRoom !== streamId) return;
     // 🛡️ SECURITY: Only authenticated hosts can end polls
     if (!socket.isAuthenticated || socket.username !== streamId) return;
 
@@ -1290,7 +1349,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('raid-stream', ({ streamId, targetId }) => {
-    if (!streamId || socket.currentRoom !== streamId) return;
+    if (!streamId || socket.streamRoom !== streamId) return;
     // 🛡️ SECURITY: Only authenticated hosts can initiate raids
     if (!socket.isAuthenticated || socket.username !== streamId) return; // Only host can raid
     if (!targetId || targetId === streamId) return;
@@ -1330,7 +1389,7 @@ io.on('connection', (socket) => {
 
   // --- Stream Metadata ---
   socket.on('update-stream-info', ({ streamId, title, tags }) => {
-    if (!streamId || socket.currentRoom !== streamId) return;
+    if (!streamId || socket.streamRoom !== streamId) return;
 
     // 🛡️ SECURITY: Only authenticated hosts can update stream info
     // Only host can update stream info
@@ -1361,7 +1420,7 @@ io.on('connection', (socket) => {
   socket.on('signal', ({ to, signal }) => {
     if (to) {
       const targetSocket = io.sockets.sockets.get(to);
-      if (targetSocket && targetSocket.currentRoom === socket.currentRoom) {
+      if (targetSocket && targetSocket.streamRoom === socket.streamRoom) {
         io.to(to).emit('signal', {
           from: socket.id,
           signal
@@ -1373,7 +1432,7 @@ io.on('connection', (socket) => {
   socket.on('offer', (payload) => {
     if (payload && payload.target) {
       const targetSocket = io.sockets.sockets.get(payload.target);
-      if (targetSocket && targetSocket.currentRoom === socket.currentRoom) {
+      if (targetSocket && targetSocket.streamRoom === socket.streamRoom) {
         io.to(payload.target).emit('offer', { ...payload, sender: socket.id });
       }
     }
@@ -1382,7 +1441,7 @@ io.on('connection', (socket) => {
   socket.on('answer', (payload) => {
     if (payload && payload.target) {
       const targetSocket = io.sockets.sockets.get(payload.target);
-      if (targetSocket && targetSocket.currentRoom === socket.currentRoom) {
+      if (targetSocket && targetSocket.streamRoom === socket.streamRoom) {
         io.to(payload.target).emit('answer', { ...payload, sender: socket.id });
       }
     }
@@ -1391,7 +1450,7 @@ io.on('connection', (socket) => {
   socket.on('ice-candidate', (payload) => {
     if (payload && payload.target) {
       const targetSocket = io.sockets.sockets.get(payload.target);
-      if (targetSocket && targetSocket.currentRoom === socket.currentRoom) {
+      if (targetSocket && targetSocket.streamRoom === socket.streamRoom) {
         io.to(payload.target).emit('ice-candidate', { ...payload, sender: socket.id });
       }
     }
@@ -1399,7 +1458,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
-    const streamId = socket.currentRoom;
+    const streamId = socket.streamRoom;
 
     if (streamId) {
       // ⚡ Performance Optimization: Remove from broadcaster sessions if disconnecting from own stream
@@ -1472,5 +1531,8 @@ module.exports = {
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  streamMeshTopology,
+  addNodeToMesh,
+  healOrphans
 };
