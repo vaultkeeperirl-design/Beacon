@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { UserPlus, UserCheck, MessageSquare, Share2, MoreHorizontal, Video, Calendar, Info, Clock, Heart } from 'lucide-react';
+import { UserPlus, UserCheck, MessageSquare, Share2, MoreHorizontal, Video, Calendar, Info, Clock, Heart, Check } from 'lucide-react';
 import { useP2PSettings } from '../context/P2PContext';
 import { useFollowing } from '../context/FollowingContext';
 import StreamCard from '../components/StreamCard';
@@ -13,6 +13,7 @@ export default function Channel() {
   const { follow, unfollow, isFollowing: checkIsFollowing } = useFollowing();
   const [activeTab, setActiveTab] = useState('home');
   const [channelData, setChannelData] = useState(null);
+  const [isCopied, setIsCopied] = useState(false);
 
   const isOwnProfile = currentUsername === username;
   const isFollowed = checkIsFollowing(username);
@@ -31,6 +32,21 @@ export default function Channel() {
       });
     }
   };
+
+  const handleShare = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href);
+      setIsCopied(true);
+    }
+  };
+
+  useEffect(() => {
+    let timeout;
+    if (isCopied) {
+      timeout = setTimeout(() => setIsCopied(false), 2000);
+    }
+    return () => clearTimeout(timeout);
+  }, [isCopied]);
 
   useEffect(() => {
     // Fetch real channel data
@@ -95,7 +111,7 @@ export default function Channel() {
             <div className="flex items-center gap-2 mb-1">
               <h1 className="text-3xl font-poppins font-bold text-white truncate">{channelData.displayName}</h1>
               {/* Verified Badge Mock */}
-              <div className="bg-beacon-500 text-white p-0.5 rounded-full">
+              <div className="bg-beacon-500 text-white p-0.5 rounded-full" role="img" aria-label="Verified">
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
@@ -126,15 +142,27 @@ export default function Channel() {
              )}
 
              {isOwnProfile && (
-                <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg font-bold transition-colors border border-neutral-700">
+                <button
+                  title="Customize Channel"
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg font-bold transition-colors border border-neutral-700"
+                >
                   <span>Customize Channel</span>
                 </button>
              )}
 
-             <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700">
-               <Share2 className="w-5 h-5" />
+             <button
+               onClick={handleShare}
+               aria-label={isCopied ? "Copied!" : "Share Channel"}
+               title={isCopied ? "Copied!" : "Share Channel"}
+               className={`p-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-all border border-neutral-700 ${isCopied ? 'text-beacon-500 border-beacon-500/50' : 'text-neutral-400 hover:text-white'}`}
+             >
+               {isCopied ? <Check className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
              </button>
-             <button className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700">
+             <button
+               aria-label="More options"
+               title="More options"
+               className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white rounded-lg transition-colors border border-neutral-700"
+             >
                <MoreHorizontal className="w-5 h-5" />
              </button>
           </div>
