@@ -723,6 +723,25 @@ const streamMeshTopology = new Map();
 const MAX_CHILDREN_PER_NODE = 2; // Keep it low for browser WebRTC stability
 
 /**
+ * Scans for nodes without a parent in the stream mesh and attempts to find them one.
+ * This proactive "healing" ensures that the mesh remains connected and resilient
+ * even if join order is non-ideal (e.g., viewers join before the broadcaster).
+ * @param {string} streamId - The ID of the stream mesh to heal.
+ */
+function healOrphans(streamId) {
+  if (!streamMeshTopology.has(streamId)) return;
+  const mesh = streamMeshTopology.get(streamId);
+
+  for (const [id, node] of mesh.entries()) {
+    if (!node.isBroadcaster && !node.parent) {
+      console.log(`[Mesh] Attempting to heal orphan ${id} in stream ${streamId}`);
+      // Pass triggerHeal: false to prevent infinite recursion
+      addNodeToMesh(streamId, id, false, false);
+    }
+  }
+}
+
+/**
  * Verifies if a node has a valid upstream path to the broadcaster.
  * Prevents mesh cycles and ensures viewers only connect to viable nodes.
  * @param {Map} mesh - The mesh topology for the stream.
@@ -765,7 +784,7 @@ const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
   return sessions.size > 0;
 };
 
-function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
+function addNodeToMesh(streamId, socketId, isBroadcaster = false, triggerHeal = true) {
   if (!streamMeshTopology.has(streamId)) {
     streamMeshTopology.set(streamId, new Map());
   }
@@ -776,12 +795,31 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   // This can happen on reconnects or re-joins to the same stream
   if (mesh.has(socketId)) {
     const node = mesh.get(socketId);
+
+    // 🌉 Bridge: Handle broadcaster promotion. If a node is promoted,
+    // it must be severed from its previous parent to become the new root.
+    if (isBroadcaster && !node.isBroadcaster) {
+      if (node.parent) {
+        const parentNode = mesh.get(node.parent);
+        if (parentNode) {
+          parentNode.children.delete(socketId);
+        }
+        node.parent = null;
+      }
+    }
+
     node.isBroadcaster = isBroadcaster;
     const socket = io.sockets.sockets.get(socketId);
     if (socket?.accountName) node.accountName = socket.accountName;
     // Only return if it already has a parent or it's the broadcaster.
     // If it exists but has no parent (orphan), we continue to find it one.
-    if (node.parent || isBroadcaster) return;
+    if (node.parent || isBroadcaster) {
+      // If we just promoted a broadcaster, it might be able to adopt orphans
+      if (isBroadcaster && triggerHeal) {
+        healOrphans(streamId);
+      }
+      return;
+    }
   } else {
     const socket = io.sockets.sockets.get(socketId);
     mesh.set(socketId, {
@@ -794,6 +832,10 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   }
 
   if (isBroadcaster) {
+    // 🌉 Bridge: When a broadcaster joins, immediately try to heal orphans
+    if (triggerHeal) {
+      healOrphans(streamId);
+    }
     return; // Broadcaster has no parent
   }
 
@@ -1147,9 +1189,17 @@ io.on('connection', (socket) => {
       const node = mesh.get(socket.id);
 
       if (node && node.metrics) {
+        const oldUpload = node.metrics.uploadMbps;
+
         // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
         node.metrics.latency = latency;
         node.metrics.uploadMbps = uploadMbps;
+
+        // 🌉 Bridge: If node just became a viable parent (bandwidth > 0), trigger healing
+        if (oldUpload === 0 && uploadMbps > 0) {
+          console.log(`[Mesh] Node ${socket.id} in stream ${streamId} now contributing bandwidth (${uploadMbps}Mbps). Healing orphans...`);
+          healOrphans(streamId);
+        }
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
@@ -1472,5 +1522,9 @@ module.exports = {
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  streamMeshTopology,
+  addNodeToMesh,
+  healOrphans,
+  removeNodeFromMesh
 };
