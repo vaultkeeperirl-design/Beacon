@@ -67,3 +67,7 @@
 ## 2026-04-01 - Keyboard Visibility for Hover-Based Controls
 **Learning:** UI elements that are only visible on hover (using `group-hover:opacity-100`) are inaccessible to keyboard users unless they also respond to focus. Without a focus-aware visibility trigger, keyboard users will tab into "invisible" interactive elements.
 **Action:** Always pair `group-hover:opacity-100` with `focus-within:opacity-100` on containers that hide interactive controls (like video players or overlay cards) to ensure they are visible when keyboard-focused.
+
+## 2026-04-05 - Emote Picker Accessibility and Focus Management
+**Learning:** For interactive overlays like emote pickers, simply closing on 'Escape' or click-outside is insufficient for keyboard accessibility. Focus must be explicitly returned to the trigger element to prevent the focus from being "lost" or resetting to the top of the document. Additionally, providing descriptive `aria-label` and `title` attributes for each emoji ensures they are perceivable by screen readers and provides visual tooltips for mouse users.
+**Action:** Always implement focus restoration to the trigger element when dismissing modal-like components and ensure all icon/emoji-only buttons have descriptive labels.
