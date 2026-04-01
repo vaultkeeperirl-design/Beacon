@@ -69,9 +69,9 @@ const updateBroadcasterSession = (streamId, socketId, add) => {
 };
 
 // Prepared SQL Statements for Performance
-const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ?');
-const deductCreditsStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ?');
-const deductCreditsWithCheckStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ? AND credits >= ?');
+const updateCreditsStmt = db.prepare('UPDATE Users SET credits = credits + ? WHERE username = ? RETURNING credits');
+const deductCreditsStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ? RETURNING credits');
+const deductCreditsWithCheckStmt = db.prepare('UPDATE Users SET credits = credits - ? WHERE username = ? AND credits >= ? RETURNING credits');
 const getCreditsStmt = db.prepare('SELECT credits FROM Users WHERE username = ?');
 const getUserStmt = db.prepare('SELECT id, username, avatar_url, bio, follower_count, (SELECT COUNT(*) FROM Follows WHERE follower_id = Users.id) AS following_count FROM Users WHERE username = ?');
 const getUserWithHashStmt = db.prepare('SELECT * FROM Users WHERE username = ?');
@@ -148,8 +148,9 @@ const distributeCredits = (squad, totalAmount) => {
   for (const member of squad) {
     const cut = totalAmount * (member.split / 100);
     if (cut > 0) {
-      updateCreditsStmt.run(cut, member.username);
-      const row = getCreditsStmt.get(member.username);
+      // ⚡ Performance Optimization: Using RETURNING credits to retrieve the updated balance
+      // in a single operation, halving the database round-trips for each credit update.
+      const row = updateCreditsStmt.get(cut, member.username);
       if (row) {
         updates.push({ username: member.username, balance: row.credits });
       }
@@ -167,20 +168,22 @@ const distributeCreditsTx = db.transaction(distributeCredits);
 // ⚡ Performance Optimization: Specialized transaction for high-frequency single-user credit updates.
 // This avoids the overhead of creating 'squad' and 'updates' arrays in metrics-report.
 const updateSingleUserCreditsTx = db.transaction((username, amount) => {
-  updateCreditsStmt.run(amount, username);
-  return getCreditsStmt.get(username);
+  // ⚡ Performance Optimization: Using RETURNING credits for O(1) database operation.
+  return updateCreditsStmt.get(amount, username);
 });
 
 const revenueTx = db.transaction((tipper, amount, squad, relayers, relayTotal, squadTotal) => {
+  const results = [];
   if (tipper) {
     // ⚡ Performance Optimization: Merge balance check and deduction into a single atomic UPDATE.
-    const info = deductCreditsWithCheckStmt.run(amount, tipper, amount);
-    if (info.changes === 0) {
+    // RETURNING allows us to retrieve the new balance without a separate SELECT.
+    const row = deductCreditsWithCheckStmt.get(amount, tipper, amount);
+    if (!row) {
       throw new Error('INSUFFICIENT_FUNDS');
     }
+    results.push({ username: tipper, balance: row.credits });
   }
 
-  const results = [];
   // Distribute 80% to squad
   results.push(...distributeCredits(squad, squadTotal));
   // Distribute 20% to relayers
@@ -285,6 +288,8 @@ const distributeCreditsToStream = (streamId, amount, tipper = null) => {
     for (const [username, balance] of uniqueUpdates.entries()) {
       io.to(`user:${username}`).emit('wallet-update', { balance });
     }
+
+    return uniqueUpdates;
   } catch (err) {
     console.error(`Failed to distribute credits for stream ${streamId}:`, err);
     throw err;
@@ -643,11 +648,9 @@ app.post('/api/tip', authenticateToken, (req, res) => {
     // and proportional relay rewards to Tips as well as Ads.
     distributeCreditsToStream(streamId, amount, tipper);
 
-    // Notify all of tipper's devices about the new balance
-    const updatedTipper = getCreditsStmt.get(tipper);
-    if (updatedTipper) {
-      io.to(`user:${tipper}`).emit('wallet-update', { balance: updatedTipper.credits });
-    }
+    // ⚡ Performance Optimization: Using the balance returned through distributeCreditsToStream
+    // which already performs deduplicated socket emissions. The tipper's balance is included
+    // if revenueTx succeeded, so we don't need a separate getCreditsStmt or extra emission.
 
     // Emit event to the room so chat can show the tip
     io.to(streamId).emit('chat-message', {
