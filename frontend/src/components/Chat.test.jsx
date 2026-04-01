@@ -116,7 +116,7 @@ describe('Chat Component - Optimistic UI', () => {
     expect(screen.getByText('/ 500')).toBeInTheDocument();
   });
 
-  it('should append emote when selected and restore focus', () => {
+  it('should append emote when selected and restore focus to input', () => {
     render(<Chat streamId="test-stream" />);
     const input = screen.getByPlaceholderText(/Send a message/i);
     const emoteButton = screen.getByRole('button', { name: /Open emotes menu/i });
@@ -124,10 +124,54 @@ describe('Chat Component - Optimistic UI', () => {
     fireEvent.change(input, { target: { value: 'Hello ' } });
     fireEvent.click(emoteButton);
 
-    const fireEmote = screen.getByText('🔥');
+    const fireEmote = screen.getByRole('button', { name: /Fire/i });
     fireEvent.click(fireEmote);
 
     expect(input.value).toBe('Hello 🔥');
     expect(document.activeElement).toBe(input);
+  });
+
+  it('should restore focus to trigger button when emote picker is closed via Escape', () => {
+    render(<Chat streamId="test-stream" />);
+    const emoteButton = screen.getByRole('button', { name: /Open emotes menu/i });
+
+    fireEvent.click(emoteButton);
+    expect(screen.getByRole('button', { name: /Fire/i })).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('button', { name: /Fire/i })).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(emoteButton);
+  });
+
+  it('should restore focus to trigger button when clicking outside emote picker', () => {
+    render(<Chat streamId="test-stream" />);
+    const emoteButton = screen.getByRole('button', { name: /Open emotes menu/i });
+
+    fireEvent.click(emoteButton);
+    expect(screen.getByRole('button', { name: /Fire/i })).toBeInTheDocument();
+
+    // Click outside
+    fireEvent.mouseDown(document.body);
+
+    expect(screen.queryByRole('button', { name: /Fire/i })).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(emoteButton);
+  });
+
+  it('should have descriptive ARIA labels for all emotes', () => {
+    render(<Chat streamId="test-stream" />);
+    const emoteButton = screen.getByRole('button', { name: /Open emotes menu/i });
+    fireEvent.click(emoteButton);
+
+    expect(screen.getByRole('button', { name: /Fire/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Rocket/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Gem/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Hands/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Eyes/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sparkles/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Bolt/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Bridge/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Tools/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Construction/i })).toBeInTheDocument();
   });
 });
