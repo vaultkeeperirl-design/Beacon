@@ -67,3 +67,7 @@
 ## 2026-04-01 - Keyboard Visibility for Hover-Based Controls
 **Learning:** UI elements that are only visible on hover (using `group-hover:opacity-100`) are inaccessible to keyboard users unless they also respond to focus. Without a focus-aware visibility trigger, keyboard users will tab into "invisible" interactive elements.
 **Action:** Always pair `group-hover:opacity-100` with `focus-within:opacity-100` on containers that hide interactive controls (like video players or overlay cards) to ensure they are visible when keyboard-focused.
+
+## 2024-05-28 - Selective Focus Restoration in Overlays
+**Learning:** Automatically restoring focus to a trigger element when an overlay is dismissed via "click-outside" is a UX anti-pattern known as focus stealing. It disrupts the user's intent to interact with the new element they clicked on. Focus should only be programmatically restored on explicit dismissal actions like the 'Escape' key.
+**Action:** In `useEffect` hooks for overlay interaction, separate the logic for 'Escape' (restore focus) and 'click-outside' (just close the overlay) to respect user intent.
