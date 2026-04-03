@@ -95,33 +95,45 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
             />
           </div>
 
-          <div className="space-y-3">
-            <label htmlFor="poll-option-0" className="block text-sm font-semibold text-neutral-300">Options</label>
-            {options.map((opt, idx) => (
-              <div key={idx} className="flex gap-2">
-                <input
-                  id={`poll-option-${idx}`}
-                  type="text"
-                  value={opt}
-                  onChange={(e) => handleOptionChange(idx, e.target.value)}
-                  className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2 text-white focus:border-beacon-500 outline-none transition-colors"
-                  placeholder={`Option ${idx + 1}`}
-                  maxLength={50}
-                />
-                {options.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveOption(idx)}
-                    className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                    aria-label={`Remove option ${idx + 1}`}
-                    title={`Remove option ${idx + 1}`}
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+          <fieldset className="space-y-4">
+            <legend className="text-sm font-semibold text-neutral-300">Options</legend>
+            <div className="space-y-3">
+              {options.map((opt, idx) => (
+                <div key={idx} className="space-y-1.5">
+                  <div className="flex justify-between items-center px-1">
+                    <label htmlFor={`poll-option-${idx}`} className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
+                      Option {idx + 1}
+                    </label>
+                    <span className={`text-[10px] font-mono ${opt.length >= 45 ? 'text-beacon-500' : 'text-neutral-500'}`}>
+                      {opt.length}/50
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      id={`poll-option-${idx}`}
+                      type="text"
+                      value={opt}
+                      onChange={(e) => handleOptionChange(idx, e.target.value)}
+                      className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2 text-white focus:border-beacon-500 outline-none transition-colors"
+                      placeholder={`e.g. Choice ${idx + 1}`}
+                      maxLength={50}
+                    />
+                    {options.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOption(idx)}
+                        className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                        aria-label={`Remove option ${idx + 1}`}
+                        title={`Remove option ${idx + 1}`}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </fieldset>
 
           <button
             type="button"
@@ -137,8 +149,8 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
             {options.length < 4 ? 'Add Option' : 'Add Option (Max 4)'}
           </button>
 
-          <div className="space-y-3 pt-4 border-t border-neutral-800">
-            <label className="block text-sm font-semibold text-neutral-300">Duration</label>
+          <fieldset className="space-y-3 pt-4 border-t border-neutral-800">
+            <legend className="text-sm font-semibold text-neutral-300">Duration</legend>
             <div className="grid grid-cols-4 gap-2">
               {[
                 { label: 'None', value: null },
@@ -161,7 +173,7 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
 
           <div className="pt-6 border-t border-neutral-800 flex justify-end gap-3">
             <button
