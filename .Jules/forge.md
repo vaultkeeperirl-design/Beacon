@@ -9,3 +9,9 @@
 **Learning:** Raid functionality in a streaming platform requires cross-room synchronization. Validating target stream existence in the `activeStreams` Map prevents "dead-end" raids. Calculating viewer counts via `io.sockets.adapter.rooms.get(streamId)?.size` allows for meaningful system announcements in the target stream's chat, enhancing the social connectivity of the platform.
 
 **Action:** Always validate target room state and notify the recipient when implementing features that move or redirect users between rooms or streams.
+
+## 2025-05-15 - Proactive Mesh Healing & Identity Promotion
+
+**Learning:** In a dynamic P2P mesh, nodes may join before the broadcaster or change roles (guest to authenticated host) after joining. Implementing a `healOrphans` function that retroactively assigns parents to "island" nodes ensures topology completeness. Additionally, when promoting a node to broadcaster, its existing parent must be cleared to maintain the tree invariant (root has no parent).
+
+**Action:** Trigger mesh healing on broadcaster arrival or when new upload capacity becomes available. Ensure explicit state cleanup when transitioning a node's role within the mesh.
