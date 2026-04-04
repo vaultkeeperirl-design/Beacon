@@ -67,3 +67,7 @@
 ## 2026-04-01 - Keyboard Visibility for Hover-Based Controls
 **Learning:** UI elements that are only visible on hover (using `group-hover:opacity-100`) are inaccessible to keyboard users unless they also respond to focus. Without a focus-aware visibility trigger, keyboard users will tab into "invisible" interactive elements.
 **Action:** Always pair `group-hover:opacity-100` with `focus-within:opacity-100` on containers that hide interactive controls (like video players or overlay cards) to ensure they are visible when keyboard-focused.
+
+## 2026-04-04 - Auto-focus on List Addition and Semantic Groups
+**Learning:** When implementing automatic focus for newly added items in a dynamic list (like poll options), tracking the previous length with a `useRef` prevents jarring focus jumps when items are deleted. Additionally, grouping related inputs within a `<fieldset>` with a visually hidden `<legend>` significantly improves accessibility for screen reader users by providing semantic context for the group.
+**Action:** Always use `useRef` to track previous state for selective focus transitions in dynamic lists, and wrap related input groups in semantic fieldsets.
