@@ -748,6 +748,41 @@ function hasPathToBroadcaster(mesh, startNodeId) {
 }
 
 /**
+ * Proactively heals the mesh by identifying orphaned nodes (no parent or broken path)
+ * and attempting to re-parent them using available capacity.
+ * @param {string} streamId - The ID of the stream.
+ */
+function healOrphans(streamId) {
+  if (!streamMeshTopology.has(streamId)) return;
+  const mesh = streamMeshTopology.get(streamId);
+
+  // Identify orphans: no parent OR broken path to broadcaster
+  const orphans = [];
+  for (const [id, node] of mesh.entries()) {
+    if (!node.isBroadcaster && (!node.parent || !hasPathToBroadcaster(mesh, id))) {
+      orphans.push(id);
+    }
+  }
+
+  if (orphans.length === 0) return;
+
+  console.log(`[Mesh] Proactive healing triggered for ${orphans.length} orphans in stream ${streamId}`);
+
+  for (const orphanId of orphans) {
+    const node = mesh.get(orphanId);
+    console.log(`[Mesh] Attempting to heal orphan ${orphanId} in stream ${streamId}`);
+    // If it had a parent but the path was broken, detach first
+    if (node.parent) {
+      const oldParent = mesh.get(node.parent);
+      if (oldParent) oldParent.children.delete(orphanId);
+      node.parent = null;
+    }
+    // Attempt re-parenting with healing disabled to prevent recursion
+    addNodeToMesh(streamId, orphanId, false, true);
+  }
+}
+
+/**
  * Checks if there is another authenticated broadcaster for the given streamId
  * in the same room, excluding the current socket.
  * ⚡ Performance Optimization: Uses broadcasterSessions Map for O(1) lookup.
@@ -765,7 +800,7 @@ const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
   return sessions.size > 0;
 };
 
-function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
+function addNodeToMesh(streamId, socketId, isBroadcaster = false, skipHealing = false) {
   if (!streamMeshTopology.has(streamId)) {
     streamMeshTopology.set(streamId, new Map());
   }
@@ -781,7 +816,8 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
     if (socket?.accountName) node.accountName = socket.accountName;
     // Only return if it already has a parent or it's the broadcaster.
     // If it exists but has no parent (orphan), we continue to find it one.
-    if (node.parent || isBroadcaster) return;
+    // Also skip if it's currently being re-parented by healOrphans.
+    if ((node.parent || isBroadcaster) && !skipHealing) return;
   } else {
     const socket = io.sockets.sockets.get(socketId);
     mesh.set(socketId, {
@@ -794,6 +830,9 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   }
 
   if (isBroadcaster) {
+    // 🌉 Bridge: When a broadcaster joins (or is promoted), trigger healing
+    // to allow any existing orphans to connect to the new root.
+    healOrphans(streamId);
     return; // Broadcaster has no parent
   }
 
@@ -819,9 +858,13 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
       if (node.isBroadcaster) {
         score = 10000; // Extremely high score to prefer direct connection
       } else {
+        // 🌉 Bridge: Only consider non-broadcaster nodes as viable parents if they have reported upload capacity.
+        // This ensures the mesh is built on capable relayers rather than random viewers.
+        if (!node.metrics || node.metrics.uploadMbps <= 0) continue;
+
         // Higher score is better: High upload speed and low latency
-        const uploadScore = (node.metrics && node.metrics.uploadMbps > 0) ? node.metrics.uploadMbps * 10 : 5;
-        const latencyPenalty = (node.metrics && node.metrics.latency > 0) ? node.metrics.latency : 100;
+        const uploadScore = node.metrics.uploadMbps * 10;
+        const latencyPenalty = (node.metrics.latency > 0) ? node.metrics.latency : 100;
         score = (uploadScore / latencyPenalty) * 100;
       }
 
@@ -880,6 +923,11 @@ function removeNodeFromMesh(streamId, socketId) {
       addNodeToMesh(streamId, orphanId, false);
     }
   }
+
+  // 🌉 Bridge: Proactive Healing
+  // After initial re-parenting of direct orphans, trigger a full healing pass
+  // to ensure any remaining orphans (e.g. islands) are also re-connected.
+  healOrphans(streamId);
 }
 
 io.on('connection', (socket) => {
@@ -1147,9 +1195,18 @@ io.on('connection', (socket) => {
       const node = mesh.get(socket.id);
 
       if (node && node.metrics) {
+        const prevUpload = node.metrics.uploadMbps;
+
         // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
         node.metrics.latency = latency;
         node.metrics.uploadMbps = uploadMbps;
+
+        // 🌉 Bridge: Proactive Healing
+        // If a node was previously not a valid parent (0 upload) and now is,
+        // trigger healing to allow orphans to utilize this new capacity.
+        if (prevUpload === 0 && uploadMbps > 0) {
+          healOrphans(streamId);
+        }
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
