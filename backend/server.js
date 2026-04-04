@@ -765,7 +765,7 @@ const isAnotherBroadcasterActive = (streamId, currentSocketId) => {
   return sessions.size > 0;
 };
 
-function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
+function addNodeToMesh(streamId, socketId, isBroadcaster = false, skipHealing = false) {
   if (!streamMeshTopology.has(streamId)) {
     streamMeshTopology.set(streamId, new Map());
   }
@@ -779,9 +779,22 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
     node.isBroadcaster = isBroadcaster;
     const socket = io.sockets.sockets.get(socketId);
     if (socket?.accountName) node.accountName = socket.accountName;
-    // Only return if it already has a parent or it's the broadcaster.
+
+    if (isBroadcaster) {
+      // 🌉 Bridge: If promoted to broadcaster, detach from previous parent
+      if (node.parent) {
+        const parentNode = mesh.get(node.parent);
+        if (parentNode) parentNode.children.delete(socketId);
+        node.parent = null;
+      }
+      // If promoted, immediately heal orphans as this node is now a root
+      if (!skipHealing) healOrphans(streamId);
+      return;
+    }
+
+    // Only return if it already has a parent.
     // If it exists but has no parent (orphan), we continue to find it one.
-    if (node.parent || isBroadcaster) return;
+    if (node.parent) return;
   } else {
     const socket = io.sockets.sockets.get(socketId);
     mesh.set(socketId, {
@@ -847,6 +860,43 @@ function addNodeToMesh(streamId, socketId, isBroadcaster = false) {
   } else {
     console.log(`[Mesh] Warning: Could not find parent for ${socketId} in stream ${streamId}`);
   }
+
+  // 🌉 Bridge: Proactively trigger healing for any remaining orphans
+  if (!skipHealing) {
+    healOrphans(streamId);
+  }
+}
+
+/**
+ * Proactively heals the mesh by identifying orphaned nodes (islands)
+ * and attempting to re-parent them to the broadcaster or a viable peer.
+ * @param {string} streamId - The ID of the stream.
+ */
+function healOrphans(streamId) {
+  if (!streamMeshTopology.has(streamId)) return;
+
+  const mesh = streamMeshTopology.get(streamId);
+  const orphans = [];
+
+  for (const [id, node] of mesh.entries()) {
+    // A node is an orphan if it's not the broadcaster and has no parent
+    // or if its path to the broadcaster is broken (island)
+    if (!node.isBroadcaster && (!node.parent || !hasPathToBroadcaster(mesh, id))) {
+      // If it had an invalid parent (e.g., path broken), detach it
+      if (node.parent) {
+        const parentNode = mesh.get(node.parent);
+        if (parentNode) parentNode.children.delete(id);
+        node.parent = null;
+      }
+      orphans.push(id);
+    }
+  }
+
+  // Attempt to find new parents for all orphans
+  // We pass skipHealing=true to addNodeToMesh to avoid infinite recursion
+  for (const orphanId of orphans) {
+    addNodeToMesh(streamId, orphanId, false, true);
+  }
 }
 
 function removeNodeFromMesh(streamId, socketId) {
@@ -876,10 +926,13 @@ function removeNodeFromMesh(streamId, socketId) {
   for (const orphanId of orphans) {
     if (mesh.has(orphanId)) {
       mesh.get(orphanId).parent = null;
-      // Re-add to find a new parent
-      addNodeToMesh(streamId, orphanId, false);
+      // Re-add to find a new parent (skipping healing within this loop)
+      addNodeToMesh(streamId, orphanId, false, true);
     }
   }
+
+  // 🌉 Bridge: Proactively heal any deeper orphans (islands) created by this removal
+  healOrphans(streamId);
 }
 
 io.on('connection', (socket) => {
@@ -1122,6 +1175,8 @@ io.on('connection', (socket) => {
     }
     socket.lastMetricsTime = now;
 
+    const previousUploadMbps = (streamMeshTopology.get(streamId)?.get(socket.id)?.metrics?.uploadMbps) || 0;
+
     // 🛡️ SECURITY: Only authenticated nodes earn credits
     // Credit Economy Calculation
     if (socket.isAuthenticated && socket.accountName && uploadMbps > 0) {
@@ -1150,6 +1205,13 @@ io.on('connection', (socket) => {
         // ⚡ Performance Optimization: Update properties directly to avoid re-allocating the metrics object.
         node.metrics.latency = latency;
         node.metrics.uploadMbps = uploadMbps;
+
+        // 🌉 Bridge: Proactively trigger healing if this node just became a viable parent (bandwidth > 0)
+        // allowing existing orphans to leverage its newly available capacity.
+        if (previousUploadMbps === 0 && uploadMbps > 0) {
+            console.log(`[Mesh] Node ${socket.id} in stream ${streamId} became a viable parent (upload: ${uploadMbps}Mbps). Healing orphans...`);
+            healOrphans(streamId);
+        }
 
         // Advanced Mesh Routing: Handling "Bad" Nodes
         // If upload is terribly slow or latency is very high, forcefully evict children to keep the tree healthy
@@ -1472,5 +1534,9 @@ module.exports = {
   broadcasterSessions,
   updateBroadcasterSession,
   JWT_SECRET,
-  isAnotherBroadcasterActive
+  isAnotherBroadcasterActive,
+  streamMeshTopology,
+  addNodeToMesh,
+  healOrphans,
+  removeNodeFromMesh
 };
