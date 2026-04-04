@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2, PieChart } from 'lucide-react';
 
 export default function PollCreator({ isOpen, onClose, onStartPoll }) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [duration, setDuration] = useState(null);
+  const prevOptionsLength = useRef(options.length);
+  const optionsRefs = useRef([]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -15,6 +17,15 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
     }
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  // ✨ Palette: Automatically focus the new option input only when added to improve flow
+  useEffect(() => {
+    if (options.length > prevOptionsLength.current) {
+      const lastIndex = options.length - 1;
+      optionsRefs.current[lastIndex]?.focus();
+    }
+    prevOptionsLength.current = options.length;
+  }, [options.length]);
 
   if (!isOpen) return null;
 
@@ -95,33 +106,44 @@ export default function PollCreator({ isOpen, onClose, onStartPoll }) {
             />
           </div>
 
-          <div className="space-y-3">
-            <label htmlFor="poll-option-0" className="block text-sm font-semibold text-neutral-300">Options</label>
+          <fieldset className="space-y-3">
+            <legend className="sr-only">Poll Options</legend>
+            <div className="block text-sm font-semibold text-neutral-300 mb-2">Options</div>
             {options.map((opt, idx) => (
-              <div key={idx} className="flex gap-2">
-                <input
-                  id={`poll-option-${idx}`}
-                  type="text"
-                  value={opt}
-                  onChange={(e) => handleOptionChange(idx, e.target.value)}
-                  className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2 text-white focus:border-beacon-500 outline-none transition-colors"
-                  placeholder={`Option ${idx + 1}`}
-                  maxLength={50}
-                />
-                {options.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveOption(idx)}
-                    className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                    aria-label={`Remove option ${idx + 1}`}
-                    title={`Remove option ${idx + 1}`}
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
+              <div key={idx} className="space-y-1">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      ref={el => optionsRefs.current[idx] = el}
+                      id={`poll-option-${idx}`}
+                      type="text"
+                      value={opt}
+                      onChange={(e) => handleOptionChange(idx, e.target.value)}
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2 text-white focus:border-beacon-500 outline-none transition-colors pr-12"
+                      placeholder={`Option ${idx + 1}`}
+                      maxLength={50}
+                      aria-label={`Poll Option ${idx + 1}`}
+                    />
+                    {/* ✨ Palette: Real-time character counter for options */}
+                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-mono font-bold transition-colors ${opt.length >= 45 ? 'text-beacon-500' : 'text-neutral-600'}`}>
+                      {opt.length}/50
+                    </span>
+                  </div>
+                  {options.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveOption(idx)}
+                      className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                      aria-label={`Remove option ${idx + 1}: ${opt || 'empty'}`}
+                      title={`Remove option ${idx + 1}`}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
-          </div>
+          </fieldset>
 
           <button
             type="button"
